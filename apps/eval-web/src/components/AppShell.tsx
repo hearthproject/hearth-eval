@@ -54,7 +54,7 @@ export function AppShell() {
           <span className="brand-mark"><Flame size={16} strokeWidth={2} /></span>
           <span className="brand-copy">
             <strong>Hearth</strong>
-            <small>Evaluation</small>
+            <small>Eval Agent</small>
           </span>
         </Link>
 

@@ -83,10 +83,10 @@ export function SystemPage() {
       <section className="panel">
         <SectionHeader title="启动方式" detail="开发环境最终检查" />
         <div className="command-grid">
-          <div><span>主服务</span><code>npm run dev</code><small>Hearth API · 127.0.0.1:4317</small></div>
-          <div><span>评测服务</span><code>npm run dev:eval</code><small>Eval API · 127.0.0.1:4318</small></div>
-          <div><span>评测前端</span><code>npm run dev:eval-web</code><small>Console · 127.0.0.1:5174</small></div>
-          <div><span>生产构建</span><code>npm run build:eval-web</code><small>由评测服务托管 dist</small></div>
+          <div><span>Hearth 主服务</span><code>cd ../hearth-os; npm run dev</code><small>Agent API · 127.0.0.1:4317</small></div>
+          <div><span>评测服务</span><code>npm run dev:server</code><small>Eval API · 127.0.0.1:4318</small></div>
+          <div><span>评测前端</span><code>npm run dev:web</code><small>Console · 127.0.0.1:5174</small></div>
+          <div><span>生产构建</span><code>npm run build; npm start</code><small>评测服务直接托管 dist</small></div>
         </div>
       </section>
     </div>
