@@ -8,6 +8,7 @@
 
 - `mvp-task-catalog.md`：15 个任务、公共验收基线 G1–G9、专项验收标准和评分表。
 - `inputs/`：每个任务的固定输入、来源 URL、GitHub 对象和原始数据。
+- `template-acceptance.ts`：模板产物的逐任务验收标准，供自动化测试与人工复核共用。
 - `runs/`：执行产物目录；每次执行写入 `runs/<任务 ID>/`，不得覆盖原始输入。验收产物纳入版本控制，用于复核和审计。
 
 ## 运行约定
@@ -48,7 +49,7 @@ npm run eval:scenarios
 只运行指定场景，便于复现单个失败：
 
 ```powershell
-npx tsx apps/server/src/scenarios/run-scenarios.ts --only approval-rejected-stops,unknown-effect-reconcile
+npm run eval:scenarios -- --only approval-rejected-stops,unknown-effect-reconcile
 ```
 
 场景使用 `HearthStore(":memory:")` 或临时 SQLite / 临时目录、假用户、假偏好、假秘密和可控时钟；不读取或修改真实账户与真实 `.hearth` 数据。P0 机制均有故障注入覆盖：
