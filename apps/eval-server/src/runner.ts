@@ -466,7 +466,7 @@ export class EvalRunner {
     if (input.kind === "url") return { kind: "url", label: input.label, value: input.value ?? "" };
     const value = input.path ?? input.value ?? "";
     const absolute = resolveCaseInput(this.repoRoot, loaded.directory, value);
-    return { kind: "file", label: input.label, value: relativePath(this.repoRoot, absolute) };
+    return { kind: "file", label: input.label, value: absolute };
   }
 
   private async waitForTask(run: ExperimentRunRecord, manifest: CaseManifest): Promise<TaskWaitResult> {
@@ -748,10 +748,6 @@ function mimeFor(path: string): string {
 
 function isTextMime(mime: string): boolean {
   return mime.startsWith("text/") || mime === "application/json";
-}
-
-function relativePath(root: string, absolute: string): string {
-  return absolute.slice(resolve(root).length + 1).replace(/\\/g, "/");
 }
 
 function isPathInside(root: string, candidate: string): boolean {
