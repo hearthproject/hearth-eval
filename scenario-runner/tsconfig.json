@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@hearth-os/server/*": ["../../hearth-os/apps/server/src/*"],
+      "@hearth/core": ["../../hearth-os/packages/core/src/index.ts"],
+      "@hearth/eventlog": ["../../hearth-os/packages/eventlog/src/index.ts"],
+      "@hearth/eval-core": ["../packages/eval-core/src/index.ts"]
+    }
+  },
+  "include": ["**/*.ts"]
+}
