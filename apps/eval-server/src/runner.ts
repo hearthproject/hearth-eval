@@ -25,6 +25,7 @@ import {
 import { resolveCaseInput, type LoadedCase } from "@hearth/eval-core/node";
 import { isTerminalTaskStatus, type AgentAdapter, type AgentTaskView } from "./agent-adapter.ts";
 import type { EvalStore, RunMetrics } from "./store.ts";
+import type { JudgeAdapter } from "./judge-adapter.ts";
 
 export class EvalRunnerError extends Error {
   readonly code: string;
@@ -41,6 +42,7 @@ export class EvalRunnerError extends Error {
 interface RunnerOptions {
   store: EvalStore;
   client: AgentAdapter;
+  judge?: JudgeAdapter;
   repoRoot: string;
   catalog: Map<string, LoadedCase>;
   evalVersion: string;
@@ -67,6 +69,7 @@ interface GradeResult {
 export class EvalRunner {
   private readonly store: EvalStore;
   private readonly client: AgentAdapter;
+  private readonly judge: JudgeAdapter | null;
   private readonly repoRoot: string;
   private readonly catalog: Map<string, LoadedCase>;
   private readonly evalVersion: string;
@@ -78,6 +81,7 @@ export class EvalRunner {
   constructor(options: RunnerOptions) {
     this.store = options.store;
     this.client = options.client;
+    this.judge = options.judge ?? null;
     this.repoRoot = options.repoRoot;
     this.catalog = options.catalog;
     this.evalVersion = options.evalVersion;
@@ -523,7 +527,7 @@ export class EvalRunner {
     const judgeExpected = experiment?.config.autoJudge === true && judgeCriteria.length > 0;
     let judge: JudgeOutcome | null = null;
     if (judgeExpected) {
-      const response = await this.requestJudge(run, manifest, deterministic, experiment?.config.autoRetry === true);
+      const response = await this.requestJudge(run, manifest, artifacts, deterministic, experiment?.config.autoRetry === true);
       if (response) {
         judge = {
           criteria: Object.fromEntries(response.criteria.map((item) => [item.id, {
@@ -559,10 +563,11 @@ export class EvalRunner {
   private async requestJudge(
     run: ExperimentRunRecord,
     manifest: CaseManifest,
+    artifacts: ArtifactMap,
     deterministic: Record<string, GraderOutcome>,
     autoRetry: boolean
   ): Promise<{ criteria: JudgeCriterionResult[]; overallConfidence: number; model: string; promptHash: string } | null> {
-    if (!run.hearthTaskId) return null;
+    if (!this.judge) return null;
     const criteria = manifest.criteria.filter((item) => item.source === "judge").map((criterion) => ({
       id: criterion.id,
       label: criterion.label,
@@ -572,8 +577,9 @@ export class EvalRunner {
     const attempts = autoRetry ? 2 : 1;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
-        return await this.client.judge({
-          taskId: run.hearthTaskId,
+        return await this.judge.judge({
+          artifacts,
+          ...(run.hearthTaskId ? { taskId: run.hearthTaskId } : {}),
           criteria,
           deterministic: manifest.criteria
             .filter((item) => item.source === "deterministic")

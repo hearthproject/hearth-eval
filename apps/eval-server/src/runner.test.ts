@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AgentAdapter } from "./agent-adapter.ts";
 import { loadCaseCatalog } from "@hearth/eval-core/node";
 import { HearthClient } from "./hearth-client.ts";
+import { HearthJudgeAdapter, type JudgeAdapter } from "./judge-adapter.ts";
 import { EvalRunner } from "./runner.ts";
 import { EvalStore } from "./store.ts";
 
@@ -24,6 +25,7 @@ describe("EvalRunner", () => {
         artifactStorage: { repoRoot: root, artifactRoot: join(root, ".hearth", "eval-artifacts") }
       })
       : fakeAgent(root);
+    const judge = client instanceof HearthClient ? new HearthJudgeAdapter(client) : fakeJudge();
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
     const loaded = loadCaseCatalog(root);
@@ -33,6 +35,7 @@ describe("EvalRunner", () => {
     const runner = new EvalRunner({
       store,
       client,
+      judge,
       repoRoot: root,
       catalog,
       evalVersion: "test",
@@ -58,6 +61,15 @@ describe("EvalRunner", () => {
     if (adapter === "custom") {
       expect(existsSync(join(root, ".hearth", "eval-artifacts"))).toBe(false);
       expect(client.getArtifacts).toHaveBeenCalledExactlyOnceWith({ taskId: "custom-task", outputDir: run?.outputDir });
+      expect(judge.judge).toHaveBeenCalledExactlyOnceWith({
+        taskId: "custom-task",
+        artifacts: { "result.md": { text: "# Result\n\ncomplete", bytes: 18, mimeType: "text/markdown" } },
+        criteria: [{ id: "quality", label: "质量", rubric: "完整", points: 30 }],
+        deterministic: [
+          expect.objectContaining({ criterionId: "exists", passed: true }),
+          expect.objectContaining({ criterionId: "content", passed: true })
+        ]
+      });
     }
     expect(store.listGraderResults(run?.id ?? "").map((item) => item.source)).toEqual(["deterministic", "deterministic", "judge"]);
     expect(store.getRunMetrics(run?.id ?? "")).toEqual({ inputTokens: 42, outputTokens: 7, retryCount: 0, approvalCount: 1 });
@@ -79,6 +91,7 @@ describe("EvalRunner", () => {
         baseUrl: workspace.url,
         artifactStorage: { repoRoot: root, artifactRoot: join(root, ".hearth", "eval-artifacts") }
       }),
+      judge: new HearthJudgeAdapter(new HearthClient({ baseUrl: workspace.url })),
       repoRoot: root,
       catalog,
       evalVersion: "test",
@@ -101,6 +114,7 @@ describe("EvalRunner", () => {
   it.each(["missing", "unavailable"] as const)("records %s adapter artifacts without passing the run", async (failure) => {
     const root = mkdtempSync(join(tmpdir(), "hearth-eval-artifact-failure-"));
     const client = fakeAgent(root);
+    const judge = fakeJudge();
     if (failure === "missing") client.getArtifacts.mockResolvedValue({});
     else client.getArtifacts.mockRejectedValue(new Error("Artifact service unavailable"));
     const store = new EvalStore(":memory:");
@@ -108,7 +122,7 @@ describe("EvalRunner", () => {
     const loaded = loadCaseCatalog(root);
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
-      store, client, repoRoot: root,
+      store, client, judge, repoRoot: root,
       catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
       evalVersion: "test", pollIntervalMs: 5
     });
@@ -122,12 +136,54 @@ describe("EvalRunner", () => {
     const run = store.listRuns(experiment.id)[0];
     expect(run?.error).toContain(failure === "missing" ? "BLOCKER_FAILED" : "Artifact service unavailable");
     expect(client.getArtifacts).toHaveBeenCalledExactlyOnceWith({ taskId: "custom-task", outputDir: run?.outputDir });
-    expect(client.judge).not.toHaveBeenCalled();
+    expect(judge.judge).not.toHaveBeenCalled();
+  });
+
+  it.each(["missing", "unavailable", "retry"] as const)("handles a %s independent judge", async (mode) => {
+    const root = mkdtempSync(join(tmpdir(), "hearth-eval-judge-"));
+    const client = fakeAgent(root);
+    const judge = fakeJudge();
+    if (mode === "unavailable") judge.judge.mockRejectedValue(new Error("Judge unavailable"));
+    if (mode === "retry") judge.judge.mockRejectedValueOnce(new Error("Temporary judge failure"));
+    const store = new EvalStore(":memory:");
+    cleanup.push(() => store.close());
+    const loaded = loadCaseCatalog(root);
+    store.syncCases(loaded.cases);
+    const runner = new EvalRunner({
+      store, client, repoRoot: root,
+      ...(mode === "missing" ? {} : { judge }),
+      catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
+      evalVersion: "test", pollIntervalMs: 5
+    });
+    const experiment = runner.createExperiment({
+      caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1, runMode: "offline",
+      autoJudge: true, autoRetry: true, maxConcurrency: 1
+    }, await runner.collectEnvironment("custom-judge"));
+    runner.start(experiment.id);
+    expect(await waitFor(() => store.listEvents({ experimentId: experiment.id })
+      .some((event) => event.type === "run.finished"))).toBe(true);
+    const run = store.listRuns(experiment.id)[0];
+    const events = store.listEvents({ experimentId: experiment.id }).map((event) => event.type);
+    expect(judge.judge).toHaveBeenCalledTimes(mode === "missing" ? 0 : 2);
+    if (mode === "retry") {
+      expect(run?.status).toBe("passed");
+      expect(events).toContain("run.judge-retry");
+      expect(judge.judge.mock.calls[0]).toEqual(judge.judge.mock.calls[1]);
+      expect(store.listGraderResults(run?.id ?? "")).toContainEqual(expect.objectContaining({
+        source: "judge", model: "custom-judge", promptHash: "c".repeat(64), evidence: ["complete"]
+      }));
+    } else {
+      expect(run?.status).toBe("needs_review");
+      expect(run?.reviewReasons).toContain("judge_unavailable");
+      expect(events).toContain("run.judge-unavailable");
+      expect(store.listGraderResults(run?.id ?? "").every((item) => item.source === "deterministic")).toBe(true);
+    }
   });
 
   it("submits, polls, and cancels a task through a custom adapter", async () => {
     const root = mkdtempSync(join(tmpdir(), "hearth-eval-adapter-"));
     const client = fakeAgent(root);
+    const judge = fakeJudge();
     let status = "running";
     client.getTask.mockImplementation(async (id) => ({ task: { id, status } }));
     client.cancelTask.mockImplementation(async () => {
@@ -139,7 +195,7 @@ describe("EvalRunner", () => {
     const loaded = loadCaseCatalog(root);
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
-      store, client, repoRoot: root,
+      store, client, judge, repoRoot: root,
       catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
       evalVersion: "test", pollIntervalMs: 5
     });
@@ -156,7 +212,7 @@ describe("EvalRunner", () => {
     expect(client.createTask).toHaveBeenCalledTimes(1);
     expect(client.createTask).toHaveBeenCalledWith(expect.objectContaining({ executorId: "custom", runMode: "offline" }));
     expect(client.cancelTask).toHaveBeenCalledExactlyOnceWith("custom-task");
-    expect(client.judge).not.toHaveBeenCalled();
+    expect(judge.judge).not.toHaveBeenCalled();
     expect(store.listRuns(experiment.id)[0]).toMatchObject({ hearthTaskId: "custom-task", status: "cancelled" });
     expect(store.getExperiment(experiment.id)?.status).toBe("cancelled");
   });
@@ -253,11 +309,16 @@ function fakeAgent(root: string) {
       runs: [{ attempt: 1, status: "completed", usage: { inputTokens: 42, outputTokens: 7 } }],
       approvals: [{ id: "approval-1" }]
     })),
-    cancelTask: vi.fn<AgentAdapter["cancelTask"]>(async () => ({ ok: true })),
-    judge: vi.fn<AgentAdapter["judge"]>(async () => ({
+    cancelTask: vi.fn<AgentAdapter["cancelTask"]>(async () => ({ ok: true }))
+  } satisfies AgentAdapter;
+}
+
+function fakeJudge() {
+  return {
+    judge: vi.fn<JudgeAdapter["judge"]>(async () => ({
       model: "custom-judge", promptHash: "c".repeat(64),
       criteria: [{ id: "quality", passed: true, confidence: 0.92, reason: "complete", evidence: ["complete"] }],
       overallConfidence: 0.92, usage: { inputTokens: 10, outputTokens: 5 }
     }))
-  } satisfies AgentAdapter;
+  } satisfies JudgeAdapter;
 }

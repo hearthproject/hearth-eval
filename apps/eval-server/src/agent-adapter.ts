@@ -1,8 +1,6 @@
 import type {
   ArtifactMap,
   EvalTaskRequest,
-  JudgeRequest,
-  JudgeResponse,
 } from "@hearth/eval-core";
 
 /** Adapters translate provider-specific task states into the states consumed by EvalRunner. */
@@ -55,7 +53,6 @@ export interface AgentAdapter {
   getArtifacts(request: AgentArtifactRequest): Promise<ArtifactMap>;
   cancelTask(taskId: string): Promise<Record<string, unknown>>;
   health(): Promise<Record<string, unknown>>;
-  judge(body: JudgeRequest): Promise<JudgeResponse>;
 }
 
 export function isTerminalTaskStatus(status: string): boolean {
