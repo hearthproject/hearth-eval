@@ -13,6 +13,7 @@ import {
   WEB_DIST
 } from "./config.ts";
 import { HearthClient } from "./hearth-client.ts";
+import { HearthJudgeAdapter } from "./judge-adapter.ts";
 import { EvalRunner } from "./runner.ts";
 import { EvalStore } from "./store.ts";
 
@@ -38,6 +39,7 @@ async function main(): Promise<void> {
   const runner = new EvalRunner({
     store,
     client,
+    judge: new HearthJudgeAdapter(client),
     catalog,
     repoRoot: REPO_ROOT,
     evalVersion: EVAL_VERSION
