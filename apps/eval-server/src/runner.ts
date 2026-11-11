@@ -25,7 +25,7 @@ import {
   type JudgeOutcome
 } from "@hearth/eval-core";
 import { resolveCaseInput, type LoadedCase } from "@hearth/eval-core/node";
-import { HearthClient, isTerminalTaskStatus, type HearthTaskView } from "./hearth-client.ts";
+import { isTerminalTaskStatus, type AgentAdapter, type AgentTaskView } from "./agent-adapter.ts";
 import type { EvalStore, RunMetrics } from "./store.ts";
 
 export class EvalRunnerError extends Error {
@@ -42,7 +42,7 @@ export class EvalRunnerError extends Error {
 
 interface RunnerOptions {
   store: EvalStore;
-  client: HearthClient;
+  client: AgentAdapter;
   repoRoot: string;
   artifactRoot: string;
   catalog: Map<string, LoadedCase>;
@@ -54,8 +54,8 @@ interface RunnerOptions {
 
 interface TaskWaitResult {
   status: string;
-  task: HearthTaskView["task"];
-  view: HearthTaskView | null;
+  task: AgentTaskView["task"];
+  view: AgentTaskView | null;
   timedOut: boolean;
 }
 
@@ -69,7 +69,7 @@ interface GradeResult {
 
 export class EvalRunner {
   private readonly store: EvalStore;
-  private readonly client: HearthClient;
+  private readonly client: AgentAdapter;
   private readonly repoRoot: string;
   private readonly artifactRoot: string;
   private readonly catalog: Map<string, LoadedCase>;
@@ -472,7 +472,7 @@ export class EvalRunner {
   private async waitForTask(run: ExperimentRunRecord, manifest: CaseManifest): Promise<TaskWaitResult> {
     if (!run.hearthTaskId) throw new Error("评测运行缺少 Hearth 任务 ID");
     const deadline = Date.now() + manifest.timeoutMs + 120_000;
-    let last: HearthTaskView | null = null;
+    let last: AgentTaskView | null = null;
     let waiting = false;
     while (Date.now() < deadline) {
       const view = await this.client.getTask(run.hearthTaskId);
@@ -693,7 +693,7 @@ function judgeFromRecords(records: GraderResultRecord[]): JudgeOutcome | null {
   };
 }
 
-function metricsFromView(view: HearthTaskView | null): RunMetrics {
+function metricsFromView(view: AgentTaskView | null): RunMetrics {
   const runs = view?.runs ?? [];
   return {
     inputTokens: runs.reduce((sum, run) => sum + (run.usage?.inputTokens ?? 0), 0),

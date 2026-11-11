@@ -3,6 +3,11 @@ import type {
   JudgeRequest,
   JudgeResponse
 } from "@hearth/eval-core";
+import type { AgentAdapter, AgentTask, AgentTaskView } from "./agent-adapter.ts";
+
+export type HearthTask = AgentTask;
+export type HearthTaskView = AgentTaskView;
+export { isTerminalTaskStatus, isWaitingTaskStatus } from "./agent-adapter.ts";
 
 export class HearthClientError extends Error {
   readonly code: string;
@@ -16,33 +21,13 @@ export class HearthClientError extends Error {
   }
 }
 
-export interface HearthTask {
-  id: string;
-  status: string;
-  nextAction?: string | null;
-  error?: { message?: string } | null;
-  externalRef?: string | null;
-  artifacts?: Array<{ relativePath: string; mimeType: string; bytes: number }>;
-  runs?: Array<{ attempt: number; status: string; usage?: { inputTokens?: number; outputTokens?: number } | null }>;
-  approvals?: unknown[];
-  [key: string]: unknown;
-}
-
-export interface HearthTaskView {
-  task: HearthTask;
-  artifacts?: Array<{ relativePath: string; absolutePath: string; mimeType: string; bytes: number }>;
-  runs?: Array<{ attempt: number; status: string; usage?: { inputTokens?: number; outputTokens?: number } | null }>;
-  approvals?: unknown[];
-  events?: unknown[];
-}
-
 export interface HearthClientOptions {
   baseUrl: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }
 
-export class HearthClient {
+export class HearthClient implements AgentAdapter {
   readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
@@ -116,14 +101,6 @@ export class HearthClient {
       clearTimeout(timer);
     }
   }
-}
-
-export function isTerminalTaskStatus(status: string): boolean {
-  return ["completed", "failed", "cancelled"].includes(status);
-}
-
-export function isWaitingTaskStatus(status: string): boolean {
-  return ["waiting_input", "waiting_approval", "recoverable", "queued"].includes(status);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

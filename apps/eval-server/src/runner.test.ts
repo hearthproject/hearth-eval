@@ -2,7 +2,8 @@ import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Fastify from "fastify";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AgentAdapter } from "./agent-adapter.ts";
 import { loadCaseCatalog } from "@hearth/eval-core/node";
 import { HearthClient } from "./hearth-client.ts";
 import { EvalRunner } from "./runner.ts";
@@ -15,9 +16,11 @@ afterEach(async () => {
 });
 
 describe("EvalRunner", () => {
-  it("runs one offline case through task creation, grading, judging, and summary", async () => {
+  it.each(["hearth", "custom"] as const)("runs one offline case through creation, grading, judging, and summary with %s", async (adapter) => {
     const root = mkdtempSync(join(tmpdir(), "hearth-eval-runner-"));
-    const workspace = await fixture(root);
+    const client = adapter === "hearth"
+      ? new HearthClient({ baseUrl: (await fixture(root)).url })
+      : fakeAgent(root);
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
     const loaded = loadCaseCatalog(root);
@@ -26,7 +29,7 @@ describe("EvalRunner", () => {
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store,
-      client: new HearthClient({ baseUrl: workspace.url }),
+      client,
       repoRoot: root,
       artifactRoot: join(root, ".hearth", "eval-artifacts"),
       catalog,
@@ -86,6 +89,43 @@ describe("EvalRunner", () => {
     expect(store.getRun(run?.id ?? "")?.status).toBe("passed");
     expect(store.getHumanReview(run?.id ?? "")?.decision).toBe("pass");
   });
+
+  it("submits, polls, and cancels a task through a custom adapter", async () => {
+    const root = mkdtempSync(join(tmpdir(), "hearth-eval-adapter-"));
+    const client = fakeAgent(root);
+    let status = "running";
+    client.getTask.mockImplementation(async (id) => ({ task: { id, status } }));
+    client.cancelTask.mockImplementation(async () => {
+      status = "cancelled";
+      return { ok: true };
+    });
+    const store = new EvalStore(":memory:");
+    cleanup.push(() => store.close());
+    const loaded = loadCaseCatalog(root);
+    store.syncCases(loaded.cases);
+    const runner = new EvalRunner({
+      store, client, repoRoot: root,
+      artifactRoot: join(root, ".hearth", "eval-artifacts"),
+      catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
+      evalVersion: "test", pollIntervalMs: 5
+    });
+    const experiment = runner.createExperiment({
+      caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1, runMode: "offline",
+      autoJudge: false, autoRetry: false, maxConcurrency: 1
+    }, await runner.collectEnvironment(null));
+    runner.start(experiment.id);
+    await vi.waitFor(() => expect(client.getTask).toHaveBeenCalledWith("custom-task"));
+    runner.cancel(experiment.id);
+    // Wait for the worker to finish before closing its database.
+    expect(await waitFor(() => store.listEvents({ experimentId: experiment.id })
+      .some((event) => event.type === "run.finished"))).toBe(true);
+    expect(client.createTask).toHaveBeenCalledTimes(1);
+    expect(client.createTask).toHaveBeenCalledWith(expect.objectContaining({ executorId: "custom", runMode: "offline" }));
+    expect(client.cancelTask).toHaveBeenCalledExactlyOnceWith("custom-task");
+    expect(client.judge).not.toHaveBeenCalled();
+    expect(store.listRuns(experiment.id)[0]).toMatchObject({ hearthTaskId: "custom-task", status: "cancelled" });
+    expect(store.getExperiment(experiment.id)?.status).toBe("cancelled");
+  });
 });
 
 async function waitFor(predicate: () => boolean, timeoutMs = 5_000): Promise<boolean> {
@@ -97,7 +137,7 @@ async function waitFor(predicate: () => boolean, timeoutMs = 5_000): Promise<boo
   return predicate();
 }
 
-async function fixture(root: string, options: { sampleRate?: number } = {}) {
+function createCaseFixture(root: string, options: { sampleRate?: number } = {}) {
   const caseDir = join(root, "eval", "cases", "TEST01");
   mkdirSync(join(caseDir, "golden"), { recursive: true });
   writeFileSync(join(caseDir, "input.md"), "input", "utf8");
@@ -129,7 +169,11 @@ async function fixture(root: string, options: { sampleRate?: number } = {}) {
     humanReview: { prompt: "检查", sampleRate: options.sampleRate ?? 0 }
   };
   writeFileSync(join(caseDir, "case.json"), JSON.stringify(manifest, null, 2), "utf8");
+  return caseDir;
+}
 
+async function fixture(root: string, options: { sampleRate?: number } = {}) {
+  const caseDir = createCaseFixture(root, options);
   const app = Fastify();
   app.post("/api/eval/tasks", async (request) => {
     const body = request.body as { outputDir: string };
@@ -157,4 +201,29 @@ async function fixture(root: string, options: { sampleRate?: number } = {}) {
   const address = app.server.address();
   if (!address || typeof address === "string") throw new Error("fake server has no port");
   return { url: `http://127.0.0.1:${address.port}` };
+}
+
+function fakeAgent(root: string) {
+  const caseDir = createCaseFixture(root);
+  return {
+    baseUrl: "memory://custom-agent",
+    health: vi.fn<AgentAdapter["health"]>(async () => ({ instanceId: "custom" })),
+    createTask: vi.fn<AgentAdapter["createTask"]>(async (body) => {
+      const target = join(root, body.outputDir, "result.md");
+      mkdirSync(join(target, ".."), { recursive: true });
+      copyFileSync(join(caseDir, "golden", "result.md"), target);
+      return { task: { id: "custom-task", status: "running" }, created: true };
+    }),
+    getTask: vi.fn<AgentAdapter["getTask"]>(async (id) => ({
+      task: { id, status: "completed" },
+      runs: [{ attempt: 1, status: "completed", usage: { inputTokens: 42, outputTokens: 7 } }],
+      approvals: [{ id: "approval-1" }]
+    })),
+    cancelTask: vi.fn<AgentAdapter["cancelTask"]>(async () => ({ ok: true })),
+    judge: vi.fn<AgentAdapter["judge"]>(async () => ({
+      model: "custom-judge", promptHash: "c".repeat(64),
+      criteria: [{ id: "quality", passed: true, confidence: 0.92, reason: "complete", evidence: ["complete"] }],
+      overallConfidence: 0.92, usage: { inputTokens: 10, outputTokens: 5 }
+    }))
+  } satisfies AgentAdapter;
 }
