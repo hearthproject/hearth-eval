@@ -28,6 +28,7 @@ import { z } from "zod";
 import { EvalRunnerError, type EvalRunner } from "./runner.ts";
 import type { EvalStore, StoredCase } from "./store.ts";
 import type { HearthClient } from "./hearth-client.ts";
+import { resolveRunOutputDir } from "./artifact-path.ts";
 
 const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -343,7 +344,7 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
   app.get<{ Params: { id: string; "*": string } }>("/api/runs/:id/artifacts/*", async (request, reply): Promise<RunArtifactView | FastifyReply> => {
     const run = store.getRun(request.params.id);
     if (!run) return reply.code(404).send({ error: "RUN_NOT_FOUND", message: "评测运行不存在" });
-    const root = resolve(repoRoot, run.outputDir);
+    const root = resolveRunOutputDir(repoRoot, artifactRoot, run.outputDir);
     const relative = decodeURIComponent(request.params["*"] ?? "");
     if (!relative) return reply.code(400).send({ error: "ARTIFACT_PATH_REQUIRED", message: "缺少产物路径" });
     const candidate = resolve(root, relative);
@@ -442,7 +443,7 @@ function executorOptions(payload: Record<string, unknown>): EvalExecutorOption[]
 }
 
 function listRunArtifacts(repoRoot: string, artifactRoot: string, outputDir: string): RunArtifactView[] {
-  const root = resolve(repoRoot, outputDir);
+  const root = resolveRunOutputDir(repoRoot, artifactRoot, outputDir);
   if (!isPathInside(artifactRoot, root) || !existsSync(root)) return [];
   const artifacts: RunArtifactView[] = [];
   const visit = (directory: string, depth: number) => {
