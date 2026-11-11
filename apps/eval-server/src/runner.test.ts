@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Fastify from "fastify";
@@ -19,7 +19,10 @@ describe("EvalRunner", () => {
   it.each(["hearth", "custom"] as const)("runs one offline case through creation, grading, judging, and summary with %s", async (adapter) => {
     const root = mkdtempSync(join(tmpdir(), "hearth-eval-runner-"));
     const client = adapter === "hearth"
-      ? new HearthClient({ baseUrl: (await fixture(root)).url })
+      ? new HearthClient({
+        baseUrl: (await fixture(root)).url,
+        artifactStorage: { repoRoot: root, artifactRoot: join(root, ".hearth", "eval-artifacts") }
+      })
       : fakeAgent(root);
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
@@ -31,7 +34,6 @@ describe("EvalRunner", () => {
       store,
       client,
       repoRoot: root,
-      artifactRoot: join(root, ".hearth", "eval-artifacts"),
       catalog,
       evalVersion: "test",
       pollIntervalMs: 5
@@ -53,6 +55,10 @@ describe("EvalRunner", () => {
     const run = store.listRuns(experiment.id)[0];
     expect(run?.status).toBe("passed");
     expect(run?.score).toBe(100);
+    if (adapter === "custom") {
+      expect(existsSync(join(root, ".hearth", "eval-artifacts"))).toBe(false);
+      expect(client.getArtifacts).toHaveBeenCalledExactlyOnceWith({ taskId: "custom-task", outputDir: run?.outputDir });
+    }
     expect(store.listGraderResults(run?.id ?? "").map((item) => item.source)).toEqual(["deterministic", "deterministic", "judge"]);
     expect(store.getRunMetrics(run?.id ?? "")).toEqual({ inputTokens: 42, outputTokens: 7, retryCount: 0, approvalCount: 1 });
     expect(store.getExperiment(experiment.id)?.summary).toMatchObject({ totalRuns: 1, passed: 1, passRate: 100, avgScore: 100 });
@@ -69,9 +75,11 @@ describe("EvalRunner", () => {
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store,
-      client: new HearthClient({ baseUrl: workspace.url }),
+      client: new HearthClient({
+        baseUrl: workspace.url,
+        artifactStorage: { repoRoot: root, artifactRoot: join(root, ".hearth", "eval-artifacts") }
+      }),
       repoRoot: root,
-      artifactRoot: join(root, ".hearth", "eval-artifacts"),
       catalog,
       evalVersion: "test",
       pollIntervalMs: 5
@@ -90,6 +98,33 @@ describe("EvalRunner", () => {
     expect(store.getHumanReview(run?.id ?? "")?.decision).toBe("pass");
   });
 
+  it.each(["missing", "unavailable"] as const)("records %s adapter artifacts without passing the run", async (failure) => {
+    const root = mkdtempSync(join(tmpdir(), "hearth-eval-artifact-failure-"));
+    const client = fakeAgent(root);
+    if (failure === "missing") client.getArtifacts.mockResolvedValue({});
+    else client.getArtifacts.mockRejectedValue(new Error("Artifact service unavailable"));
+    const store = new EvalStore(":memory:");
+    cleanup.push(() => store.close());
+    const loaded = loadCaseCatalog(root);
+    store.syncCases(loaded.cases);
+    const runner = new EvalRunner({
+      store, client, repoRoot: root,
+      catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
+      evalVersion: "test", pollIntervalMs: 5
+    });
+    const experiment = runner.createExperiment({
+      caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1, runMode: "offline",
+      autoJudge: false, autoRetry: false, maxConcurrency: 1
+    }, await runner.collectEnvironment(null));
+    runner.start(experiment.id);
+    const expectedStatus = failure === "missing" ? "failed" : "error";
+    expect(await waitFor(() => store.listRuns(experiment.id)[0]?.status === expectedStatus)).toBe(true);
+    const run = store.listRuns(experiment.id)[0];
+    expect(run?.error).toContain(failure === "missing" ? "BLOCKER_FAILED" : "Artifact service unavailable");
+    expect(client.getArtifacts).toHaveBeenCalledExactlyOnceWith({ taskId: "custom-task", outputDir: run?.outputDir });
+    expect(client.judge).not.toHaveBeenCalled();
+  });
+
   it("submits, polls, and cancels a task through a custom adapter", async () => {
     const root = mkdtempSync(join(tmpdir(), "hearth-eval-adapter-"));
     const client = fakeAgent(root);
@@ -105,7 +140,6 @@ describe("EvalRunner", () => {
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store, client, repoRoot: root,
-      artifactRoot: join(root, ".hearth", "eval-artifacts"),
       catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
       evalVersion: "test", pollIntervalMs: 5
     });
@@ -204,16 +238,16 @@ async function fixture(root: string, options: { sampleRate?: number } = {}) {
 }
 
 function fakeAgent(root: string) {
-  const caseDir = createCaseFixture(root);
+  createCaseFixture(root);
   return {
     baseUrl: "memory://custom-agent",
     health: vi.fn<AgentAdapter["health"]>(async () => ({ instanceId: "custom" })),
-    createTask: vi.fn<AgentAdapter["createTask"]>(async (body) => {
-      const target = join(root, body.outputDir, "result.md");
-      mkdirSync(join(target, ".."), { recursive: true });
-      copyFileSync(join(caseDir, "golden", "result.md"), target);
-      return { task: { id: "custom-task", status: "running" }, created: true };
-    }),
+    createTask: vi.fn<AgentAdapter["createTask"]>(async () => ({
+      task: { id: "custom-task", status: "running" }, created: true
+    })),
+    getArtifacts: vi.fn<AgentAdapter["getArtifacts"]>(async () => ({
+      "result.md": { text: "# Result\n\ncomplete", bytes: 18, mimeType: "text/markdown" }
+    })),
     getTask: vi.fn<AgentAdapter["getTask"]>(async (id) => ({
       task: { id, status: "completed" },
       runs: [{ attempt: 1, status: "completed", usage: { inputTokens: 42, outputTokens: 7 } }],
