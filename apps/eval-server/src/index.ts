@@ -7,6 +7,7 @@ import {
   DB_PATH,
   EVAL_VERSION,
   HEARTH_URL,
+  HEARTH_TIMEOUT_MS,
   HOST,
   PORT,
   REPO_ROOT,
@@ -34,6 +35,7 @@ async function main(): Promise<void> {
   const catalog = new Map(loaded.cases.map((loadedCase) => [loadedCase.manifest.id, loadedCase]));
   const client = new HearthClient({
     baseUrl: HEARTH_URL,
+    timeoutMs: HEARTH_TIMEOUT_MS,
     artifactStorage: { repoRoot: REPO_ROOT, artifactRoot: ARTIFACT_ROOT }
   });
   const runner = new EvalRunner({
