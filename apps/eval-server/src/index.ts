@@ -31,13 +31,15 @@ async function main(): Promise<void> {
   const recovered = store.recoverInterrupted();
 
   const catalog = new Map(loaded.cases.map((loadedCase) => [loadedCase.manifest.id, loadedCase]));
-  const client = new HearthClient({ baseUrl: HEARTH_URL });
+  const client = new HearthClient({
+    baseUrl: HEARTH_URL,
+    artifactStorage: { repoRoot: REPO_ROOT, artifactRoot: ARTIFACT_ROOT }
+  });
   const runner = new EvalRunner({
     store,
     client,
     catalog,
     repoRoot: REPO_ROOT,
-    artifactRoot: ARTIFACT_ROOT,
     evalVersion: EVAL_VERSION
   });
 

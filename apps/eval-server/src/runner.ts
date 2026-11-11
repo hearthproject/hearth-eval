@@ -1,6 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { extname, join, resolve } from "node:path";
 import type {
   ArtifactMap,
   CaseManifest,
@@ -25,7 +23,7 @@ import {
   type JudgeOutcome
 } from "@hearth/eval-core";
 import { resolveCaseInput, type LoadedCase } from "@hearth/eval-core/node";
-import { HearthClient, isTerminalTaskStatus, type HearthTaskView } from "./hearth-client.ts";
+import { isTerminalTaskStatus, type AgentAdapter, type AgentTaskView } from "./agent-adapter.ts";
 import type { EvalStore, RunMetrics } from "./store.ts";
 
 export class EvalRunnerError extends Error {
@@ -42,9 +40,8 @@ export class EvalRunnerError extends Error {
 
 interface RunnerOptions {
   store: EvalStore;
-  client: HearthClient;
+  client: AgentAdapter;
   repoRoot: string;
-  artifactRoot: string;
   catalog: Map<string, LoadedCase>;
   evalVersion: string;
   sleep?: (ms: number) => Promise<void>;
@@ -54,8 +51,8 @@ interface RunnerOptions {
 
 interface TaskWaitResult {
   status: string;
-  task: HearthTaskView["task"];
-  view: HearthTaskView | null;
+  task: AgentTaskView["task"];
+  view: AgentTaskView | null;
   timedOut: boolean;
 }
 
@@ -69,9 +66,8 @@ interface GradeResult {
 
 export class EvalRunner {
   private readonly store: EvalStore;
-  private readonly client: HearthClient;
+  private readonly client: AgentAdapter;
   private readonly repoRoot: string;
-  private readonly artifactRoot: string;
   private readonly catalog: Map<string, LoadedCase>;
   private readonly evalVersion: string;
   private readonly sleep: (ms: number) => Promise<void>;
@@ -83,7 +79,6 @@ export class EvalRunner {
     this.store = options.store;
     this.client = options.client;
     this.repoRoot = options.repoRoot;
-    this.artifactRoot = resolve(options.artifactRoot);
     this.catalog = options.catalog;
     this.evalVersion = options.evalVersion;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -412,7 +407,7 @@ export class EvalRunner {
         runId: run.id,
         payload: { taskStatus: wait.status }
       });
-      const artifacts = this.readArtifacts(run);
+      const artifacts = await this.client.getArtifacts({ taskId: created.task.id, outputDir: run.outputDir });
       const graded = await this.gradeRun(run, manifest, artifacts, wait);
       this.store.setRunMetrics(run.id, metricsFromView(wait.view));
       const finishedAt = this.now().toISOString();
@@ -472,7 +467,7 @@ export class EvalRunner {
   private async waitForTask(run: ExperimentRunRecord, manifest: CaseManifest): Promise<TaskWaitResult> {
     if (!run.hearthTaskId) throw new Error("评测运行缺少 Hearth 任务 ID");
     const deadline = Date.now() + manifest.timeoutMs + 120_000;
-    let last: HearthTaskView | null = null;
+    let last: AgentTaskView | null = null;
     let waiting = false;
     while (Date.now() < deadline) {
       const view = await this.client.getTask(run.hearthTaskId);
@@ -600,15 +595,6 @@ export class EvalRunner {
     return null;
   }
 
-  private readArtifacts(run: ExperimentRunRecord): ArtifactMap {
-    const root = resolve(this.repoRoot, run.outputDir);
-    if (!isPathInside(this.artifactRoot, root)) throw new Error(`评测产物目录越界：${run.outputDir}`);
-    const artifacts: ArtifactMap = {};
-    if (!existsSync(root)) return artifacts;
-    walkArtifacts(root, root, artifacts, 0);
-    return artifacts;
-  }
-
   private finishRunError(run: ExperimentRunRecord, code: string, message: string): void {
     const finishedAt = this.now().toISOString();
     this.store.updateRun(run.id, {
@@ -693,7 +679,7 @@ function judgeFromRecords(records: GraderResultRecord[]): JudgeOutcome | null {
   };
 }
 
-function metricsFromView(view: HearthTaskView | null): RunMetrics {
+function metricsFromView(view: AgentTaskView | null): RunMetrics {
   const runs = view?.runs ?? [];
   return {
     inputTokens: runs.reduce((sum, run) => sum + (run.usage?.inputTokens ?? 0), 0),
@@ -713,46 +699,6 @@ function diagnosticGroups(runs: ExperimentRunRecord[]): ExperimentSummary["failu
     groups.set(kind, ids);
   }
   return [...groups.entries()].map(([kind, runIds]) => ({ kind, count: runIds.length, runIds }));
-}
-
-function walkArtifacts(root: string, directory: string, artifacts: ArtifactMap, depth: number): void {
-  if (depth > 12 || Object.keys(artifacts).length >= 1_000) return;
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const absolute = join(directory, entry.name);
-    if (entry.isSymbolicLink()) continue;
-    if (entry.isDirectory()) {
-      walkArtifacts(root, absolute, artifacts, depth + 1);
-      continue;
-    }
-    if (!entry.isFile()) continue;
-    const stats = statSync(absolute);
-    if (stats.size > 20 * 1024 * 1024) continue;
-    const relative = absolute.slice(root.length + 1).replace(/\\/g, "/");
-    const mimeType = mimeFor(relative);
-    const text = isTextMime(mimeType) ? readFileSync(absolute, "utf8") : "";
-    artifacts[relative] = { text, bytes: stats.size, mimeType };
-  }
-}
-
-function mimeFor(path: string): string {
-  const extension = extname(path).toLowerCase();
-  if ([".md", ".markdown", ".txt", ".html", ".htm", ".css", ".js", ".ts", ".json", ".csv", ".yaml", ".yml"].includes(extension)) {
-    return extension === ".md" || extension === ".markdown"
-      ? "text/markdown"
-      : extension === ".json"
-        ? "application/json"
-        : "text/plain";
-  }
-  return "application/octet-stream";
-}
-
-function isTextMime(mime: string): boolean {
-  return mime.startsWith("text/") || mime === "application/json";
-}
-
-function isPathInside(root: string, candidate: string): boolean {
-  const normalizedRoot = resolve(root).replace(/[\\/]+$/, "");
-  return candidate === normalizedRoot || candidate.startsWith(`${normalizedRoot}\\`) || candidate.startsWith(`${normalizedRoot}/`);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
