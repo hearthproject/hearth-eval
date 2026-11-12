@@ -25,7 +25,7 @@
   <img alt="60 cases" src="https://img.shields.io/badge/cases-60-2f7d4f">
   <img alt="8 families" src="https://img.shields.io/badge/families-8-2f7fa8">
   <img alt="30 scenarios" src="https://img.shields.io/badge/scenarios-30-b8471d">
-  <img alt="41 tests passing" src="https://img.shields.io/badge/tests-41%20passing-2f7d4f">
+  <img alt="42 tests passing" src="https://img.shields.io/badge/tests-42%20passing-2f7d4f">
   <img alt="Node.js 22.13+" src="https://img.shields.io/badge/node-22.13%2B-3c8773">
   <img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-1b1815">
 </p>
@@ -272,7 +272,7 @@ docs/                   VitePress 中文文档站与结果页
 2026-11-12 在当前分支运行：
 
 ```bash
-npm test                    # 11 个测试文件、41 个测试全部通过
+npm test                    # 11 个测试文件、42 个测试全部通过
 npm run typecheck
 npm run typecheck:scenarios # 已补 turndown-plugin-gfm 模块声明
 npm run build
