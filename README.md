@@ -275,8 +275,8 @@ hearth-eval/
 │   ├── src/                                          # 13 个文件：schema / types / node / api / graders / scoring / scenarios
 │   └── package.json                                  # @hearth/eval-core
 ├── eval/                                             # **任务集与证据，评测的事实来源**
-│   ├── cases/                                        # 60 个 case 目录，按任务族前缀分组
-│   │   └── CAL01/ …                                  # 每例 case.json + input.json / 固定输入 + golden/
+│   ├── cases/                                        # 60 个 case 目录，8 个任务族
+│   │   └── CAL01/ …                                  # case.json + input.json 或固定输入，多数含 golden/
 │   ├── inputs/                                       # 19 份固定输入文本（覆盖 T01–T15）
 │   ├── runs/                                         # 15 个任务的验收产物与 run-manifest.json
 │   ├── scenarios/scenarios.json                      # 30 个白盒场景 manifest（P0 / P1 / P2 / PA）
