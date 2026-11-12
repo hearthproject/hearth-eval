@@ -33,6 +33,7 @@ export default withMermaid(defineConfig({
     nav: [
       { text: "指南", link: "/guide/getting-started", activeMatch: "^/guide/" },
       { text: "任务集", link: "/guide/task-catalog" },
+      { text: "结果", link: "/reference/results" },
       { text: "控制面 API", link: "/reference/api" },
       { text: "场景", link: "/reference/scenarios" }
     ],
@@ -61,6 +62,7 @@ export default withMermaid(defineConfig({
             { text: "Case Manifest", link: "/reference/case-schema" },
             { text: "控制面 API", link: "/reference/api" },
             { text: "白盒场景", link: "/reference/scenarios" },
+            { text: "评测结果", link: "/reference/results" },
             { text: "第一阶段验收", link: "/reference/legacy-mvp" }
           ]
         }

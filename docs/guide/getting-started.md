@@ -52,10 +52,13 @@ npm run dev
 cd D:\App\hearth-eval
 npm install
 Copy-Item .env.example .env
+$env:HEARTH_EVAL_ARTIFACT_ROOT='D:\App\hearth-os\.hearth\eval-artifacts'
 npm run dev
 ```
 
 打开 <http://127.0.0.1:5174>。评测服务监听 `127.0.0.1:4318`。
+
+`HEARTH_EVAL_ARTIFACT_ROOT` 必须与主服务实际写入的产物根一致；遗漏时运行详情会找不到已登记产物，并错误报告 `BLOCKER_FAILED: exists`。重启后先通过 `GET /api/system` 确认 `artifactRoot`，再启动实验。
 
 ## 4. 创建实验
 
@@ -88,4 +91,4 @@ npm run build
 npm start
 ```
 
-构建后的控制台位于 `apps/eval-web/dist`，由评测服务在 `4318` 端口直接托管。
+构建后的控制台位于 `apps/eval-web/dist`，由评测服务在 `4318` 端口直接托管。控制台共有 11 个页面、7 个主导航入口；最新 native 30 题结果和复现检查见[评测结果](/reference/results)。

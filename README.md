@@ -13,6 +13,7 @@
 
 <p align="center">
   <a href="https://hearthproject.github.io/hearth-eval/"><strong>文档站</strong></a> ·
+  <a href="#最新结果">最新结果</a> ·
   <a href="#快速开始">快速开始</a> ·
   <a href="#评测全周期">评测全周期</a> ·
   <a href="#任务集">任务集</a> ·
@@ -24,7 +25,7 @@
   <img alt="60 cases" src="https://img.shields.io/badge/cases-60-2f7d4f">
   <img alt="8 families" src="https://img.shields.io/badge/families-8-2f7fa8">
   <img alt="30 scenarios" src="https://img.shields.io/badge/scenarios-30-b8471d">
-  <img alt="26 tests passing" src="https://img.shields.io/badge/tests-26%20passing-2f7d4f">
+  <img alt="28 tests passing" src="https://img.shields.io/badge/tests-28%20passing-2f7d4f">
   <img alt="Node.js 22.13+" src="https://img.shields.io/badge/node-22.13%2B-3c8773">
   <img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-1b1815">
 </p>
@@ -61,16 +62,30 @@ Hearth Eval Agent 不是一个散落着脚本的评测集，而是一个**独立
 | **产物审计** | 受控预览运行产物、grader 证据、Token、耗时、重试与审批次数 |
 | **白盒场景** | 30 个本地场景，覆盖审批、效果对账、崩溃恢复、记忆、本体、任务图等 |
 
+## 最新结果
+
+2026-11-11 至 11-12 使用 30 个离线 case（8 个任务族均匀分布）、仅 `native` 执行器、重复 1 次、自动评分与自动重试开启、并发 4：
+
+| 指标 | 结果 |
+|---|---:|
+| 最好完整单轮 | **18/30 通过（60%）**，平均分 88.89，`EXP-20261111145332-7a95ea` |
+| 累计定向确认 | **19/30** 个 case 曾达到 100 分；不是一次连续实验 |
+| 最近完整单轮 | 12/30 通过（40%），平均分 73.33，`EXP-20261112003215-b1172b` |
+| 最终修复提交 | `eb32ad5`，尚未做不中断的完整 30 题复测 |
+
+最近完整实验受到 provider 慢响应、评分 JSON 截断和任务超时影响，且早于最后四个归一化修复；40% 不能直接等同于最终代码能力。完整报告见 [hearth-os 评测页](https://hearthproject.github.io/hearth-os/evaluation/) 和[本仓库结果页](https://hearthproject.github.io/hearth-eval/reference/results.html)。
+
 ## 界面
 
-评测控制台包含七个主视图，默认地址为 `http://127.0.0.1:5174`：
+评测控制台包含 11 个页面、7 个主导航入口，默认地址为 `http://127.0.0.1:5174`：
 
 - **总览**：运行中实验、待复核数量、任务目录健康度和最近活动；
-- **任务目录**：任务 manifest、输入、golden、评分标准和历史实验；
-- **实验**：创建、启动、取消和查看完整生命周期；
+- **任务目录 / 任务详情**：任务 manifest、输入、golden、评分标准和历史实验；
+- **实验 / 新建实验 / 实验详情**：创建、启动、取消和查看完整生命周期；
 - **运行详情**：轨迹、deterministic/judge 结果、产物预览和 Hearth 任务关联；
 - **复核队列**：需要人判断的项目集中处理；
 - **对比**：通过率、分数和任务族差异，附对齐条件；
+- **活动流**：按实验、运行和事件类型查看控制面活动；
 - **系统**：Hearth 连通性、执行器健康、评委模型和存储路径。
 
 ## 快速开始
@@ -106,10 +121,13 @@ npm run dev
 cd D:\App\hearth-eval
 npm install
 Copy-Item .env.example .env
+$env:HEARTH_EVAL_ARTIFACT_ROOT='D:\App\hearth-os\.hearth\eval-artifacts'
 npm run dev
 ```
 
 打开 `http://127.0.0.1:5174`。评测服务监听 `127.0.0.1:4318`，Vite 会把 `/api` 代理到评测服务。
+
+`HEARTH_EVAL_ARTIFACT_ROOT` 必须与主服务实际写入的产物根一致；遗漏时运行详情会找不到已登记产物，并错误报告 `BLOCKER_FAILED: exists`。重启评测服务后，先通过 `GET /api/system` 确认 `artifactRoot`，再开始实验。
 
 ### 3. 创建第一条实验
 
@@ -167,7 +185,7 @@ flowchart LR
 ```text
 ┌──────────────────────────────┐
 │ apps/eval-web                │
-│ React + Vite 评测控制台      │
+│ React + Vite · 11 个页面     │
 └──────────────┬───────────────┘
                │ /api
 ┌──────────────▼───────────────┐       POST /api/eval/tasks       ┌──────────────────────┐
@@ -244,20 +262,22 @@ eval/
   runs/                 第一阶段验收产物与证据
   scenarios/            30 个白盒场景 manifest
 scenario-runner/        读取同级 Hearth 源码的集成场景运行器
-docs/                   VitePress 中文文档站
+docs/                   VitePress 中文文档站与结果页
 ```
 
 ## 验证
 
+2026-11-12 在当前分支运行：
+
 ```bash
-npm test
+npm test                    # 9 个测试文件、28 个测试全部通过
 npm run typecheck
-npm run typecheck:scenarios
+npm run typecheck:scenarios # 已补 turndown-plugin-gfm 模块声明
 npm run build
 npm run docs:build
 ```
 
-本仓库的自动验证不会执行真实评测实验，也不会把任何实验标记为通过。测试与本地场景只能证明控制面、评分逻辑和故障边界；真实通过率、执行器差异、模型成本和人工耗时必须由你实际运行后产生。
+本仓库的自动验证不会执行真实评测实验，也不会把任何实验标记为通过。测试与本地场景只能证明控制面、评分逻辑和故障边界；真实通过率、执行器差异、模型成本和人工耗时必须由你实际运行后产生。native 30 题的真实实验已经运行，但最终提交 `eb32ad5` 尚未连续复测，报告中的累计数字不能替代一次完整实验。
 
 ## 安全与数据边界
 
