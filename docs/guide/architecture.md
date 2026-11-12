@@ -11,10 +11,13 @@ description: 评测控制面、Hearth 运行桥接、数据目录与信任边界
 flowchart TB
   UI[Eval Web Console] --> API[Eval Server]
   API --> STORE[(SQLite)]
-  API --> ART[Artifacts]
-  API -->|create task| HEARTH[Hearth Agent]
-  HEARTH -->|task view| API
-  API -->|judge request| HEARTH
+  API --> RUNNER[EvalRunner]
+  RUNNER --> AA[AgentAdapter]
+  RUNNER --> JA[JudgeAdapter]
+  AA -->|default| HC[HearthClient]
+  JA -->|default| HJ[HearthJudgeAdapter]
+  HC -->|create task / task view / artifacts| HEARTH[Hearth Agent]
+  HJ -->|judge request| HEARTH
   CORE[eval-core] --> API
   CORE --> UI
   CASE[eval/cases] --> CORE
@@ -23,7 +26,9 @@ flowchart TB
 | 模块 | 职责 |
 |---|---|
 | `apps/eval-web` | 控制台、实验创建、轨迹、复核、对比与系统状态 |
-| `apps/eval-server` | 生命周期编排、SQLite、Hearth 客户端、评分与产物托管 |
+| `apps/eval-server` | 生命周期编排、SQLite、评分与产物托管 |
+| `apps/eval-server/agent-adapter.ts` | `AgentAdapter` 契约：创建任务、任务视图、产物、取消与健康检查 |
+| `apps/eval-server/judge-adapter.ts` | `JudgeAdapter` 契约与 Hearth 默认裁判实现 |
 | `packages/eval-core` | API 契约、case schema、grader、评分与场景统计 |
 | `eval/cases` | 任务事实来源：输入、manifest 与 golden |
 | `scenario-runner` | 读取同级 Hearth 源码的白盒集成场景 |
@@ -36,6 +41,15 @@ flowchart TB
 Hearth: 意图 → 任务 → 执行 → 审批 → 产物
 Eval:   case → run → 等待任务 → 评分 → 复核 → 实验汇总
 ```
+
+评测服务通过两个窄接口驱动 Agent 与裁判，默认实现都指向 Hearth：
+
+| 接口 | 方法 | 默认实现 |
+|---|---|---|
+| `AgentAdapter` | `createTask`、`getTask`、`getArtifacts`、`cancelTask`、`health` | `HearthClient` |
+| `JudgeAdapter` | `judge({ artifacts, criteria, ... })` | `HearthJudgeAdapter`，转调 `POST /api/eval/judge` |
+
+`EvalRunner` 只依赖 `AgentAdapter.getArtifacts` 返回的 `ArtifactMap`，以相对输出路径为键；Hearth 默认实现按 `HEARTH_EVAL_ARTIFACT_ROOT` 解析受管产物。新增 Agent 后端只需实现 adapter 接口，不需要复制实验编排、SQLite、复核或控制台。
 
 评测服务通过两个专用接口访问 Hearth：
 

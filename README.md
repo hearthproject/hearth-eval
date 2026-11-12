@@ -25,7 +25,7 @@
   <img alt="60 cases" src="https://img.shields.io/badge/cases-60-2f7d4f">
   <img alt="8 families" src="https://img.shields.io/badge/families-8-2f7fa8">
   <img alt="30 scenarios" src="https://img.shields.io/badge/scenarios-30-b8471d">
-  <img alt="28 tests passing" src="https://img.shields.io/badge/tests-28%20passing-2f7d4f">
+  <img alt="41 tests passing" src="https://img.shields.io/badge/tests-41%20passing-2f7d4f">
   <img alt="Node.js 22.13+" src="https://img.shields.io/badge/node-22.13%2B-3c8773">
   <img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-1b1815">
 </p>
@@ -204,6 +204,8 @@ scenario-runner/     30 个 Hearth 白盒场景（读取同级 hearth-os）
 docs/                VitePress 中文文档站
 ```
 
+评测服务内部，`EvalRunner` 只依赖两个窄接口：`AgentAdapter`（任务创建、任务视图、产物、取消、健康检查）与 `JudgeAdapter`（按 runner 已取得的产物评分）。默认实现分别是 `HearthClient` 与 `HearthJudgeAdapter`；前者按 `HEARTH_EVAL_ARTIFACT_ROOT` 解析产物，后者转调 `/api/eval/judge`。新增 Agent 后端只需实现 adapter，不复制实验编排、SQLite、复核或控制台。
+
 评测服务通过两个专用接口访问 Hearth：
 
 - `POST /api/eval/tasks`：受控创建评测任务；
@@ -270,7 +272,7 @@ docs/                   VitePress 中文文档站与结果页
 2026-11-12 在当前分支运行：
 
 ```bash
-npm test                    # 9 个测试文件、28 个测试全部通过
+npm test                    # 11 个测试文件、41 个测试全部通过
 npm run typecheck
 npm run typecheck:scenarios # 已补 turndown-plugin-gfm 模块声明
 npm run build
