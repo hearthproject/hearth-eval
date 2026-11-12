@@ -250,21 +250,55 @@ npm run eval:scenarios -- --only approval-rejected-stops,unknown-effect-reconcil
 
 场景读取同级 `../hearth-os` 的白盒服务；运行结果写入 `eval/scenario-runs/`，该目录不纳入版本控制。
 
-## 仓库结构
+## 📁 目录结构
 
 ```text
-apps/
-  eval-server/          评测编排、SQLite、判分、复核、对比与 SPA 托管
-  eval-web/             React + Vite 可视化控制台
-packages/
-  eval-core/            Case 契约、目录加载、grader、评分与场景统计
-eval/
-  cases/                60 个 case，含输入、case.json 与 golden
-  inputs/               第一阶段 15 个任务的固定输入
-  runs/                 第一阶段验收产物与证据
-  scenarios/            30 个白盒场景 manifest
-scenario-runner/        读取同级 Hearth 源码的集成场景运行器
-docs/                   VitePress 中文文档站与结果页
+hearth-eval/
+├── apps/                                         # 评测应用入口
+│   ├── eval-server/                              # 评测控制面（Fastify + SQLite）
+│   │   ├── src/index.ts                          # 服务入口与控制台静态托管
+│   │   ├── src/app.ts                            # 实验 / 判分 / 复核 / 对比 REST 与 SSE
+│   │   ├── src/runner.ts                         # **实验编排**：并发、超时、重试、全周期轨迹
+│   │   ├── src/store.ts                          # 实验、运行、评分与复核的持久化
+│   │   ├── src/hearth-client.ts                  # 调用 hearth-os 的 /api/eval/* 桥接
+│   │   ├── src/agent-adapter.ts                  # 执行器启动与受管产物写入
+│   │   ├── src/judge-adapter.ts                  # 自动判分与评分 JSON 归一化
+│   │   ├── src/artifact-path.ts                  # 受管评测产物路径与越界防护
+│   │   └── src/config.ts / src/*.test.ts         # 环境配置与服务层契约 / 失败路径测试
+│   ├── eval-web/                                 # React + Vite 可视化控制台
+│   │   ├── src/pages/                            # Dashboard / Cases / Experiments / Runs / Compare 等
+│   │   ├── src/components/ / src/lib/            # AppShell、UI 原子与 API 客户端
+│   │   └── vite.config.ts / index.html           # 前端构建与 SPA 入口
+├── packages/eval-core/                           # **Case 契约与评分类库**（可独立复用）
+│   ├── src/schema.ts / types.ts                  # case.json / run / 实验的结构校验
+│   ├── src/node.ts / api.ts                      # 任务集目录加载与对外 API
+│   ├── src/graders.ts / scoring.ts               # deterministic / model 评分与归一化
+│   └── src/scenarios.ts                          # 白盒场景统计与分级汇总
+├── eval/                                         # **任务集与证据，评测的事实来源**
+│   ├── cases/                                    # 60 个 case，8 个任务族均匀分布
+│   │   └── CAL01/ …                              # 每例：case.json + input.json + golden/
+│   ├── inputs/                                   # 阶段一 15 个任务的固定输入文本
+│   ├── runs/                                     # 阶段一验收运行与逐项证据
+│   ├── scenarios/scenarios.json                  # 30 个白盒场景 manifest（P0 / P1 / P2 / PA）
+│   ├── scenario-runs/                            # 场景运行结果（本地生成，已忽略）
+│   ├── phase-1-acceptance.md                     # 第一阶段 15 项任务验收报告
+│   ├── mvp-task-catalog.md                       # 任务集清单与评分口径
+│   └── template-acceptance.ts                    # 验收脚本模板
+├── scenario-runner/                              # 白盒集成场景运行器（读取同级 ../hearth-os 源码）
+│   ├── run-scenarios.ts / registry.ts            # 场景入口与注册表
+│   ├── p0-*.ts                                   # 动作、边界、效果、敏感信息四组场景
+│   ├── p1-*.ts / p2-*.ts                         # 记忆技能、主动、定时与连接运行时场景
+│   ├── pa-scenarios.ts / support.ts              # 个人 Agent 场景与公共夹具
+│   └── common.ts / types.ts                      # 类型与辅助；独立 tsconfig 做类型检查
+├── docs/                                         # VitePress 文档站（push main 自动发布 Pages）
+│   ├── guide/                                    # 上手、架构、全周期、评分与任务清单
+│   ├── reference/                                # API、case schema、场景、结果与旧 MVP
+│   └── .vitepress/config.mts                     # 站点导航与侧栏
+├── .github/workflows/                            # ci.yml 类型/测试/构建 · docs.yml Pages 发布
+├── package.json                                  # workspaces 与 test / eval:scenarios / docs 脚本
+├── tsconfig*.json / vitest.config.ts             # 类型检查与 Vitest
+├── .env.example                                  # 评测环境变量样例（不含密钥）
+└── README.md / LICENSE                           # 中文主文档与 Apache-2.0
 ```
 
 ## 验证
