@@ -1,0 +1,79 @@
+.scenario-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 14px 18px;
+  color: var(--ink-soft);
+}
+
+.scenario-toolbar label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.scenario-toolbar select,
+.scenario-toolbar input[type="search"] {
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.scenario-checkbox input { accent-color: var(--accent); }
+
+.scenario-list,
+.scenario-group,
+.scenario-run { min-width: 0; }
+
+.scenario-group {
+  border-top: 1px solid var(--line);
+}
+
+.scenario-group summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 12px 18px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.scenario-group summary strong::before { content: "▸ "; }
+.scenario-group[open] summary strong::before { content: "▾ "; }
+.scenario-group summary:hover,
+.scenario-group[open] summary { background: var(--surface-muted); }
+.scenario-group summary span { color: var(--ink-soft); }
+.scenario-pass, .scenario-group summary .scenario-pass { color: var(--success); }
+.scenario-fail, .scenario-group summary .scenario-fail { color: var(--danger); }
+
+.scenario-run {
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.scenario-run h3 { margin: 0 0 8px; font-size: 14px; }
+.scenario-checks { display: grid; gap: 6px; padding: 0; list-style: none; }
+.scenario-checks li { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.scenario-checks li > :last-child:not(strong) { color: var(--ink-soft); }
+
+.scenario-evidence {
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px;
+  background: var(--surface-muted);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 600px) {
+  .scenario-group summary { grid-template-columns: minmax(0, 1fr) auto; }
+  .scenario-group summary span:nth-child(2) { grid-row: 2; }
+}

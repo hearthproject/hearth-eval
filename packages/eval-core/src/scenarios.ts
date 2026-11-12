@@ -165,6 +165,18 @@ export interface ScenarioSuiteReport {
   passRate: number;
 }
 
+export interface ScenarioBatchSummary {
+  id: string;
+  startedAt: string;
+  completedAt: string;
+  total: number;
+  passed: number;
+}
+
+export interface ScenarioBatchDetail extends ScenarioBatchSummary {
+  runs: Array<Omit<ScenarioRunRecord, "evidencePath" | "metrics"> & { hasEvidence: boolean }>;
+}
+
 export function validateScenarioManifest(value: unknown): ScenarioManifest {
   if (!value || typeof value !== "object") throw new Error("scenario manifest must be an object");
   const manifest = value as Partial<ScenarioManifest>;

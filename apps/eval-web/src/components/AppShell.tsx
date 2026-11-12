@@ -10,6 +10,7 @@ import {
   LibraryBig,
   Menu,
   Settings2,
+  TestTube2,
   X
 } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { to: "/", label: "总览", icon: LayoutDashboard, end: true },
   { to: "/cases", label: "任务目录", icon: LibraryBig },
   { to: "/experiments", label: "实验", icon: FlaskConical },
+  { to: "/scenarios", label: "场景测试", icon: TestTube2 },
   { to: "/reviews", label: "复核队列", icon: ClipboardCheck, badge: "reviews" as const },
   { to: "/compare", label: "对比", icon: GitCompareArrows },
   { to: "/activity", label: "活动流", icon: Activity },
@@ -32,6 +34,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/experiments\/new$/, "新建实验"],
   [/^\/experiments\/[^/]+$/, "实验详情"],
   [/^\/experiments$/, "实验"],
+  [/^\/scenarios$/, "场景测试"],
   [/^\/runs\/[^/]+$/, "运行详情"],
   [/^\/reviews$/, "复核队列"],
   [/^\/compare$/, "实验对比"],
