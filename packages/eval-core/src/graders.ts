@@ -79,6 +79,28 @@ function gradeJson(config: JsonGraderConfig, artifacts: ArtifactMap): GraderOutc
     if (!Array.isArray(value) || value.length < minimum) return fail(`JSON ${path} 数组长度低于 ${minimum}`);
     evidence.push(`${path} 长度 ${value.length}`);
   }
+  for (const rule of config.keyedArrays ?? []) {
+    const items = readPath(parsed, rule.path);
+    if (!Array.isArray(items)) return fail(`JSON ${rule.path} 必须是数组`);
+    const seen = new Set<string>();
+    for (const item of items) {
+      const key = readPath(item, rule.key);
+      if (typeof key !== "string") return fail(`JSON ${rule.path} 条目缺少字符串键 ${rule.key}`);
+      if (seen.has(key)) return fail(`JSON ${rule.path} 重复 ${rule.key}：${key}`);
+      if (!Object.hasOwn(rule.expected, key)) return fail(`JSON ${rule.path} 包含未知 ${rule.key}：${key}`);
+      seen.add(key);
+      for (const [path, expected] of Object.entries(rule.expected[key]!)) {
+        if (!deepEqual(readPath(item, path), expected)) {
+          return fail(`JSON ${rule.path}[${rule.key}=${key}].${path} 不等于期望值`);
+        }
+        evidence.push(`${rule.path}[${rule.key}=${key}].${path} = ${JSON.stringify(expected)}`);
+      }
+    }
+    for (const key of Object.keys(rule.expected)) {
+      if (!seen.has(key)) return fail(`JSON ${rule.path} 缺少 ${rule.key}：${key}`);
+    }
+    evidence.push(`${rule.path}: ${seen.size} 个唯一 ${rule.key} 全部匹配`);
+  }
   return pass(`JSON 检查通过：${config.path}`, evidence);
 }
 

@@ -34,7 +34,12 @@ const jsonGraderSchema = z.object({
   path: z.string().trim().min(1),
   requiredPaths: z.array(z.string().trim().min(1)).max(100).optional(),
   equals: z.record(z.string(), z.unknown()).optional(),
-  minArrayLength: z.record(z.string(), z.number().int().nonnegative()).optional()
+  minArrayLength: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  keyedArrays: z.array(z.object({
+    path: z.string().trim().min(1),
+    key: z.string().trim().min(1),
+    expected: z.record(z.string(), z.record(z.string(), z.unknown()))
+  }).strict()).max(100).optional()
 }).strict();
 
 const csvGraderSchema = z.object({
