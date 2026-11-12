@@ -26,6 +26,39 @@ afterEach(async () => {
 });
 
 describe("eval control plane", () => {
+  it("lists completed scenario batches and serves evidence for a recorded repetition", async () => {
+    const { app, root } = await createHarness();
+    const list = () => app.inject({ method: "GET", url: "/api/scenarios" });
+    expect((await list()).json()).toEqual([]);
+
+    const startedAt = "2026-11-12T10:07:12.128Z";
+    const id = startedAt.replace(/[:.]/g, "-");
+    const batchDir = join(root, "eval", "scenario-runs", id);
+    const evidenceDir = join(batchDir, "approval-rejected-stops", "run-1");
+    mkdirSync(evidenceDir, { recursive: true });
+    expect((await list()).json()).toEqual([]);
+
+    const assertions = [{ name: "task-stopped", passed: false, detail: "Task continued" }];
+    writeFileSync(join(batchDir, "report.json"), JSON.stringify({
+      version: 1,
+      startedAt,
+      completedAt: "2026-11-12T10:07:13.000Z",
+      runs: [{
+        scenarioId: "approval-rejected-stops", title: "Reject approval", mechanism: "action_resolver",
+        priority: "P0", fault: "none", repetition: 1, status: "failed", durationMs: 15,
+        evidencePath: "eval/scenario-runs/evidence.json", error: null, assertions
+      }]
+    }));
+    writeFileSync(join(evidenceDir, "evidence.json"), JSON.stringify({ assertions }));
+
+    expect((await list()).json()).toEqual([expect.objectContaining({ id, total: 1, passed: 0 })]);
+    const url = `/api/scenarios/${id}`;
+    const detail = await app.inject({ method: "GET", url });
+    expect(detail.json().runs).toEqual([expect.objectContaining({ status: "failed", assertions, hasEvidence: true })]);
+    expect((await app.inject({ method: "GET", url: `${url}/approval-rejected-stops/1/evidence` })).json()).toEqual({ assertions });
+    expect((await app.inject({ method: "GET", url: `${url}/approval-rejected-stops/2/evidence` })).statusCode).toBe(404);
+  });
+
   it("serves the catalog, experiment lifecycle, reviews, comparison, and events", async () => {
     const harness = await createHarness();
     const catalog = harness.catalog;
@@ -256,7 +289,7 @@ async function createHarness() {
   });
   cleanup.push(() => app.close());
 
-  return { app, store, catalog, summary, experiment, otherExperiment, passedRun, reviewRun };
+  return { app, root, store, catalog, summary, experiment, otherExperiment, passedRun, reviewRun };
 }
 
 function makeExperiment(

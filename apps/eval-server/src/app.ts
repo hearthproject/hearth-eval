@@ -29,6 +29,7 @@ import { EvalRunnerError, type EvalRunner } from "./runner.ts";
 import type { EvalStore, StoredCase } from "./store.ts";
 import type { HearthClient } from "./hearth-client.ts";
 import { resolveRunOutputDir } from "./artifact-path.ts";
+import { listScenarioBatches, readScenarioBatch, readScenarioEvidence } from "./scenario-reports.ts";
 
 const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -77,6 +78,20 @@ interface JudgeInfo {
 export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInstance> {
   const { store, runner, client, catalog, repoRoot, artifactRoot } = options;
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 1_000_000 });
+  const scenarioRoot = join(repoRoot, "eval", "scenario-runs");
+  app.get("/api/scenarios", async () => listScenarioBatches(scenarioRoot));
+  app.get<{ Params: { id: string } }>("/api/scenarios/:id", async (request, reply) => {
+    const batch = await readScenarioBatch(scenarioRoot, request.params.id);
+    return batch ?? reply.code(404).send({ error: "SCENARIO_BATCH_NOT_FOUND", message: "找不到场景运行报告" });
+  });
+  app.get<{ Params: { id: string; scenarioId: string; repetition: string } }>(
+    "/api/scenarios/:id/:scenarioId/:repetition/evidence",
+    async (request, reply) => {
+      const { id, scenarioId, repetition } = request.params;
+      const evidence = await readScenarioEvidence(scenarioRoot, id, scenarioId, repetition);
+      return evidence ?? reply.code(404).send({ error: "SCENARIO_EVIDENCE_NOT_FOUND", message: "找不到场景证据" });
+    }
+  );
   let judgeCache: { expiresAt: number; info: JudgeInfo } | null = null;
 
   const judgeInfo = async (): Promise<JudgeInfo> => {

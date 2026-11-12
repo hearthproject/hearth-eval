@@ -11,6 +11,7 @@ import { NewExperimentPage } from "./pages/NewExperimentPage.tsx";
 import { ReviewsPage } from "./pages/ReviewsPage.tsx";
 import { RunDetailPage } from "./pages/RunDetailPage.tsx";
 import { SystemPage } from "./pages/SystemPage.tsx";
+import { ScenariosPage } from "./pages/ScenariosPage.tsx";
 
 export function App() {
   return (
@@ -27,6 +28,7 @@ export function App() {
         <Route path="compare" element={<ComparePage />} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="system" element={<SystemPage />} />
+        <Route path="scenarios" element={<ScenariosPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

@@ -15,6 +15,8 @@ import type {
   ReviewsResponse,
   RunArtifactView,
   RunDetailResponse,
+  ScenarioBatchDetail,
+  ScenarioBatchSummary,
   SubmitReviewRequest
 } from "@hearth/eval-core";
 
@@ -73,6 +75,11 @@ export interface SubmitReviewResult {
 }
 
 export const api = {
+  scenarioBatches: () => request<ScenarioBatchSummary[]>("/api/scenarios"),
+  scenarioBatch: (id: string) => request<ScenarioBatchDetail>(`/api/scenarios/${encodeURIComponent(id)}`),
+  scenarioEvidence: (id: string, scenarioId: string, repetition: number) => request<unknown>(
+    `/api/scenarios/${encodeURIComponent(id)}/${encodeURIComponent(scenarioId)}/${repetition}/evidence`
+  ),
   dashboard: () => request<DashboardResponse>("/api/dashboard"),
   system: () => request<EvalSystemResponse>("/api/system"),
   cases: (filters: CaseFilters = {}) => {
