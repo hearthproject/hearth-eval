@@ -90,6 +90,8 @@ export interface JsonGraderConfig {
   requiredPaths?: string[];
   equals?: Record<string, unknown>;
   minArrayLength?: Record<string, number>;
+  /** Exact set of string keys; compare configured fields independently of item order. */
+  keyedArrays?: Array<{ path: string; key: string; expected: Record<string, Record<string, unknown>> }>;
 }
 
 export interface CsvGraderConfig {

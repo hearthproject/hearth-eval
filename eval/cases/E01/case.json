@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "E01",
-  "version": 1,
+  "version": 2,
   "title": "收件箱分流与优先级",
   "family": "email",
   "difficulty": "normal",
@@ -14,7 +14,24 @@
   "expectedOutputs": ["triage.json"],
   "graders": [
     {"id": "file", "title": "分流文件存在", "config": {"kind": "file", "path": "triage.json", "minBytes": 40}},
-    {"id": "shape", "title": "四封邮件全部处理", "config": {"kind": "json", "path": "triage.json", "requiredPaths": ["items.0.id", "items.0.priority", "items.3.id"], "minArrayLength": {"items": 4}, "equals": {"items.0.priority": "high"}}}
+    {
+      "id": "shape",
+      "title": "四封邮件唯一完整且优先级正确",
+      "config": {
+        "kind": "json",
+        "path": "triage.json",
+        "keyedArrays": [{
+          "path": "items",
+          "key": "id",
+          "expected": {
+            "m1": {"priority": "high"},
+            "m2": {"priority": "low"},
+            "m3": {"priority": "high"},
+            "m4": {"priority": "medium"}
+          }
+        }]
+      }
+    }
   ],
   "criteria": [
     {"id": "exists", "label": "输出分流清单", "source": "deterministic", "points": 30, "severity": "blocker", "graderId": "file"},
