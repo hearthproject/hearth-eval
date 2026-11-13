@@ -239,7 +239,7 @@ function GraderRow({ grader }: { grader: GraderResultRecord }) {
 }
 
 function payloadRows(payload: Record<string, unknown>): Array<[string, string]> {
-  const allowed = ["status", "taskId", "score", "decision", "reviewer", "error", "attempt", "interruptedRuns", "cases", "executors", "runs", "repetitions"];
+  const allowed = ["status", "taskId", "score", "decision", "reviewer", "error", "attempt", "interruptedRuns", "cases", "executors", "runs", "repetitions", "diagnostics", "model", "maxTokens", "responseFormat", "reasoningEffort", "requestId", "finishReason", "reasoningCharacters", "contentCharacters", "usage"];
   return allowed.flatMap((key) => {
     const value = payload[key];
     if (value === undefined || value === null || value === "") return [];

@@ -132,6 +132,7 @@ export const EVENT_LABELS: Record<string, string> = {
   "run.grading": "开始评分",
   "run.judge-unavailable": "评委不可用",
   "run.judge-retry": "重试评委",
+  "run.judge-response": "评委响应",
   "run.finished": "运行结束",
   "run.error": "运行错误",
   "review.submitted": "人工复核提交",

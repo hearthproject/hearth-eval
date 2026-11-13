@@ -340,6 +340,7 @@ export interface JudgeCriterionResult {
 }
 
 export interface JudgeResponse {
+  diagnostics?: Record<string, unknown>;
   model: string;
   promptHash: string;
   criteria: JudgeCriterionResult[];

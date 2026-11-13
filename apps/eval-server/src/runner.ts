@@ -542,8 +542,6 @@ export class EvalRunner {
           if (!item) continue;
           graderRecords.push(judgeRecord(run.id, criterion.id, item, response.model, response.promptHash, createdAt));
         }
-      } else {
-        this.store.appendEvent("run.judge-unavailable", { experimentId: run.experimentId, runId: run.id });
       }
     }
     this.store.replaceGraderResults(run.id, graderRecords);
@@ -567,7 +565,12 @@ export class EvalRunner {
     deterministic: Record<string, GraderOutcome>,
     autoRetry: boolean
   ): Promise<{ criteria: JudgeCriterionResult[]; overallConfidence: number; model: string; promptHash: string } | null> {
-    if (!this.judge) return null;
+    if (!this.judge) {
+      this.store.appendEvent("run.judge-unavailable", {
+        experimentId: run.experimentId, runId: run.id, payload: { error: "未配置评委适配器" }
+      });
+      return null;
+    }
     const criteria = manifest.criteria.filter((item) => item.source === "judge").map((criterion) => ({
       id: criterion.id,
       label: criterion.label,
@@ -577,7 +580,7 @@ export class EvalRunner {
     const attempts = autoRetry ? 2 : 1;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
-        return await this.judge.judge({
+        const response = await this.judge.judge({
           artifacts,
           ...(run.hearthTaskId ? { taskId: run.hearthTaskId } : {}),
           criteria,
@@ -589,13 +592,23 @@ export class EvalRunner {
               reason: deterministic[criterion.id]?.reason ?? "未执行"
             }))
         });
+        if (response.diagnostics) {
+          this.store.appendEvent("run.judge-response", {
+            experimentId: run.experimentId, runId: run.id, payload: response.diagnostics
+          });
+        }
+        return response;
       } catch (error) {
-        if (attempt + 1 >= attempts) return null;
-        this.store.appendEvent("run.judge-retry", {
+        const exhausted = attempt + 1 >= attempts;
+        this.store.appendEvent(exhausted ? "run.judge-unavailable" : "run.judge-retry", {
           experimentId: run.experimentId,
           runId: run.id,
-          payload: { error: error instanceof Error ? error.message : String(error) }
+          payload: {
+            error: error instanceof Error ? error.message : String(error),
+            ...(error instanceof Error && "diagnostics" in error ? { diagnostics: error.diagnostics } : {})
+          }
         });
+        if (exhausted) return null;
       }
     }
     return null;

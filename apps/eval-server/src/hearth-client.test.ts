@@ -27,6 +27,27 @@ describe("Hearth artifact adapter", () => {
     await expect(client.getArtifacts({ taskId: "missing", outputDir: ".hearth/eval-artifacts/missing" })).resolves.toEqual({});
   });
 
+  it("reads outputs from a separate OS repository", async ({ onTestFinished }) => {
+    const root = mkdtempSync(join(tmpdir(), "eval-separate-repos-"));
+    onTestFinished(() => rmSync(root, { recursive: true, force: true }));
+    const repoRoot = join(root, "hearth-eval");
+    const artifactRoot = join(root, "hearth-os", ".hearth", "eval-artifacts");
+    const outputDir = ".hearth/eval-artifacts/EXP-1/E01/native/r1";
+    const runRoot = join(artifactRoot, "EXP-1", "E01", "native", "r1");
+    mkdirSync(runRoot, { recursive: true });
+    writeFileSync(join(runRoot, "result.json"), "{}", "utf8");
+    const client = new HearthClient({
+      baseUrl: "http://unused.invalid",
+      artifactStorage: { repoRoot, artifactRoot }
+    });
+
+    await expect(client.getArtifacts({ taskId: "task-1", outputDir })).resolves.toEqual({
+      "result.json": { text: "{}", bytes: 2, mimeType: "application/json" }
+    });
+    await expect(client.getArtifacts({ taskId: "task-1", outputDir: ".hearth/eval-artifacts/../outside" }))
+      .rejects.toThrow("评测产物目录越界");
+  });
+
   it.each(["../outside", ".hearth/eval-artifacts-other/run-1"])("rejects an output outside the managed root: %s", async (outputDir) => {
     const repoRoot = join(tmpdir(), "eval-boundary");
     const client = new HearthClient({

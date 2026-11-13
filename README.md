@@ -77,7 +77,7 @@ Hearth Eval Agent 不是一个散落着脚本的评测集，而是一个**独立
 
 ## 界面
 
-评测控制台的默认地址为 `http://127.0.0.1:5174`：
+评测控制台的默认地址为 `http://127.0.0.1:5175`：
 
 - **总览**：运行中实验、待复核数量、任务目录健康度和最近活动；
 - **任务目录 / 任务详情**：任务 manifest、输入、golden、评分标准和历史实验；
@@ -126,7 +126,7 @@ $env:HEARTH_EVAL_ARTIFACT_ROOT='D:\App\hearth-os\.hearth\eval-artifacts'
 npm run dev
 ```
 
-打开 `http://127.0.0.1:5174`。评测服务监听 `127.0.0.1:4318`，Vite 会把 `/api` 代理到评测服务。
+打开 `http://127.0.0.1:5175`。评测服务监听 `127.0.0.1:4318`，Vite 会把 `/api` 代理到评测服务。
 
 `HEARTH_EVAL_ARTIFACT_ROOT` 必须与主服务实际写入的产物根一致；遗漏时运行详情会找不到已登记产物，并错误报告 `BLOCKER_FAILED: exists`。重启评测服务后，先通过 `GET /api/system` 确认 `artifactRoot`，再开始实验。
 
@@ -231,7 +231,7 @@ docs/                VitePress 中文文档站
 ```bash
 npm run dev                 # 评测服务 + 控制台
 npm run dev:server          # 仅评测服务，4318
-npm run dev:web             # 仅控制台，5174
+npm run dev:web             # 仅控制台，5175
 npm test                    # 单元与 API 测试
 npm run typecheck           # 评测代码类型检查
 npm run typecheck:scenarios # 白盒场景类型检查
