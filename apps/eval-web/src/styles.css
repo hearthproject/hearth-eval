@@ -75,12 +75,10 @@ code { font-size: .82em; }
 }
 
 .brand-mark {
-  display: grid;
-  place-items: center;
+  display: block;
+  flex-shrink: 0;
   width: 30px;
   height: 30px;
-  color: #fff;
-  background: var(--accent);
   border-radius: 7px;
 }
 

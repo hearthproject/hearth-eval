@@ -4,7 +4,6 @@ import {
   Activity,
   ClipboardCheck,
   FlaskConical,
-  Flame,
   GitCompareArrows,
   LayoutDashboard,
   LibraryBig,
@@ -54,7 +53,7 @@ export function AppShell() {
       {mobileOpen && <button className="sidebar-scrim" aria-label="关闭导航" onClick={() => setMobileOpen(false)} />}
       <aside className={`sidebar ${mobileOpen ? "is-open" : ""}`}>
         <Link className="brand" to="/" onClick={() => setMobileOpen(false)}>
-          <span className="brand-mark"><Flame size={16} strokeWidth={2} /></span>
+          <img className="brand-mark" src="/brand/hearth-eval-icon.png" alt="" width={30} height={30} />
           <span className="brand-copy">
             <strong>Hearth</strong>
             <small>Eval Agent</small>
