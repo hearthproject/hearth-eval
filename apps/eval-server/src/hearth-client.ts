@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
+import { resolveRunOutputDir } from "./artifact-path.ts";
 import type {
   ArtifactMap,
   EvalTaskRequest,
@@ -20,12 +21,14 @@ export { isTerminalTaskStatus, isWaitingTaskStatus } from "./agent-adapter.ts";
 export class HearthClientError extends Error {
   readonly code: string;
   readonly status: number | null;
+  readonly diagnostics: Record<string, unknown> | null;
 
-  constructor(code: string, message: string, status: number | null = null) {
+  constructor(code: string, message: string, status: number | null = null, diagnostics: Record<string, unknown> | null = null) {
     super(message);
     this.name = "HearthClientError";
     this.code = code;
     this.status = status;
+    this.diagnostics = diagnostics;
   }
 }
 
@@ -68,7 +71,11 @@ export class HearthClient implements AgentAdapter {
   }: AgentArtifactRequest): Promise<ArtifactMap> {
     if (!this.artifactStorage)
       throw new Error("Hearth 产物读取需要配置 artifactStorage");
-    const root = resolve(this.artifactStorage.repoRoot, outputDir);
+    const root = resolveRunOutputDir(
+      this.artifactStorage.repoRoot,
+      this.artifactStorage.artifactRoot,
+      outputDir,
+    );
     if (!isPathInside(this.artifactStorage.artifactRoot, root))
       throw new Error(`评测产物目录越界：${outputDir}`);
     const artifacts: ArtifactMap = {};
@@ -132,6 +139,7 @@ export class HearthClient implements AgentAdapter {
             ? record.message
             : `Hearth 返回 HTTP ${response.status}`,
           response.status,
+          asRecord(record?.diagnostics),
         );
       }
       return payload as T;

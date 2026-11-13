@@ -56,7 +56,7 @@ $env:HEARTH_EVAL_ARTIFACT_ROOT='D:\App\hearth-os\.hearth\eval-artifacts'
 npm run dev
 ```
 
-打开 <http://127.0.0.1:5174>。评测服务监听 `127.0.0.1:4318`。
+打开 <http://127.0.0.1:5175>。评测服务监听 `127.0.0.1:4318`。
 
 `HEARTH_EVAL_ARTIFACT_ROOT` 必须与主服务实际写入的产物根一致；遗漏时运行详情会找不到已登记产物，并错误报告 `BLOCKER_FAILED: exists`。重启后先通过 `GET /api/system` 确认 `artifactRoot`，再启动实验。
 

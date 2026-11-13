@@ -66,6 +66,6 @@ npm install
 npm run dev
 ```
 
-评测 Agent 默认连接 `127.0.0.1:4317` 的 Hearth 主服务，并在 `127.0.0.1:5174` 提供控制台。完整步骤见[快速开始](/guide/getting-started)，最新实验见[评测结果](/reference/results)。
+评测 Agent 默认连接 `127.0.0.1:4317` 的 Hearth 主服务，并在 `127.0.0.1:5175` 提供控制台。完整步骤见[快速开始](/guide/getting-started)，最新实验见[评测结果](/reference/results)。
 
 > 首次启动只校验 case 目录、同步版本并恢复中断运行，不会自动执行任何评测。

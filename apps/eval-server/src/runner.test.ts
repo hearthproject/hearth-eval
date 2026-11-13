@@ -143,7 +143,9 @@ describe("EvalRunner", () => {
     const root = mkdtempSync(join(tmpdir(), "hearth-eval-judge-"));
     const client = fakeAgent(root);
     const judge = fakeJudge();
-    if (mode === "unavailable") judge.judge.mockRejectedValue(new Error("Judge unavailable"));
+    if (mode === "unavailable") judge.judge.mockRejectedValue(Object.assign(new Error("Judge unavailable"), {
+      diagnostics: { finishReason: "length", maxTokens: 8000 }
+    }));
     if (mode === "retry") judge.judge.mockRejectedValueOnce(new Error("Temporary judge failure"));
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
@@ -176,6 +178,10 @@ describe("EvalRunner", () => {
       expect(run?.status).toBe("needs_review");
       expect(run?.reviewReasons).toContain("judge_unavailable");
       expect(events).toContain("run.judge-unavailable");
+      if (mode === "unavailable") {
+        expect(store.listEvents({ experimentId: experiment.id }).find((event) => event.type === "run.judge-unavailable")?.payload)
+          .toMatchObject({ error: "Judge unavailable", diagnostics: { finishReason: "length", maxTokens: 8000 } });
+      }
       expect(store.listGraderResults(run?.id ?? "").every((item) => item.source === "deterministic")).toBe(true);
     }
   });
