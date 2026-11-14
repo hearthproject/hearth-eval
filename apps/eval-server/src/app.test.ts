@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +26,38 @@ afterEach(async () => {
 });
 
 describe("eval control plane", () => {
+  it("publishes an in-memory self-check as the latest batch with its evidence", async () => {
+    const { app, root } = await createHarness();
+    mkdirSync(join(root, "eval/scenarios"), { recursive: true });
+    mkdirSync(join(root, "scenario-runner"));
+    writeFileSync(join(root, "eval/scenarios/scenarios.json"), readFileSync(join(repoRoot, "eval/scenarios/scenarios.json")));
+    writeFileSync(join(root, "scenario-runner/tsconfig.json"), "{}");
+    const report = {
+      version: 1, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(),
+      runs: [{ scenarioId: "action-binding-tamper", title: "动作绑定", mechanism: "action_resolver", priority: "P0", fault: "tamper",
+        repetition: 1, status: "passed", durationMs: 1, evidencePath: "temporary", error: null,
+        assertions: [{ name: "native-waiter-released", passed: true, detail: "已收到拒绝结果" }] }]
+    };
+    const payload = { markdown: "# log", report, evidence: { "action-binding-tamper/1": { checked: true } } };
+    writeFileSync(join(root, "scenario-runner/run-scenarios.ts"), `console.log(${JSON.stringify("HEARTH_SELF_CHECK_RESULT " + JSON.stringify(payload))});`);
+    const started = await app.inject({ method: "POST", url: "/api/scenarios/self-check", payload: { scenarioId: "action-binding-tamper" } });
+    expect(started.statusCode).toBe(202);
+    await expect.poll(async () => (await app.inject({ method: "GET", url: "/api/scenarios/self-check" })).json().status, { timeout: 15_000 }).toBe("passed");
+    const batches = (await app.inject({ method: "GET", url: "/api/scenarios" })).json();
+    expect(batches).toHaveLength(1);
+    expect(batches[0]).toMatchObject({ total: 1, passed: 1 });
+    const base = `/api/scenarios/${batches[0].id}`;
+    expect((await app.inject({ method: "GET", url: base })).json().runs[0].assertions).toEqual(report.runs[0]!.assertions);
+    expect((await app.inject({ method: "GET", url: `${base}/action-binding-tamper/1/evidence` })).json()).toEqual({ checked: true });
+  }, 20_000);
+  it("exposes an idle self-check and rejects invalid scenario parameters", async () => {
+    const { app } = await createHarness();
+    const status = await app.inject({ method: "GET", url: "/api/scenarios/self-check" });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({ status: "idle", markdown: null });
+    const invalid = await app.inject({ method: "POST", url: "/api/scenarios/self-check", payload: { scenarioId: "../outside" } });
+    expect(invalid.statusCode).toBe(400);
+  });
   it("lists completed scenario batches and serves evidence for a recorded repetition", async () => {
     const { app, root } = await createHarness();
     const list = () => app.inject({ method: "GET", url: "/api/scenarios" });

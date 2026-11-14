@@ -3,7 +3,6 @@
   "compilerOptions": {
     "noEmit": true,
     "types": ["node"],
-    "baseUrl": ".",
     "paths": {
       "@hearth-os/server/*": ["../../hearth-os/apps/server/src/*"],
       "@hearth/core": ["../../hearth-os/packages/core/src/index.ts"],
