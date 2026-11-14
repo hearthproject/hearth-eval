@@ -53,7 +53,7 @@ export function AppShell() {
       {mobileOpen && <button className="sidebar-scrim" aria-label="关闭导航" onClick={() => setMobileOpen(false)} />}
       <aside className={`sidebar ${mobileOpen ? "is-open" : ""}`}>
         <Link className="brand" to="/" onClick={() => setMobileOpen(false)}>
-          <img className="brand-mark" src="/brand/hearth-eval-icon.png" alt="" width={30} height={30} />
+          <img className="brand-mark" src="/brand/hearth-eval-icon.png?v=transparent" alt="" width={30} height={30} />
           <span className="brand-copy">
             <strong>Hearth</strong>
             <small>Eval Agent</small>
