@@ -25,10 +25,12 @@ const selected = only.size === 0 ? manifest.scenarios : manifest.scenarios.filte
 if (selected.length === 0) throw new Error("No scenarios selected");
 
 const startedAt = new Date().toISOString();
-const artifactRoot = resolve(process.cwd(), "eval", "scenario-runs", startedAt.replace(/[:.]/g, "-"));
+const transientRoot = process.env.HEARTH_SELF_CHECK_ROOT;
+const artifactRoot = transientRoot ? resolve(transientRoot) : resolve(process.cwd(), "eval", "scenario-runs", startedAt.replace(/[:.]/g, "-"));
 mkdirSync(artifactRoot, { recursive: true });
 
 const runs: ScenarioRunRecord[] = [];
+const transientEvidence: Record<string, unknown> = {};
 for (const scenario of selected) {
   const handler = scenarioHandler(scenario.id);
   for (let repetition = 1; repetition <= scenario.repeat; repetition += 1) {
@@ -75,7 +77,8 @@ for (const scenario of selected) {
         isolation: "temporary in-memory/temp-file store; fake user, fake preference, fake secret"
       }
     });
-    writeFileSync(evidenceFile, JSON.stringify(payload, null, 2) + "\n", "utf8");
+    if (!transientRoot) writeFileSync(evidenceFile, JSON.stringify(payload, null, 2) + "\n", "utf8");
+    else transientEvidence[`${scenario.id}/${repetition}`] = payload;
     runs.push({
       scenarioId: scenario.id,
       title: scenario.title,
@@ -104,12 +107,28 @@ const report = summarizeScenarioSuite({
   completedAt,
   runs
 });
-writeFileSync(resolve(artifactRoot, "report.json"), JSON.stringify(report, null, 2) + "\n", "utf8");
-writeFileSync(resolve(artifactRoot, "summary.md"), renderSummary(report), "utf8");
+if (transientRoot) {
+  const lines = ["# 场景自检日志", "", `开始时间：${startedAt}`, `结束时间：${completedAt}`, "",
+    `通过 ${runs.filter((run) => run.status === "passed").length}/${runs.length} 次检查`, ""];
+  for (const run of runs) {
+    lines.push(`## ${run.title} · 第 ${run.repetition} 次`, "", `结果：${run.status} · ${run.durationMs} ms`);
+    if (run.error) lines.push(`错误：${run.error}`);
+    for (const assertion of run.assertions) {
+      lines.push(`- [${assertion.passed ? "x" : " "}] ${assertion.name} — ${assertion.detail}`);
+    }
+    lines.push("");
+  }
+  console.log("HEARTH_SELF_CHECK_RESULT " + JSON.stringify({ markdown: sanitize(lines.join("\n")), report: sanitize(report), evidence: transientEvidence }));
+} else {
+  writeFileSync(resolve(artifactRoot, "report.json"), JSON.stringify(report, null, 2) + "\n", "utf8");
+  writeFileSync(resolve(artifactRoot, "summary.md"), renderSummary(report), "utf8");
+}
 
 console.log(`\nScenarios: ${report.runs.filter((run) => run.status === "passed").length}/${report.runs.length} passed (${(report.passRate * 100).toFixed(1)}%)`);
-console.log(`Report: ${relative(process.cwd(), resolve(artifactRoot, "report.json")).replace(/\\/g, "/")}`);
-console.log(`Summary: ${relative(process.cwd(), resolve(artifactRoot, "summary.md")).replace(/\\/g, "/")}`);
+if (!transientRoot) {
+  console.log(`Report: ${relative(process.cwd(), resolve(artifactRoot, "report.json")).replace(/\\/g, "/")}`);
+  console.log(`Summary: ${relative(process.cwd(), resolve(artifactRoot, "summary.md")).replace(/\\/g, "/")}`);
+}
 if (report.runs.some((run) => run.status !== "passed")) process.exitCode = 1;
 
 function option(name: string): string | undefined {

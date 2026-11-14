@@ -30,6 +30,7 @@ import type { EvalStore, StoredCase } from "./store.ts";
 import type { HearthClient } from "./hearth-client.ts";
 import { resolveRunOutputDir } from "./artifact-path.ts";
 import { listScenarioBatches, readScenarioBatch, readScenarioEvidence } from "./scenario-reports.ts";
+import { ScenarioSelfCheckService } from "./scenario-self-check.ts";
 
 const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -79,16 +80,34 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
   const { store, runner, client, catalog, repoRoot, artifactRoot } = options;
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 1_000_000 });
   const scenarioRoot = join(repoRoot, "eval", "scenario-runs");
-  app.get("/api/scenarios", async () => listScenarioBatches(scenarioRoot));
+  const selfCheck = new ScenarioSelfCheckService(repoRoot);
+  app.addHook("onClose", async () => selfCheck.close());
+  app.get("/api/scenarios/self-check", async () => selfCheck.snapshot());
+  app.get("/api/scenarios/catalog", async () => selfCheck.scenarios());
+  app.post("/api/scenarios/self-check", async (request, reply) => {
+    const parsed = z.object({ scenarioId: z.string().regex(/^[a-z0-9_-]+$/).optional() }).strict().safeParse(request.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ message: "场景参数不正确" });
+    if (selfCheck.snapshot().status === "running") return reply.code(409).send({ message: "已有场景自检正在运行" });
+    try { return reply.code(202).send(await selfCheck.start(parsed.data.scenarioId)); }
+    catch (error) { return reply.code(400).send({ message: error instanceof Error ? error.message : String(error) }); }
+  });
+  app.get("/api/scenarios", async () => {
+    const historical = await listScenarioBatches(scenarioRoot);
+    const latest = selfCheck.batch();
+    if (!latest) return historical;
+    const { runs, ...summary } = latest;
+    return [summary, ...historical];
+  });
   app.get<{ Params: { id: string } }>("/api/scenarios/:id", async (request, reply) => {
-    const batch = await readScenarioBatch(scenarioRoot, request.params.id);
+    const latest = selfCheck.batch();
+    const batch = latest?.id === request.params.id ? latest : await readScenarioBatch(scenarioRoot, request.params.id);
     return batch ?? reply.code(404).send({ error: "SCENARIO_BATCH_NOT_FOUND", message: "找不到场景运行报告" });
   });
   app.get<{ Params: { id: string; scenarioId: string; repetition: string } }>(
     "/api/scenarios/:id/:scenarioId/:repetition/evidence",
     async (request, reply) => {
       const { id, scenarioId, repetition } = request.params;
-      const evidence = await readScenarioEvidence(scenarioRoot, id, scenarioId, repetition);
+      const evidence = selfCheck.evidence(id, scenarioId, repetition) ?? await readScenarioEvidence(scenarioRoot, id, scenarioId, repetition);
       return evidence ?? reply.code(404).send({ error: "SCENARIO_EVIDENCE_NOT_FOUND", message: "找不到场景证据" });
     }
   );

@@ -362,3 +362,11 @@ export interface ScoringOutcome {
 }
 
 export type ArtifactMap = Record<string, { text: string; bytes: number; mimeType?: string }>;
+export interface ScenarioSelfCheck {
+  batchId?: string;
+  status: "idle" | "running" | "passed" | "failed" | "error";
+  output: string;
+  markdown: string | null;
+  total: number | null;
+  passed: number | null;
+}
