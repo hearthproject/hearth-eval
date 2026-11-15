@@ -106,7 +106,8 @@ export const api = {
     method: "POST",
     body: "{}"
   }),
-  run: (id: string) => request<RunDetailResponse>(`/api/runs/${encodeURIComponent(id)}`),
+  run: (id: string) => request<RunDetailResponse>(`/api/runs/${encodeURIComponent(id)}?includeTask=false`),
+  runTask: (id: string) => request<Record<string, unknown> | null>(`/api/runs/${encodeURIComponent(id)}/task`),
   reviews: () => request<ReviewsResponse>("/api/reviews"),
   submitReview: (id: string, body: SubmitReviewRequest) => request<SubmitReviewResult>(`/api/runs/${encodeURIComponent(id)}/review`, {
     method: "POST",

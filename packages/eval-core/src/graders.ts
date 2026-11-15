@@ -1,4 +1,4 @@
-import type { ArtifactMap, CsvGraderConfig, GraderConfig, GraderSpec, JsonGraderConfig, StateGraderConfig, TextGraderConfig } from "./types.ts";
+import type { ArtifactMap, CsvGraderConfig, GraderConfig, GraderSpec, JsonGraderConfig, MailDraftGraderConfig, StateGraderConfig, TextGraderConfig } from "./types.ts";
 
 export interface GraderOutcome {
   passed: boolean;
@@ -30,6 +30,7 @@ function gradeConfig(config: GraderConfig, artifacts: ArtifactMap): GraderOutcom
   if (config.kind === "text") return gradeText(config, artifacts);
   if (config.kind === "json") return gradeJson(config, artifacts);
   if (config.kind === "csv") return gradeCsv(config, artifacts);
+  if (config.kind === "mail_draft") return gradeMailDraft(config, artifacts);
   if (config.kind === "artifact_count") {
     const matches = Object.keys(artifacts).filter((path) =>
       (!config.prefix || path.startsWith(config.prefix)) && (!config.suffix || path.endsWith(config.suffix))
@@ -39,6 +40,49 @@ function gradeConfig(config: GraderConfig, artifacts: ArtifactMap): GraderOutcom
       : fail(`匹配产物仅 ${matches.length} 个，低于 ${config.min}`);
   }
   return gradeState(config, artifacts);
+}
+
+function gradeMailDraft(config: MailDraftGraderConfig, artifacts: ArtifactMap): GraderOutcome {
+  const parsed: unknown = JSON.parse(requireArtifact(artifacts, config.path).text);
+  if (!isRecord(parsed) || !Array.isArray(parsed.actions) || parsed.actions.length === 0 || parsed.actions.length > 100) {
+    return fail("actions 必须是包含 1–100 个动作的数组");
+  }
+  const fields: Record<string, string> = { To: "", Subject: "", Body: "" };
+  let focus: string | null = null;
+  let saved = false;
+  for (const [index, action] of parsed.actions.entries()) {
+    const prefix = `动作 ${index + 1}`;
+    if (!isRecord(action)) return fail(`${prefix} 必须是对象`);
+    const keys = Object.keys(action).sort().join(",");
+    if (action.op === "focus") {
+      if (keys !== "op,target" || typeof action.target !== "string" || !Object.hasOwn(fields, action.target)) {
+        return fail(`${prefix} focus 目标或字段无效`);
+      }
+      focus = action.target;
+    } else if (action.op === "type") {
+      if (keys !== "op,text" || typeof action.text !== "string" || focus === null) {
+        return fail(`${prefix} type 需要字符串 text 和已聚焦字段`);
+      }
+      fields[focus] += action.text;
+      saved = false;
+    } else if (action.op === "click") {
+      if (action.target === "Send") return fail(`${prefix} 禁止发送邮件`);
+      if (keys !== "op,target" || action.target !== "Save Draft") return fail(`${prefix} click 目标或字段无效`);
+      if (!deepEqual(fields, config.expected)) return fail(`${prefix} 保存时字段不等于批准内容`);
+      saved = true;
+    } else {
+      return fail(`${prefix} 包含未知操作`);
+    }
+  }
+  if (!deepEqual(fields, config.expected)) return fail("最终收件人、主题或正文不等于批准内容");
+  if (!saved) return fail("最终内容尚未保存为草稿");
+  // Optional legacy summaries are checked, but never used as execution evidence.
+  for (const [key, value] of Object.entries({ fieldCount: 3, sendClicked: false, finalState: "draft" })) {
+    if (Object.hasOwn(parsed, key) && parsed[key] !== value) return fail(`自报 ${key} 与模拟结果不一致`);
+  }
+  return pass("动作模拟通过：三字段准确、已保存草稿、未发送", [
+    `${parsed.actions.length} 个合法动作`, "保存时及最终字段与批准内容完全一致", "无发送动作；此结果仅证明离线动作规划"
+  ]);
 }
 
 function gradeText(config: TextGraderConfig, artifacts: ArtifactMap): GraderOutcome {

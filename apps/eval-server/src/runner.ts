@@ -472,16 +472,26 @@ export class EvalRunner {
     if (!run.hearthTaskId) throw new Error("评测运行缺少 Hearth 任务 ID");
     const deadline = Date.now() + manifest.timeoutMs + 120_000;
     let last: AgentTaskView | null = null;
-    let waiting = false;
+    let previousProgress = "";
     while (Date.now() < deadline) {
       const view = await this.client.getTask(run.hearthTaskId);
       last = view;
       const status = view.task.status;
       if (isTerminalTaskStatus(status)) return { status, task: view.task, view, timedOut: false };
-      if (status === "waiting_approval" && !waiting) {
-        waiting = true;
-        this.store.updateRun(run.id, { status: "waiting", error: "任务正在等待人工审批或输入", updatedAt: this.now().toISOString() });
-        this.store.appendEvent("run.waiting", { experimentId: run.experimentId, runId: run.id, payload: { status } });
+      if (this.store.getRun(run.id)?.status === "cancelled") return { status: "cancelled", task: view.task, view, timedOut: false };
+      const nextAction = view.task.nextAction ?? null;
+      const progress = JSON.stringify([status, nextAction]);
+      if (progress !== previousProgress) {
+        previousProgress = progress;
+        const waiting = ["waiting_approval", "waiting_input", "recoverable"].includes(status);
+        this.store.updateRun(run.id, {
+          status: waiting ? "waiting" : "running",
+          error: waiting ? "任务正在等待人工审批、输入或恢复" : null,
+          updatedAt: this.now().toISOString()
+        });
+        this.store.appendEvent(waiting ? "run.waiting" : "run.progress", {
+          experimentId: run.experimentId, runId: run.id, payload: { status, nextAction }
+        });
       }
       await this.sleep(this.pollIntervalMs);
     }

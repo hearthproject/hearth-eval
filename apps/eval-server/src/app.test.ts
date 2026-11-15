@@ -12,7 +12,7 @@ import type {
   GraderResultRecord,
   HumanReviewRecord
 } from "@hearth/eval-core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildEvalApp } from "./app.ts";
 import type { HearthClient } from "./hearth-client.ts";
 import type { EvalRunner } from "./runner.ts";
@@ -26,6 +26,19 @@ afterEach(async () => {
 });
 
 describe("eval control plane", () => {
+  it("returns local run progress without waiting for Hearth and exposes task details separately", async () => {
+    const { app, client, passedRun } = await createHarness();
+    const getTask = vi.spyOn(client, "getTask").mockRejectedValue(new Error("Hearth unavailable"));
+    const response = await app.inject({ method: "GET", url: `/api/runs/${passedRun.id}?includeTask=false` });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toMatchObject({ run: { id: passedRun.id }, hearthTask: null });
+    expect(getTask).not.toHaveBeenCalled();
+    expect((await app.inject({ method: "GET", url: `/api/runs/${passedRun.id}/task` })).statusCode).toBe(502);
+    getTask.mockResolvedValue({ task: { id: "task-1", status: "completed" } });
+    expect((await app.inject({ method: "GET", url: `/api/runs/${passedRun.id}/task` })).json())
+      .toMatchObject({ task: { id: "task-1", status: "completed" } });
+  });
   it("publishes an in-memory self-check as the latest batch with its evidence", async () => {
     const { app, root } = await createHarness();
     mkdirSync(join(root, "eval/scenarios"), { recursive: true });
@@ -321,7 +334,7 @@ async function createHarness() {
   });
   cleanup.push(() => app.close());
 
-  return { app, root, store, catalog, summary, experiment, otherExperiment, passedRun, reviewRun };
+  return { app, root, store, client, catalog, summary, experiment, otherExperiment, passedRun, reviewRun };
 }
 
 function makeExperiment(

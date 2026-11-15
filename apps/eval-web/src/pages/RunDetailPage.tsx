@@ -20,6 +20,7 @@ import {
 import { Link, useParams } from "react-router-dom";
 import type { GraderResultRecord, RunArtifactView } from "@hearth/eval-core";
 import { api } from "../lib/api.ts";
+import { useLiveClock } from "../lib/useLiveClock.ts";
 import {
   EVENT_LABELS,
   REASON_LABELS,
@@ -52,10 +53,20 @@ export function RunDetailPage() {
     queryKey: ["run", id],
     queryFn: () => api.run(id),
     enabled: Boolean(id),
+    refetchIntervalInBackground: true,
     refetchInterval: (query) => {
       const status = query.state.data?.run.status;
-      return status && isActiveRun(status) ? 1_500 : false;
+      return !status || isActiveRun(status) ? 1_000 : false;
     }
+  });
+  const active = Boolean(runQuery.data && isActiveRun(runQuery.data.run.status));
+  const now = useLiveClock(active);
+  const taskQuery = useQuery({
+    queryKey: ["run-task", id, runQuery.data?.run.status],
+    queryFn: () => api.runTask(id),
+    enabled: Boolean(runQuery.data?.run.hearthTaskId),
+    refetchInterval: active ? 1_000 : false,
+    refetchIntervalInBackground: true
   });
   const reviewMutation = useMutation({
     mutationFn: (decision: "pass" | "fail" | "unknown") => api.submitReview(id, {
@@ -76,9 +87,8 @@ export function RunDetailPage() {
   if (runQuery.error) return <ErrorState error={runQuery.error} onRetry={() => void runQuery.refetch()} />;
   const data = runQuery.data!;
   const { run } = data;
-  const taskView = asRecord(data.hearthTask);
+  const taskView = asRecord(taskQuery.data);
   const task = asRecord(taskView?.task) ?? taskView;
-  const active = isActiveRun(run.status);
   const reviewPending = Boolean(data.review) === false && (run.reviewReasons.length > 0 || ["failed", "blocked", "error", "needs_review"].includes(run.status));
   const evidenceCount = data.graders.reduce((sum, grader) => sum + grader.evidence.length, 0);
 
@@ -88,7 +98,7 @@ export function RunDetailPage() {
       <PageHeader
         title={data.case?.title ?? run.caseKey}
         description={<span className="header-meta-line"><code>{run.id}</code><span>·</span><span>重复 #{run.repetition}</span></span>}
-        actions={active ? <span className="live-refresh"><RotateCcw className="spin" size={13} /> 自动刷新中</span> : undefined}
+        actions={active ? <span className="live-refresh"><RotateCcw className="spin" size={13} /> 每秒同步 · {formatDateTime(new Date(runQuery.dataUpdatedAt).toISOString())}</span> : undefined}
       />
 
       <section className="experiment-status-banner run-status-banner">
@@ -101,9 +111,9 @@ export function RunDetailPage() {
 
       <section className="metric-grid run-metric-grid">
         <MetricCard label="分数" value={run.score === null ? "—" : run.score.toFixed(1)} detail={`${data.graders.length} 项评分证据`} icon={<Gauge size={16} />} />
-        <MetricCard label="执行耗时" value={formatDuration(run.startedAt, run.finishedAt)} detail={formatDateTime(run.startedAt)} icon={<Clock3 size={16} />} />
+        <MetricCard label="执行耗时" value={formatDuration(run.startedAt, run.finishedAt, now)} detail={formatDateTime(run.startedAt)} icon={<Clock3 size={16} />} />
         <MetricCard label="执行器" value={executorLabel(run.executorId)} detail={`尝试 ${run.attempt} 次`} icon={<Cpu size={16} />} />
-        <MetricCard label="Hearth 任务" value={run.hearthTaskId ? shortId(run.hearthTaskId, 10) : "—"} detail={task ? `状态：${String(task.status ?? "unknown")}` : "尚未创建"} icon={<ExternalLink size={16} />} />
+        <MetricCard label="Hearth 任务" value={<code className="full-task-id">{run.hearthTaskId ?? "—"}</code>} detail={taskQuery.error ? "任务详情暂不可用，运行状态继续同步" : task ? `状态：${String(task.status ?? "unknown")}` : run.hearthTaskId ? "正在同步任务详情" : "尚未创建"} icon={<ExternalLink size={16} />} />
       </section>
 
       <div className="run-layout">
