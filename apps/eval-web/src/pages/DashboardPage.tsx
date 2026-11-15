@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
+  CheckCircle2,
   ClipboardCheck,
   FlaskConical,
   Layers3,
@@ -30,6 +31,7 @@ export function DashboardPage() {
   const latest = data.recentExperiments[0] ?? null;
   const totalCases = data.catalog.cases.length;
   const pending = data.pendingReviews;
+  const environmentReady = data.system.hearthReachable && data.system.executors.some((executor) => executor.canRun);
 
   return (
     <div className="page-stack dashboard-page">
@@ -38,6 +40,38 @@ export function DashboardPage() {
         description="查看个人 Agent 的任务覆盖、最近实验与待处理结论。"
         actions={<Link className="button button-primary" to="/experiments/new"><Play size={15} /> 新建实验</Link>}
       />
+
+      {data.recentExperiments.length === 0 && (
+        <section className="first-run-guide panel">
+          <SectionHeader
+            title="第一条真实评测"
+            detail="不跑模拟数据：Hearth 执行任务，评测台检查真实产物并给出评分。"
+          />
+          <ol className="first-run-steps">
+            <li className={data.system.hearthReachable ? "is-ready" : ""}>
+              <span>1</span>
+              <div><strong>连接 Hearth</strong><small>{data.system.hearthReachable ? `已连接 · ${data.system.hearthUrl}` : `先启动 Hearth · ${data.system.hearthUrl}`}</small></div>
+              <Link className="text-link" to="/system">检查环境 <ArrowRight size={13} /></Link>
+            </li>
+            <li className="is-ready">
+              <span>2</span>
+              <div><strong>选择一个任务</strong><small>{totalCases} 个 case，带固定输入与评分标准</small></div>
+              <Link className="text-link" to="/cases">浏览任务 <ArrowRight size={13} /></Link>
+            </li>
+            <li className={environmentReady ? "is-ready" : ""}>
+              <span>3</span>
+              <div><strong>运行并查看结果</strong><small>任务轨迹、实际产物、grader 证据和评分</small></div>
+              {environmentReady && <CheckCircle2 size={16} aria-label="运行环境就绪" />}
+            </li>
+          </ol>
+          <div className="first-run-action">
+            <span>{environmentReady ? "已检测到可运行执行器，可以开始第一轮。" : "先确认 Hearth 在线，并至少有一个可运行的执行器。"}</span>
+            <Link className="button button-primary" to={environmentReady ? "/experiments/new" : "/system"}>
+              {environmentReady ? "创建第一条实验" : "检查运行环境"} <ArrowRight size={14} />
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section className="overview-card panel">
         <div className="overview-main">

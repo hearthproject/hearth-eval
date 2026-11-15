@@ -17,6 +17,7 @@ import type {
   RunDetailResponse,
   ScenarioBatchDetail,
   ScenarioBatchSummary,
+  ScenarioSelfCheck,
   SubmitReviewRequest
 } from "@hearth/eval-core";
 
@@ -75,6 +76,11 @@ export interface SubmitReviewResult {
 }
 
 export const api = {
+  scenarioCatalog: () => request<Array<{ id: string; title: string }>>("/api/scenarios/catalog"),
+  scenarioSelfCheck: () => request<ScenarioSelfCheck>("/api/scenarios/self-check"),
+  startScenarioSelfCheck: (scenarioId?: string) => request<ScenarioSelfCheck>("/api/scenarios/self-check", {
+    method: "POST", body: JSON.stringify(scenarioId ? { scenarioId } : {})
+  }),
   scenarioBatches: () => request<ScenarioBatchSummary[]>("/api/scenarios"),
   scenarioBatch: (id: string) => request<ScenarioBatchDetail>(`/api/scenarios/${encodeURIComponent(id)}`),
   scenarioEvidence: (id: string, scenarioId: string, repetition: number) => request<unknown>(

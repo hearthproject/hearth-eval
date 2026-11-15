@@ -5,7 +5,7 @@ import { SCENARIO_FAULTS, SCENARIO_MECHANISMS, SCENARIO_PRIORITIES } from "@hear
 import { z } from "zod";
 
 const batchIdPattern = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/;
-const reportSchema = z.object({
+export const reportSchema = z.object({
   version: z.literal(1),
   startedAt: z.string().datetime(),
   completedAt: z.string().datetime(),
@@ -43,7 +43,11 @@ async function readJson(root: string, ...parts: string[]): Promise<unknown> {
 
 export async function readScenarioBatch(root: string, id: string): Promise<ScenarioBatchDetail | null> {
   if (!batchIdPattern.test(id)) return null;
-  const result = reportSchema.safeParse(await readJson(root, id, "report.json"));
+  return scenarioBatchFromReport(id, await readJson(root, id, "report.json"));
+}
+
+export function scenarioBatchFromReport(id: string, report: unknown): ScenarioBatchDetail | null {
+  const result = reportSchema.safeParse(report);
   if (!result.success) return null;
   const { startedAt, completedAt, runs } = result.data;
   return {

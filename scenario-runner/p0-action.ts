@@ -35,22 +35,25 @@ export const p0ActionScenarios: Record<string, ScenarioHandler> = {
     const { task, run } = createTaskWithRun(service, {
       title: "动作绑定校验",
       workspace: context.root,
-      status: "waiting_approval"
+      status: "running"
     });
     let executorCalls = 0;
     const manager = new ApprovalManager(service, async () => {
       executorCalls += 1;
       return {};
     });
-    const approval = await manager.request({
+    const pending = await manager.requestTool({
       taskId: task.id,
       runId: run.id,
-      kind: "tool.shell",
+      toolName: "shell",
       summary: "运行假工具",
       target: { tool: "shell", executable },
       preview: { arguments: ["--check"] },
       action
     });
+    const approval = pending.approval;
+    const decisions: Array<{ allowed: boolean; reason: string }> = [];
+    void pending.decision.then((decision) => decisions.push(decision));
     writeFileSync(executable, "tampered", "utf8");
     const verification = verifyResolvedAction(action);
     let code: string | null = null;
@@ -64,6 +67,8 @@ export const p0ActionScenarios: Record<string, ScenarioHandler> = {
     context.check("digest-verification-fails", !verification.ok, verification.reason);
     context.check("approval-revoked", storedApproval?.status === "revoked", `审批状态=${storedApproval?.status}`);
     context.check("action-changed-code", code === "ACTION_CHANGED", `错误码=${code ?? "none"}`);
+    context.check("native-waiter-released", decisions.length === 1 && decisions[0]?.allowed === false, `Native 收到拒绝结果=${decisions.length === 1 && decisions[0]?.allowed === false}`);
+    context.check("native-resumes", service.requireTask(task.id).status === "running", `任务状态=${service.requireTask(task.id).status}`);
     context.check("no-executor-call", executorCalls === 0, `executor 调用次数=${executorCalls}`);
     context.check("no-effect", store.listEffects(task.id).length === 0, "篡改后不得产生 effect");
     context.check("revalidation-event", events.some((event) => event.type === "approval.revalidation_failed"), "必须记录重新校验失败事件");
