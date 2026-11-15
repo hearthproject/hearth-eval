@@ -224,12 +224,14 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
   });
 
   app.get<{ Params: { id: string } }>("/api/experiments/:id", async (request, reply): Promise<ExperimentDetailResponse | FastifyReply> => {
+    reply.header("cache-control", "no-store");
     const experiment = store.getExperiment(request.params.id);
     if (!experiment) return reply.code(404).send({ error: "EXPERIMENT_NOT_FOUND", message: "实验不存在" });
     return {
       experiment,
       runs: store.listRuns(experiment.id),
-      summary: experiment.summary ?? runner.summarize(experiment.id),
+      summary: ["queued", "running", "grading"].includes(experiment.status)
+        ? runner.summarize(experiment.id) : experiment.summary ?? runner.summarize(experiment.id),
       events: store.listEvents({ experimentId: experiment.id, limit: 500 })
     };
   });
@@ -242,12 +244,13 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
     }
   });
 
-  app.get<{ Params: { id: string } }>("/api/runs/:id", async (request, reply): Promise<RunDetailResponse | FastifyReply> => {
+  app.get<{ Params: { id: string }; Querystring: { includeTask?: string } }>("/api/runs/:id", async (request, reply): Promise<RunDetailResponse | FastifyReply> => {
+    reply.header("cache-control", "no-store");
     const run = store.getRun(request.params.id);
     if (!run) return reply.code(404).send({ error: "RUN_NOT_FOUND", message: "评测运行不存在" });
     const storedCase = store.getCase(run.caseKey);
     let hearthTask: Record<string, unknown> | null = null;
-    if (run.hearthTaskId) {
+    if (run.hearthTaskId && request.query.includeTask !== "false") {
       try {
         hearthTask = asRecord(await client.getTask(run.hearthTaskId));
       } catch (error) {
@@ -264,6 +267,19 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
       artifacts: listRunArtifacts(repoRoot, artifactRoot, run.outputDir),
       hearthTask
     };
+  });
+
+  // Keep potentially slow Hearth reads separate from local run progress and grading.
+  app.get<{ Params: { id: string } }>("/api/runs/:id/task", async (request, reply) => {
+    reply.header("cache-control", "no-store");
+    const run = store.getRun(request.params.id);
+    if (!run) return reply.code(404).send({ error: "RUN_NOT_FOUND", message: "评测运行不存在" });
+    if (!run.hearthTaskId) return null;
+    try {
+      return await client.getTask(run.hearthTaskId);
+    } catch (error) {
+      return reply.code(502).send({ error: "TASK_UNAVAILABLE", message: error instanceof Error ? error.message : String(error) });
+    }
   });
 
   app.get("/api/reviews", async (_request, reply): Promise<ReviewsResponse> => {

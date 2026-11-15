@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api.ts";
+import { useLiveClock } from "../lib/useLiveClock.ts";
 import {
   EVENT_LABELS,
   FAMILY_LABELS,
@@ -25,6 +26,7 @@ import {
   formatDuration,
   formatPercent,
   isActiveExperiment,
+  isActiveRun,
   shortId
 } from "../lib/labels.ts";
 import {
@@ -50,11 +52,15 @@ export function ExperimentDetailPage() {
     queryKey: ["experiment", id],
     queryFn: () => api.experiment(id),
     enabled: Boolean(id),
+    refetchIntervalInBackground: true,
     refetchInterval: (query) => {
-      const status = query.state.data?.experiment.status;
-      return status && isActiveExperiment(status) ? 2_000 : false;
+      const data = query.state.data;
+      return !data || isActiveExperiment(data.experiment.status) || data.runs.some((run) => isActiveRun(run.status)) ? 1_000 : false;
     }
   });
+  const active = Boolean(experimentQuery.data && (isActiveExperiment(experimentQuery.data.experiment.status)
+    || experimentQuery.data.runs.some((run) => isActiveRun(run.status))));
+  const now = useLiveClock(active);
   const casesQuery = useQuery({ queryKey: ["cases", "all"], queryFn: () => api.cases() });
   const cancelMutation = useMutation({
     mutationFn: () => api.cancelExperiment(id),
@@ -80,7 +86,8 @@ export function ExperimentDetailPage() {
   const experiment = data.experiment;
   const summary = data.summary;
   const caseByKey = new Map((casesQuery.data?.cases ?? []).map((item) => [item.caseKey, item]));
-  const active = isActiveExperiment(experiment.status);
+  const progressByRun = new Map(data.events.filter((event) => event.runId && ["run.progress", "run.waiting"].includes(event.type))
+    .map((event) => [event.runId, event.payload]));
 
   return (
     <div className="page-stack experiment-detail-page">
@@ -97,7 +104,7 @@ export function ExperimentDetailPage() {
       />
 
       <section className="experiment-status-banner">
-        <div className="status-banner-main"><StatusPill status={experiment.status} /><span>{active ? "评测 Agent 正在推进实验，页面会自动刷新。" : `实验结束于 ${formatDateTime(experiment.finishedAt)}`}</span></div>
+        <div className="status-banner-main"><StatusPill status={experiment.status} /><span>{active ? `每秒自动同步 · 最近同步 ${formatDateTime(new Date(experimentQuery.dataUpdatedAt).toISOString())}` : `实验结束于 ${formatDateTime(experiment.finishedAt)}`}</span></div>
         <LifecycleRail status={experiment.status} />
       </section>
 
@@ -173,10 +180,10 @@ export function ExperimentDetailPage() {
                       <td><Link className="table-primary" to={`/runs/${run.id}`}>{caseSummary?.title ?? run.caseKey}<small>{run.caseKey}</small></Link></td>
                       <td><span className="executor-tag"><Cpu size={13} /> {executorLabel(run.executorId)}</span></td>
                       <td>#{run.repetition}</td>
-                      <td><StatusPill status={run.status} /></td>
+                      <td><StatusPill status={run.status} />{isActiveRun(run.status) && typeof progressByRun.get(run.id)?.nextAction === "string" && <small className="run-progress">{String(progressByRun.get(run.id)?.nextAction)}</small>}</td>
                       <td>{run.score === null ? "—" : run.score.toFixed(1)}</td>
-                      <td className="table-muted">{formatDuration(run.startedAt, run.finishedAt)}</td>
-                      <td>{run.hearthTaskId ? <code className="task-ref">{shortId(run.hearthTaskId, 12)}</code> : <span className="table-muted">—</span>}{run.error && <small className="error-line">{run.error}</small>}</td>
+                      <td className="table-muted">{formatDuration(run.startedAt, run.finishedAt, now)}</td>
+                      <td>{run.hearthTaskId ? <code className="task-ref" title={run.hearthTaskId}>{run.hearthTaskId}</code> : <span className="table-muted">—</span>}{run.error && <small className="error-line">{run.error}</small>}</td>
                       <td><Link className="table-arrow" to={`/runs/${run.id}`} aria-label="查看运行"><ArrowRight size={15} /></Link></td>
                     </tr>
                   );
@@ -205,7 +212,7 @@ export function ExperimentDetailPage() {
             {data.events.slice(-30).reverse().map((event) => (
               <div className="compact-event" key={event.seq}>
                 <i />
-                <div><strong>{EVENT_LABELS[event.type] ?? event.type}</strong><small>{formatDateTime(event.createdAt)}{event.runId ? ` · ${shortId(event.runId, 8)}` : ""}</small></div>
+                <div><strong>{EVENT_LABELS[event.type] ?? event.type}</strong>{typeof event.payload.nextAction === "string" && <span className="run-progress">{event.payload.nextAction}</span>}<small>{formatDateTime(event.createdAt)}{event.runId ? ` · ${shortId(event.runId, 8)}` : ""}</small></div>
               </div>
             ))}
           </div>

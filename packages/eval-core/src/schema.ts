@@ -69,7 +69,12 @@ export const graderConfigSchema = z.discriminatedUnion("kind", [
   jsonGraderSchema,
   csvGraderSchema,
   artifactCountGraderSchema,
-  stateGraderSchema
+  stateGraderSchema,
+  z.object({
+    kind: z.literal("mail_draft"),
+    path: z.string().trim().min(1),
+    expected: z.object({ To: z.string(), Subject: z.string(), Body: z.string() }).strict()
+  }).strict()
 ]);
 
 export const graderSpecSchema = z.object({

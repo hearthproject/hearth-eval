@@ -186,6 +186,36 @@ describe("EvalRunner", () => {
     }
   });
 
+  it("syncs intermediate progress and clears waiting when the task resumes", async () => {
+    const root = mkdtempSync(join(tmpdir(), "hearth-eval-progress-"));
+    const client = fakeAgent(root);
+    let status = "waiting_input";
+    let nextAction = "需要输入";
+    client.getTask.mockImplementation(async (id) => ({ task: { id, status, nextAction } }));
+    const store = new EvalStore(":memory:");
+    cleanup.push(() => store.close());
+    const loaded = loadCaseCatalog(root);
+    store.syncCases(loaded.cases);
+    const runner = new EvalRunner({ store, client, judge: fakeJudge(), repoRoot: root,
+      catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])), evalVersion: "test", pollIntervalMs: 5 });
+    const experiment = runner.createExperiment({ caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1,
+      runMode: "offline", autoJudge: false, autoRetry: false, maxConcurrency: 1 }, await runner.collectEnvironment(null));
+    runner.start(experiment.id);
+    try {
+      await vi.waitFor(() => expect(store.listRuns(experiment.id)[0]?.status).toBe("waiting"));
+      status = "running";
+      nextAction = "正在保存产物";
+      await vi.waitFor(() => expect(store.listRuns(experiment.id)[0]).toMatchObject({ status: "running", error: null }));
+      await vi.waitFor(() => expect(client.getTask.mock.calls.length).toBeGreaterThan(5));
+      const events = store.listEvents({ experimentId: experiment.id });
+      expect(events.filter((event) => event.type === "run.progress")).toHaveLength(1);
+      expect(events.find((event) => event.type === "run.progress")?.payload).toEqual({ status, nextAction });
+    } finally {
+      status = "completed";
+      await vi.waitFor(() => expect(store.listEvents({ experimentId: experiment.id }).some((event) => event.type === "run.finished")).toBe(true));
+    }
+  });
+
   it("submits, polls, and cancels a task through a custom adapter", async () => {
     const root = mkdtempSync(join(tmpdir(), "hearth-eval-adapter-"));
     const client = fakeAgent(root);

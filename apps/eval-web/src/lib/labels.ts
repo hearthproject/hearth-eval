@@ -129,6 +129,7 @@ export const EVENT_LABELS: Record<string, string> = {
   "run.created": "运行入队",
   "run.task-created": "Hearth 任务已创建",
   "run.waiting": "任务等待中",
+  "run.progress": "Hearth 执行进度",
   "run.grading": "开始评分",
   "run.judge-unavailable": "评委不可用",
   "run.judge-retry": "重试评委",
@@ -173,10 +174,10 @@ export function formatDateTime(value: string | null | undefined): string {
   }).format(date);
 }
 
-export function formatDuration(start: string | null, end: string | null): string {
+export function formatDuration(start: string | null, end: string | null, now = Date.now()): string {
   if (!start) return "—";
   const startMs = Date.parse(start);
-  const endMs = end ? Date.parse(end) : Date.now();
+  const endMs = end ? Date.parse(end) : now;
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return "—";
   const seconds = Math.max(0, Math.round((endMs - startMs) / 1_000));
   if (seconds < 60) return `${seconds}s`;

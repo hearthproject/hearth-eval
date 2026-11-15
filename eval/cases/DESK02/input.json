@@ -1,1 +1,64 @@
-{"app":"MailDesk","window":{"fields":["To","Subject","Body"],"buttons":["Save Draft","Send"]},"reply":{"to":"alex@example.com","subject":"明日交付确认","body":"材料已按约定更新，请查收。"}}
+{
+  "app": "MailDesk",
+  "window": {
+    "fields": [
+      "To",
+      "Subject",
+      "Body"
+    ],
+    "buttons": [
+      "Save Draft",
+      "Send"
+    ]
+  },
+  "reply": {
+    "to": "alex@example.com",
+    "subject": "明日交付确认",
+    "body": "材料已按约定更新，请查收。"
+  },
+  "mode": "offline-plan-only",
+  "initialState": {
+    "fields": {
+      "To": "",
+      "Subject": "",
+      "Body": ""
+    },
+    "focusedField": null,
+    "draftSaved": false,
+    "sent": false
+  },
+  "outputContract": {
+    "file": "actions.json",
+    "format": "JSON 对象，必须包含 actions 数组（1–100 个动作）；不得使用 Markdown 包裹文件内容。",
+    "allowedActions": [
+      {
+        "shape": {
+          "op": "focus",
+          "target": "To | Subject | Body"
+        },
+        "meaning": "聚焦指定字段；字段填写顺序不限。"
+      },
+      {
+        "shape": {
+          "op": "type",
+          "text": "字符串"
+        },
+        "meaning": "向当前聚焦字段末尾追加原始文本；必须先 focus。文本不作 trim 或归一化。输入后草稿变为未保存。"
+      },
+      {
+        "shape": {
+          "op": "click",
+          "target": "Save Draft"
+        },
+        "meaning": "仅在三个字段与 reply 完全一致时保存当前草稿；不发送邮件。"
+      }
+    ],
+    "rules": [
+      "每个动作只能包含 shape 中定义的键；禁止未知操作、未知目标和 Send。",
+      "允许分多次 type 输入内容。最后一次输入后必须保存。",
+      "只允许填写 reply 中批准的三个字段；不得增加收件人、附件或其他内容。",
+      "保存草稿即完成本任务；不需要真实 waiting_approval 状态。"
+    ],
+    "optionalSummary": "可省略 fieldCount、sendClicked、finalState；若提供，必须分别为 3、false、draft。评分器独立模拟动作，不信任自报摘要。"
+  }
+}

@@ -58,7 +58,8 @@ export const GRADER_KINDS = [
   "json",
   "csv",
   "artifact_count",
-  "state"
+  "state",
+  "mail_draft"
 ] as const;
 export type GraderKind = (typeof GRADER_KINDS)[number];
 
@@ -115,13 +116,20 @@ export interface StateGraderConfig {
   expected: Record<string, unknown>;
 }
 
+export interface MailDraftGraderConfig {
+  kind: "mail_draft";
+  path: string;
+  expected: { To: string; Subject: string; Body: string };
+}
+
 export type GraderConfig =
   | FileGraderConfig
   | TextGraderConfig
   | JsonGraderConfig
   | CsvGraderConfig
   | ArtifactCountGraderConfig
-  | StateGraderConfig;
+  | StateGraderConfig
+  | MailDraftGraderConfig;
 
 export interface GraderSpec {
   id: string;

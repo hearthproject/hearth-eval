@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Check,
@@ -26,6 +26,7 @@ type RunMode = "offline" | "live";
 
 export function NewExperimentPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [params] = useSearchParams();
   const casesQuery = useQuery({ queryKey: ["cases", "all"], queryFn: () => api.cases() });
   const systemQuery = useQuery({ queryKey: ["system"], queryFn: api.system });
@@ -69,7 +70,11 @@ export function NewExperimentPage() {
 
   const createMutation = useMutation({
     mutationFn: (request: CreateExperimentRequest) => api.createExperiment(request),
-    onSuccess: (experiment) => navigate(`/experiments/${experiment.id}`)
+    onSuccess: (experiment) => {
+      void queryClient.invalidateQueries({ queryKey: ["experiments"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      navigate(`/experiments/${experiment.id}`);
+    }
   });
 
   if (casesQuery.isLoading || systemQuery.isLoading) return <LoadingState text="正在准备实验参数" />;
