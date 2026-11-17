@@ -90,6 +90,30 @@ export interface SubmitReviewRequest {
 export interface CompareResponse extends ExperimentComparison {
   leftName: string | null;
   rightName: string | null;
+  caseDeltas: CaseDelta[];
+  caseVersionMismatches: string[];
+  environmentDifferences: EnvironmentDifference[];
+}
+
+export interface CaseDelta {
+  caseKey: string;
+  leftVersions: number[];
+  rightVersions: number[];
+  leftRuns: number;
+  rightRuns: number;
+  leftPassRate: number | null;
+  rightPassRate: number | null;
+  passRateDelta: number | null;
+  leftAvgScore: number | null;
+  rightAvgScore: number | null;
+  scoreDelta: number | null;
+  versionMismatch: boolean;
+}
+
+export interface EnvironmentDifference {
+  label: string;
+  left: string | number | null;
+  right: string | number | null;
 }
 
 export interface ReplayCaseResult {

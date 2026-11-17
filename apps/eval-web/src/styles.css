@@ -540,6 +540,11 @@ code { font-size: .82em; }
 .regression-verdict strong { font-size: 13px; }
 .regression-verdict small { color: var(--ink-faint); font-size: 10px; }
 .regression-reasons { margin: 0 0 12px; padding-left: 18px; color: var(--danger); font-size: 11px; line-height: 1.65; }
+.compare-diff-list { display: flex; flex-direction: column; gap: 8px; }
+.compare-diff-list > div { display: flex; align-items: center; gap: 9px; padding: 9px 11px; background: var(--warning-wash); border: 1px solid #eadab7; border-radius: 7px; font-size: 11px; }
+.compare-diff-list span { min-width: 110px; color: var(--warning); font-weight: 650; }
+.compare-diff-list strong { overflow: hidden; max-width: 280px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+.version-warning { display: block; margin-top: 3px; color: var(--danger); font-size: 9px; }
 .run-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 13px; margin-bottom: 12px; }
 .status-filter-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
 .status-filter-tabs button { min-height: 28px; padding: 0 9px; color: var(--ink-faint); background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 9px; font-weight: 650; }

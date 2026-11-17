@@ -13,6 +13,7 @@ import type {
   EvalSystemResponse,
   ExperimentComparison,
   ExperimentDetailResponse,
+  ExperimentRunRecord,
   ExperimentsResponse,
   ReviewQueueItem,
   ReviewsResponse,
@@ -355,6 +356,47 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
     if (left.config.repetitions !== right.config.repetitions) warnings.push("两侧重复次数不同。");
     if (!sameStrings(left.config.executorIds, right.config.executorIds)) warnings.push("两侧执行器集合不同。");
     if (!sameStrings(left.config.caseIds, right.config.caseIds)) warnings.push("两侧 case 集合不同。");
+    const environmentDifferences: CompareResponse["environmentDifferences"] = [];
+    const environmentChecks: Array<[string, string | number | null, string | number | null]> = [
+      ["Judge 模型", left.environment.judgeModel, right.environment.judgeModel],
+      ["Hearth 实例", left.environment.instanceId, right.environment.instanceId],
+      ["Hearth 地址", left.environment.hearthUrl, right.environment.hearthUrl],
+      ["Hearth Schema", left.environment.schemaVersion, right.environment.schemaVersion],
+      ["评测版本", left.environment.evalVersion, right.environment.evalVersion]
+    ];
+    for (const [label, leftValue, rightValue] of environmentChecks) {
+      if (leftValue === rightValue) continue;
+      environmentDifferences.push({ label, left: leftValue, right: rightValue });
+      warnings.push(`${label}不同：${leftValue ?? "无"} → ${rightValue ?? "无"}。`);
+    }
+    const leftByCase = groupRunsByCase(store.listRuns(left.id));
+    const rightByCase = groupRunsByCase(store.listRuns(right.id));
+    const caseKeys = [...new Set([...leftByCase.keys(), ...rightByCase.keys()])].sort();
+    const caseVersionMismatches: string[] = [];
+    const caseDeltas = caseKeys.map((caseKey) => {
+      const leftStats = caseStats(leftByCase.get(caseKey) ?? []);
+      const rightStats = caseStats(rightByCase.get(caseKey) ?? []);
+      const versionMismatch = leftStats.runs > 0 && rightStats.runs > 0
+        && !sameNumbers(leftStats.versions, rightStats.versions);
+      if (versionMismatch) {
+        caseVersionMismatches.push(caseKey);
+        warnings.push(`${caseKey} 的 case 版本不同：A ${leftStats.versions.join("/")} · B ${rightStats.versions.join("/")}`);
+      }
+      return {
+        caseKey,
+        leftVersions: leftStats.versions,
+        rightVersions: rightStats.versions,
+        leftRuns: leftStats.runs,
+        rightRuns: rightStats.runs,
+        leftPassRate: leftStats.passRate,
+        rightPassRate: rightStats.passRate,
+        passRateDelta: leftStats.passRate === null || rightStats.passRate === null ? null : round2(rightStats.passRate - leftStats.passRate),
+        leftAvgScore: leftStats.avgScore,
+        rightAvgScore: rightStats.avgScore,
+        scoreDelta: leftStats.avgScore === null || rightStats.avgScore === null ? null : round2(rightStats.avgScore - leftStats.avgScore),
+        versionMismatch
+      };
+    });
     const familyDeltas = EVAL_FAMILIES.map((family) => {
       const leftPassRate = leftSummary?.families.find((item) => item.family === family)?.passRate ?? null;
       const rightPassRate = rightSummary?.families.find((item) => item.family === family)?.passRate ?? null;
@@ -374,6 +416,9 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
       warnings,
       left: leftSummary,
       right: rightSummary,
+      caseDeltas,
+      caseVersionMismatches,
+      environmentDifferences,
       familyDeltas
     };
   });
@@ -485,6 +530,31 @@ function sameStrings(left: string[], right: string[]): boolean {
   if (left.length !== right.length) return false;
   const rightSet = new Set(right);
   return left.every((value) => rightSet.has(value));
+}
+
+function sameNumbers(left: number[], right: number[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function groupRunsByCase(runs: ExperimentRunRecord[]): Map<string, ExperimentRunRecord[]> {
+  const grouped = new Map<string, ExperimentRunRecord[]>();
+  for (const run of runs) grouped.set(run.caseKey, [...(grouped.get(run.caseKey) ?? []), run]);
+  return grouped;
+}
+
+function caseStats(runs: ExperimentRunRecord[]): { runs: number; versions: number[]; passRate: number | null; avgScore: number | null } {
+  const versions = [...new Set(runs.map((run) => run.caseVersion))].sort((left, right) => left - right);
+  const scores = runs.flatMap((run) => run.score === null ? [] : [run.score]);
+  return {
+    runs: runs.length,
+    versions,
+    passRate: runs.length === 0 ? null : round2(runs.filter((run) => run.status === "passed").length / runs.length * 100),
+    avgScore: scores.length === 0 ? null : round2(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+  };
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function executorOptions(payload: Record<string, unknown>): EvalExecutorOption[] {

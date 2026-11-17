@@ -184,9 +184,13 @@ describe("eval control plane", () => {
       leftExperimentId: harness.experiment.id,
       rightExperimentId: harness.otherExperiment.id,
       aligned: true,
+      caseVersionMismatches: [],
+      environmentDifferences: [],
       familyDeltas: expect.any(Array)
     });
     expect(compare.json().familyDeltas).toHaveLength(10);
+    expect(compare.json().caseDeltas).toHaveLength(2);
+    expect(compare.json().caseDeltas[0]).toMatchObject({ leftRuns: expect.any(Number), rightRuns: 0, versionMismatch: false });
     expect((await harness.app.inject({ method: "GET", url: "/api/compare?left=" })).statusCode).toBe(400);
 
     const events = await harness.app.inject({ method: "GET", url: `/api/events?experimentId=${harness.experiment.id}&limit=10` });

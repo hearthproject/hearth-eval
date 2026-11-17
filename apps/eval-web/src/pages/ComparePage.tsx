@@ -44,7 +44,7 @@ export function ComparePage() {
     <div className="page-stack compare-page">
       <PageHeader
         title="实验对比"
-        description="对齐 case、执行器与运行模式，观察通过率和任务族层面的质量变化。"
+        description="对齐 case 版本、Judge 模型与运行环境，观察任务族和 case 级质量变化。"
       />
 
       {experiments.length < 2 ? (
@@ -113,6 +113,23 @@ function CompareResult({ data }: { data: CompareResponse }) {
         <CompareMetric label="重试次数" left={data.left.retries} right={data.right.retries} suffix="" lowerIsBetter />
       </section>
 
+      {(data.environmentDifferences.length > 0 || data.caseVersionMismatches.length > 0) && (
+        <section className="panel">
+          <SectionHeader title="对齐条件差异" detail="差值解读前先确认这些变量" />
+          <div className="compare-diff-list">
+            {data.environmentDifferences.map((item) => (
+              <div key={item.label}><span>{item.label}</span><strong>{item.left ?? "无"}</strong><ArrowRight size={13} /><strong>{item.right ?? "无"}</strong></div>
+            ))}
+            {data.caseVersionMismatches.map((caseKey) => {
+              const row = data.caseDeltas.find((item) => item.caseKey === caseKey);
+              return (
+                <div key={`version-${caseKey}`}><span>Case 版本</span><strong>{caseKey} v{row?.leftVersions.join("/") ?? "?"}</strong><ArrowRight size={13} /><strong>v{row?.rightVersions.join("/") ?? "?"}</strong></div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="panel">
         <SectionHeader title="任务族差异" detail="B 相对 A 的通过率变化" />
         <div className="table-wrap">
@@ -128,6 +145,27 @@ function CompareResult({ data }: { data: CompareResponse }) {
                   <td className="delta-visual-col">
                     <div className="delta-track"><span className={row.delta === null ? "" : row.delta >= 0 ? "positive" : "negative"} style={{ width: `${row.delta === null ? 0 : Math.min(50, Math.abs(row.delta) / 2)}%` }} /></div>
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="panel">
+        <SectionHeader title="Case 级差异" detail="按 case 聚合执行器与重复运行" />
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th>Case</th><th>版本 A → B</th><th>A 通过率</th><th>B 通过率</th><th>通过率变化</th><th>均分变化</th></tr></thead>
+            <tbody>
+              {data.caseDeltas.map((row) => (
+                <tr key={row.caseKey}>
+                  <td><strong>{row.caseKey}</strong>{row.versionMismatch && <small className="version-warning">版本不一致</small>}</td>
+                  <td>{row.leftVersions.join("/") || "—"} → {row.rightVersions.join("/") || "—"}</td>
+                  <td>{formatPercent(row.leftPassRate)}</td>
+                  <td>{formatPercent(row.rightPassRate)}</td>
+                  <td><DeltaValue value={row.passRateDelta} suffix="pp" /></td>
+                  <td><DeltaValue value={row.scoreDelta} suffix="" /></td>
                 </tr>
               ))}
             </tbody>
