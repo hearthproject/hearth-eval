@@ -1,8 +1,10 @@
 import type {
+  AttributionCause,
   EvalDifficulty,
   EvalFamily,
   ExperimentRunStatus,
   ExperimentStatus,
+  GateLayer,
   ReviewTriggerKind
 } from "@hearth/eval-core";
 
@@ -43,6 +45,29 @@ export const RUN_MODE_LABELS: Record<string, string> = {
   offline: "离线",
   "live-optional": "可选在线",
   "live-only": "仅在线"
+};
+
+export const GATE_LAYER_LABELS: Record<GateLayer, string> = {
+  result: "结果评分",
+  trajectory: "轨迹门禁",
+  action: "动作门禁",
+  knowledge: "知识门禁",
+  system: "系统门禁",
+  safety: "安全门禁"
+};
+
+export const ATTRIBUTION_LABELS: Record<AttributionCause, string> = {
+  none: "无异常",
+  task_timeout: "任务超时",
+  tool_error: "工具错误",
+  approval_blocked: "审批阻塞",
+  artifact_missing: "产物缺失",
+  grader_failure: "评分失败",
+  judge_unavailable: "评委不可用",
+  model_error: "模型错误",
+  policy_denied: "策略拒绝",
+  trace_unavailable: "轨迹不可用",
+  unknown: "原因未知"
 };
 
 export const EXECUTOR_LABELS: Record<string, string> = {

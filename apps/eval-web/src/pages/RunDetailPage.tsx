@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Activity,
   ArrowLeft,
   Check,
   CheckCircle2,
@@ -13,16 +14,19 @@ import {
   Gauge,
   Info,
   RotateCcw,
+  ShieldCheck,
   TerminalSquare,
   X,
   XCircle
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import type { GraderResultRecord, RunArtifactView } from "@hearth/eval-core";
+import type { CaseManifest, EvalTrace, GraderResultRecord, RunArtifactView } from "@hearth/eval-core";
 import { api } from "../lib/api.ts";
 import { useLiveClock } from "../lib/useLiveClock.ts";
 import {
+  ATTRIBUTION_LABELS,
   EVENT_LABELS,
+  GATE_LAYER_LABELS,
   REASON_LABELS,
   executorLabel,
   formatBytes,
@@ -116,6 +120,8 @@ export function RunDetailPage() {
         <MetricCard label="Hearth 任务" value={<code className="full-task-id">{run.hearthTaskId ?? "—"}</code>} detail={taskQuery.error ? "任务详情暂不可用，运行状态继续同步" : task ? `状态：${String(task.status ?? "unknown")}` : run.hearthTaskId ? "正在同步任务详情" : "尚未创建"} icon={<ExternalLink size={16} />} />
       </section>
 
+      <GateMatrix manifest={data.manifest} graders={data.graders} />
+
       <div className="run-layout">
         <div className="run-main">
           <section className="panel">
@@ -140,6 +146,8 @@ export function RunDetailPage() {
               </div>
             )}
           </section>
+
+          <TraceSummary trace={data.trace} />
 
           <section className="panel">
             <SectionHeader title="评分明细" detail={`${data.graders.length} 项 · ${evidenceCount} 条证据`} action={<CheckCircle2 size={17} />} />
@@ -246,6 +254,86 @@ export function RunDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function GateMatrix({ manifest, graders }: { manifest: CaseManifest | null; graders: GraderResultRecord[] }) {
+  if (!manifest) return null;
+  const layers = ["result", "trajectory", "action", "knowledge", "system", "safety"] as const;
+  const grouped = layers
+    .map((layer) => ({
+      layer,
+      criteria: manifest.criteria.filter((criterion) => (criterion.layer ?? "result") === layer)
+    }))
+    .filter((group) => group.criteria.length > 0);
+  return (
+    <section className="panel gate-panel">
+      <SectionHeader title="门禁矩阵" detail="结果评分与独立门禁分层展示" action={<ShieldCheck size={17} />} />
+      <div className="gate-matrix">
+        {grouped.map((group) => {
+          const weighted = group.layer === "result";
+          return (
+            <article className={`gate-column ${weighted ? "gate-weighted" : "gate-blocking"}`} key={group.layer}>
+              <header>
+                <strong>{GATE_LAYER_LABELS[group.layer]}</strong>
+                <span>{weighted ? "加权 100" : "独立 · 0 分"}</span>
+              </header>
+              <div className="gate-rows">
+                {group.criteria.map((criterion) => {
+                  const grader = graders.find((item) => item.criterionId === criterion.id);
+                  const state = grader?.passed === true ? "passed" : grader?.passed === false ? "failed" : grader ? "unknown" : "missing";
+                  return (
+                    <div className={`gate-row gate-${state}`} key={criterion.id}>
+                      <span className="gate-dot" />
+                      <div><strong>{criterion.label}</strong><small>{criterion.source} · {criterion.severity === "blocker" ? "阻断" : "计分"} · {criterion.points} 分</small></div>
+                      <span className="gate-state">{state === "passed" ? "通过" : state === "failed" ? "失败" : state === "unknown" ? "待定" : "未执行"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function TraceSummary({ trace }: { trace: EvalTrace | null }) {
+  if (!trace) {
+    return (
+      <section className="panel">
+        <SectionHeader title="轨迹归因" detail="暂无轨迹" />
+        <EmptyState title="尚未取得 Hearth 轨迹" description="任务运行后会自动拉取并持久化 trace。" />
+      </section>
+    );
+  }
+  const stats = [
+    ["步骤", trace.steps],
+    ["工具调用", trace.toolCalls],
+    ["审批", trace.approvals],
+    ["效果", trace.effects],
+    ["产物", trace.artifacts],
+    ["错误", trace.errors.length]
+  ] as const;
+  return (
+    <section className="panel">
+      <SectionHeader title="轨迹归因" detail={trace.truncated ? "轨迹已截断" : `任务 ${shortId(trace.taskId, 18)}`} action={<Activity size={17} />} />
+      <div className={`attribution-bar ${trace.primaryCause === "none" ? "attribution-ok" : "attribution-bad"}`}>
+        <strong>{ATTRIBUTION_LABELS[trace.primaryCause] ?? trace.primaryCause}</strong>
+        <span>{trace.primaryCause === "none" ? "未发现主因异常" : "主因来自轨迹归因，请结合证据复核"}</span>
+      </div>
+      <div className="trace-stat-grid">
+        {stats.map(([label, value]) => (
+          <div key={label}><span>{label}</span><strong>{value}</strong></div>
+        ))}
+      </div>
+      {trace.errors.length > 0 && (
+        <div className="trace-error-list">
+          {trace.errors.map((error) => <code key={`${error.seq}-${error.message}`}>#{error.seq} {error.message}</code>)}
+        </div>
+      )}
+    </section>
   );
 }
 
