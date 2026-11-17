@@ -524,6 +524,15 @@ code { font-size: .82em; }
 .diagnostic-card span { overflow: hidden; color: #856a32; font-family: monospace; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .diagnostic-card strong { font-size: 20px; font-weight: 600; }
 .diagnostic-card small { overflow: hidden; color: var(--ink-faint); font-family: monospace; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.evidence-metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+.evidence-metric-card { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.evidence-metric-card span { overflow: hidden; color: var(--ink-faint); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.evidence-metric-card strong { font-size: 21px; font-weight: 600; letter-spacing: -.03em; }
+.evidence-metric-card small { overflow: hidden; color: var(--ink-faint); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.evidence-metric-card .metric-good { color: var(--success); }
+.evidence-metric-card .metric-bad { color: var(--danger); }
+.evidence-metric-card .metric-empty { color: var(--ink-faint); }
+.calibration-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .run-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 13px; margin-bottom: 12px; }
 .status-filter-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
 .status-filter-tabs button { min-height: 28px; padding: 0 9px; color: var(--ink-faint); background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 9px; font-weight: 650; }
@@ -1095,6 +1104,7 @@ a.overview-name:hover { color: var(--accent-deep); }
   .dashboard-grid { grid-template-columns: minmax(0, 1.35fr) minmax(280px, .9fr); }
   .experiment-builder { grid-template-columns: minmax(0, 1fr) 285px; }
   .diagnostic-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .evidence-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .command-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 

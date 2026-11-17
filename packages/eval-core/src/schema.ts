@@ -3,6 +3,7 @@ import {
   CASE_LIFECYCLES,
   EVAL_DIFFICULTIES,
   EVAL_FAMILIES,
+  EVAL_METRIC_KEYS,
   EVAL_RUN_MODES,
   GATE_LAYERS,
   GRADER_KINDS
@@ -113,6 +114,7 @@ export const criterionSchema = z.object({
   points: z.number().int().nonnegative().max(100),
   severity: z.enum(["blocker", "scored"]),
   layer: z.enum(GATE_LAYERS).optional(),
+  metric: z.enum(EVAL_METRIC_KEYS).optional(),
   graderId: z.string().trim().min(1).optional(),
   rubric: z.string().trim().min(1).max(4000).optional()
 }).strict();

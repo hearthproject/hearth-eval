@@ -10,6 +10,7 @@ import type {
   ExperimentSummary,
   GraderResultRecord,
   HumanReviewRecord,
+  MetricSummary,
   ReviewTriggerKind
 } from "./types.ts";
 
@@ -64,6 +65,7 @@ export interface RunDetailResponse {
   events: EvalEventRecord[];
   artifacts: RunArtifactView[];
   trace: EvalTrace | null;
+  metrics: MetricSummary[];
   hearthTask: Record<string, unknown> | null;
 }
 

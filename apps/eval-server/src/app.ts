@@ -285,6 +285,7 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
       events: store.listEvents({ runId: run.id, limit: 500 }),
       artifacts: listRunArtifacts(repoRoot, artifactRoot, run.outputDir),
       trace: store.getTrace(run.id),
+      metrics: runner.metricsForRun(run.id),
       hearthTask
     };
   });

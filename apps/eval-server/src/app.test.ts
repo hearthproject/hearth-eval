@@ -287,6 +287,7 @@ async function createHarness() {
     start: () => undefined,
     cancel: (id: string) => store.getExperiment(id),
     summarize: (id: string) => store.getExperiment(id)?.summary ?? null,
+    metricsForRun: () => [],
     review: (runId: string, decision: "pass" | "fail" | "unknown", reviewer = "local", note = "") => {
       const now = new Date().toISOString();
       const record: HumanReviewRecord = {
@@ -435,6 +436,18 @@ function makeSummary(family: ExperimentSummary["families"][number]["family"], ca
       passRate,
       avgScore
     }],
+    metrics: [],
+    judgeCalibration: {
+      expectedRuns: 0,
+      judgedRuns: 0,
+      coverage: null,
+      reviewedRuns: 0,
+      agreement: null,
+      falsePass: 0,
+      falseFail: 0,
+      lowConfidenceRuns: 0,
+      lowConfidenceRate: null
+    },
     failureDiagnostics: [],
     generatedAt: new Date().toISOString()
   };

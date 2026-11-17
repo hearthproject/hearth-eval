@@ -29,7 +29,12 @@ import {
   type JudgeOutcome,
   type EvalTrace,
   type TraceObservation,
-  type RawTraceEvent
+  type RawTraceEvent,
+  type MetricSummary,
+  type JudgeCalibrationSummary,
+  aggregateMetrics,
+  emptyMetrics,
+  metricSummaries
 } from "@hearth/eval-core";
 import { resolveCaseInput, type LoadedCase } from "@hearth/eval-core/node";
 import { isTerminalTaskStatus, type AgentAdapter, type AgentTaskView } from "./agent-adapter.ts";
@@ -254,7 +259,7 @@ export class EvalRunner {
     const durations = runs.flatMap((run) => run.startedAt && run.finishedAt
       ? [Math.max(0, Date.parse(run.finishedAt) - Date.parse(run.startedAt))]
       : []);
-    const metrics = runs.map((run) => this.store.getRunMetrics(run.id)).filter((metric): metric is RunMetrics => Boolean(metric));
+    const runMetrics = runs.map((run) => this.store.getRunMetrics(run.id)).filter((metric): metric is RunMetrics => Boolean(metric));
     return {
       experimentId,
       totalRuns: runs.length,
@@ -265,13 +270,96 @@ export class EvalRunner {
       passRate: runs.length === 0 ? null : round(passed / runs.length * 100),
       avgScore: scores.length === 0 ? null : round(scores.reduce((sum, score) => sum + score, 0) / scores.length),
       avgDurationMs: durations.length === 0 ? null : Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length),
-      inputTokens: metrics.reduce((sum, metric) => sum + metric.inputTokens, 0),
-      outputTokens: metrics.reduce((sum, metric) => sum + metric.outputTokens, 0),
-      retries: metrics.reduce((sum, metric) => sum + metric.retryCount, 0),
-      approvals: metrics.reduce((sum, metric) => sum + metric.approvalCount, 0),
+      inputTokens: runMetrics.reduce((sum, metric) => sum + metric.inputTokens, 0),
+      outputTokens: runMetrics.reduce((sum, metric) => sum + metric.outputTokens, 0),
+      retries: runMetrics.reduce((sum, metric) => sum + metric.retryCount, 0),
+      approvals: runMetrics.reduce((sum, metric) => sum + metric.approvalCount, 0),
       families: families.length > 0 ? families : emptyFamilySummaries(),
+      metrics: aggregateMetrics(runs.map((run) => {
+        const loaded = this.catalog.get(run.caseKey);
+        return loaded ? this.runMetricSummary(run, loaded) : emptyMetrics();
+      })),
+      judgeCalibration: this.judgeCalibration(runs),
       failureDiagnostics: diagnosticGroups(runs),
       generatedAt: this.now().toISOString()
+    };
+  }
+
+  metricsForRun(runId: string): MetricSummary[] {
+    const run = this.store.getRun(runId);
+    const loaded = run ? this.catalog.get(run.caseKey) : undefined;
+    return run && loaded ? this.runMetricSummary(run, loaded) : emptyMetrics();
+  }
+
+  private runMetricSummary(run: ExperimentRunRecord, loaded: LoadedCase): MetricSummary[] {
+    const records = this.store.listGraderResults(run.id);
+    const deterministic = deterministicFromRecords(records);
+    const judge = judgeFromRecords(records);
+    const review = this.store.getHumanReview(run.id);
+    const trace = this.store.getTrace(run.id);
+    const runMetrics = this.store.getRunMetrics(run.id);
+    const durationMs = run.startedAt
+      ? Math.max(0, Date.parse(run.finishedAt ?? this.now().toISOString()) - Date.parse(run.startedAt))
+      : null;
+    const tokens = runMetrics ? runMetrics.inputTokens + runMetrics.outputTokens : null;
+    const observation: TraceObservation | null = trace || durationMs !== null || tokens !== null
+      ? {
+        steps: trace?.steps ?? 0,
+        toolCalls: trace?.toolCalls ?? 0,
+        approvals: trace?.approvals ?? 0,
+        effects: trace?.effects ?? 0,
+        errors: trace?.errors.length ?? 0,
+        durationMs,
+        tokens
+      }
+      : null;
+    return metricSummaries({
+      manifest: loaded.manifest,
+      verdict: run.status === "passed" ? "passed" : run.status === "failed" || run.status === "error" ? "failed" : "needs_review",
+      deterministic,
+      judge,
+      humanDecision: review?.decision ?? null,
+      gates: gateOutcomes(loaded.manifest, deterministic, judge),
+      observation,
+      timeoutMs: loaded.manifest.timeoutMs
+    });
+  }
+
+  private judgeCalibration(runs: ExperimentRunRecord[]): JudgeCalibrationSummary {
+    let expectedRuns = 0;
+    let judgedRuns = 0;
+    let reviewedRuns = 0;
+    let agreed = 0;
+    let falsePass = 0;
+    let falseFail = 0;
+    let lowConfidenceRuns = 0;
+    for (const run of runs) {
+      const loaded = this.catalog.get(run.caseKey);
+      const experiment = this.store.getExperiment(run.experimentId);
+      const judgeCriteria = loaded?.manifest.criteria.filter((criterion) => criterion.source === "judge") ?? [];
+      const judgeRecords = this.store.listGraderResults(run.id).filter((result) => result.source === "judge");
+      if (experiment?.config.autoJudge && judgeCriteria.length > 0) expectedRuns += 1;
+      if (judgeRecords.length > 0) judgedRuns += 1;
+      if (judgeRecords.some((result) => result.confidence !== null && result.confidence < 0.7)) lowConfidenceRuns += 1;
+      const review = this.store.getHumanReview(run.id);
+      if (!review || review.decision === "unknown" || judgeRecords.length === 0) continue;
+      reviewedRuns += 1;
+      const judgePassed = judgeRecords.every((result) => result.passed);
+      const humanPassed = review.decision === "pass";
+      if (judgePassed === humanPassed) agreed += 1;
+      else if (judgePassed) falsePass += 1;
+      else falseFail += 1;
+    }
+    return {
+      expectedRuns,
+      judgedRuns,
+      coverage: expectedRuns === 0 ? null : round(judgedRuns / expectedRuns * 100),
+      reviewedRuns,
+      agreement: reviewedRuns === 0 ? null : round(agreed / reviewedRuns * 100),
+      falsePass,
+      falseFail,
+      lowConfidenceRuns,
+      lowConfidenceRate: judgedRuns === 0 ? null : round(lowConfidenceRuns / judgedRuns * 100)
     };
   }
 

@@ -154,6 +154,21 @@ export function RunDetailPage() {
           </section>
 
           <section className="panel">
+            <SectionHeader title="八项指标" detail={`${data.metrics.length} 个评测维度`} />
+            <div className="evidence-metric-grid">
+              {data.metrics.map((metric) => (
+                <div className="evidence-metric-card" key={metric.key}>
+                  <span>{metric.label}</span>
+                  <strong className={metric.score === null ? "metric-empty" : metric.score >= 80 ? "metric-good" : "metric-bad"}>
+                    {metric.score === null ? "—" : metric.score.toFixed(1)}
+                  </strong>
+                  <small>{metric.detail}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel">
             <SectionHeader title="产物" detail={`${data.artifacts.length} 个文件 · ${run.outputDir}`} action={<FileText size={17} />} />
             {data.artifacts.length === 0 ? <EmptyState title="没有产物" description="任务可能尚未输出文件，或产物目录为空。" /> : (
               <div className="artifact-list">

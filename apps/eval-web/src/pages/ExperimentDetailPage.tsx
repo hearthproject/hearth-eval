@@ -149,6 +149,35 @@ export function ExperimentDetailPage() {
         </section>
       </div>
 
+      {summary && (
+        <div className="detail-grid">
+          <section className="panel">
+            <SectionHeader title="八项指标" detail="证据完整度与维度得分" />
+            <div className="evidence-metric-grid">
+              {(summary.metrics ?? []).map((metric) => (
+                <div className="evidence-metric-card" key={metric.key}>
+                  <span>{metric.label}</span>
+                  <strong className={metric.score === null ? "metric-empty" : metric.score >= 80 ? "metric-good" : "metric-bad"}>
+                    {metric.score === null ? "—" : metric.score.toFixed(1)}
+                  </strong>
+                  <small>{metric.detail}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel">
+            <SectionHeader title="Judge 校准" detail="与人工复核结论对齐" />
+            <div className="diagnostic-grid calibration-grid">
+              <div className="diagnostic-card"><span>Judge 覆盖率</span><strong>{formatPercent(summary.judgeCalibration?.coverage ?? null)}</strong><small>{summary.judgeCalibration?.judgedRuns ?? 0} / {summary.judgeCalibration?.expectedRuns ?? 0} 次运行</small></div>
+              <div className="diagnostic-card"><span>一致率</span><strong>{formatPercent(summary.judgeCalibration?.agreement ?? null)}</strong><small>{summary.judgeCalibration?.reviewedRuns ?? 0} 个已复核样本</small></div>
+              <div className="diagnostic-card"><span>误判通过</span><strong>{summary.judgeCalibration?.falsePass ?? 0}</strong><small>Judge 通过但人工否决</small></div>
+              <div className="diagnostic-card"><span>低置信度</span><strong>{formatPercent(summary.judgeCalibration?.lowConfidenceRate ?? null)}</strong><small>{summary.judgeCalibration?.lowConfidenceRuns ?? 0} 次运行</small></div>
+            </div>
+          </section>
+        </div>
+      )}
+
       {summary && summary.failureDiagnostics.length > 0 && (
         <section className="panel failure-panel">
           <SectionHeader title="失败诊断" detail="按错误类型聚类" />

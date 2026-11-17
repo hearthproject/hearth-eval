@@ -22,6 +22,18 @@ export const GATE_LAYERS = [
 ] as const;
 export type GateLayer = (typeof GATE_LAYERS)[number];
 
+export const EVAL_METRIC_KEYS = [
+  "task_success",
+  "tool_selection",
+  "recovery",
+  "arguments",
+  "knowledge_grounding",
+  "latency",
+  "cost",
+  "security"
+] as const;
+export type EvalMetricKey = (typeof EVAL_METRIC_KEYS)[number];
+
 export const CASE_LIFECYCLES = ["active", "archived"] as const;
 export type CaseLifecycle = (typeof CASE_LIFECYCLES)[number];
 
@@ -181,6 +193,7 @@ export interface EvalCriterion {
   points: number;
   severity: "blocker" | "scored";
   layer?: GateLayer;
+  metric?: EvalMetricKey;
   graderId?: string;
   rubric?: string;
 }
@@ -332,8 +345,30 @@ export interface ExperimentSummary {
   retries: number;
   approvals: number;
   families: FamilySummary[];
+  metrics: MetricSummary[];
+  judgeCalibration: JudgeCalibrationSummary;
   failureDiagnostics: Array<{ kind: string; count: number; runIds: string[] }>;
   generatedAt: string;
+}
+
+export interface MetricSummary {
+  key: EvalMetricKey;
+  label: string;
+  score: number | null;
+  sampleSize: number;
+  detail: string;
+}
+
+export interface JudgeCalibrationSummary {
+  expectedRuns: number;
+  judgedRuns: number;
+  coverage: number | null;
+  reviewedRuns: number;
+  agreement: number | null;
+  falsePass: number;
+  falseFail: number;
+  lowConfidenceRuns: number;
+  lowConfidenceRate: number | null;
 }
 
 export interface ExperimentComparison {

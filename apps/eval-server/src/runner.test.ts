@@ -74,6 +74,11 @@ describe("EvalRunner", () => {
     expect(store.listGraderResults(run?.id ?? "").map((item) => item.source)).toEqual(["deterministic", "deterministic", "judge"]);
     expect(store.getRunMetrics(run?.id ?? "")).toEqual({ inputTokens: 42, outputTokens: 7, retryCount: 0, approvalCount: 1 });
     expect(store.getExperiment(experiment.id)?.summary).toMatchObject({ totalRuns: 1, passed: 1, passRate: 100, avgScore: 100 });
+    expect(store.getExperiment(experiment.id)?.summary?.metrics.find((metric) => metric.key === "task_success")).toMatchObject({ score: 100, sampleSize: 1 });
+    expect(runner.metricsForRun(run?.id ?? "").find((metric) => metric.key === "arguments")?.score).toBe(100);
+    expect(store.getExperiment(experiment.id)?.summary?.judgeCalibration).toMatchObject({
+      expectedRuns: 1, judgedRuns: 1, coverage: 100, reviewedRuns: 0, agreement: null
+    });
     expect(store.listEvents({ experimentId: experiment.id }).map((event) => event.type)).toContain("run.finished");
   });
 
@@ -110,6 +115,9 @@ describe("EvalRunner", () => {
     expect(store.getRun(run?.id ?? "")?.status).toBe("passed");
     expect(store.getRun(run?.id ?? "")?.reviewReasons).toContain("sampled");
     expect(store.getHumanReview(run?.id ?? "")?.decision).toBe("pass");
+    expect(store.getExperiment(experiment.id)?.summary?.judgeCalibration).toMatchObject({
+      reviewedRuns: 1, agreement: 100, falsePass: 0, falseFail: 0
+    });
   });
 
   it("resumes an in-flight run by polling its existing task", async () => {
