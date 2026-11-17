@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 2,
+  "id": "RES-04",
+  "version": 1,
+  "title": "研究缺口与下一轮检索",
+  "family": "research",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "基于现有材料识别证据缺口，提出可执行的下一轮检索问题。",
+  "goal": "读取 input.json，生成 result.json。gaps 至少三条，覆盖样本、地域和时效；nextQueries 至少三条且与缺口一一对应；不得把缺口写成已证实结论。",
+  "tags": [
+    "gap-analysis",
+    "query-planning"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "gaps",
+          "nextQueries",
+          "summary"
+        ],
+        "minArrayLength": {
+          "gaps": 3,
+          "nextQueries": 3
+        },
+        "keyedArrays": [
+          {
+            "path": "gaps",
+            "key": "id",
+            "expected": {
+              "g1": {
+                "area": "样本"
+              },
+              "g2": {
+                "area": "地域"
+              },
+              "g3": {
+                "area": "时效"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "缺口分类清晰且不越界成结论；检索问题具体、可执行，并与缺口对应。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对缺口与检索计划是否一一对应。",
+    "sampleRate": 0.1
+  }
+}

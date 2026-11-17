@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "id": "RES-02",
+  "version": 1,
+  "title": "研究证据卡",
+  "family": "research",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "把访谈和文档摘录整理成带来源、结论与置信度的证据卡。",
+  "goal": "读取 input.json 的原始材料，生成 result.json。cards 至少三条，每条包含 id、source、claim、confidence（high/medium/low）；claim 必须能被 source 支持；confidence 低的条目要说明样本限制。",
+  "tags": [
+    "evidence",
+    "research",
+    "confidence"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "question",
+          "cards",
+          "limitation",
+          "summary"
+        ],
+        "minArrayLength": {
+          "cards": 3
+        },
+        "keyedArrays": [
+          {
+            "path": "cards",
+            "key": "id",
+            "expected": {
+              "e1": {
+                "source": "访谈 A",
+                "confidence": "medium"
+              },
+              "e2": {
+                "source": "访谈 B",
+                "confidence": "medium"
+              },
+              "e3": {
+                "source": "工单统计",
+                "confidence": "high"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "knowledge_grounding",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "每条结论都能回到具体来源；置信度与证据强度匹配；明确说明样本限制。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "抽查证据卡与原始引用的对应关系。",
+    "sampleRate": 0.1
+  }
+}

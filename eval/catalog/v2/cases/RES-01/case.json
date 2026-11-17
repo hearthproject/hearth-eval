@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 2,
+  "id": "RES-01",
+  "version": 1,
+  "title": "竞品能力矩阵",
+  "family": "research",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "从三份竞品材料中抽取定价、优势与风险，输出可比较的矩阵。",
+  "goal": "读取 input.json 的三份竞品材料，生成 matrix.csv。表头为 competitor,pricing,strength,risk,source，至少三行；每家竞品的价格、优势、风险必须来自对应 source，不得把推测写成事实。",
+  "tags": [
+    "competitive",
+    "matrix",
+    "sources"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "matrix.csv"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 matrix.csv",
+      "config": {
+        "kind": "file",
+        "path": "matrix.csv",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "表格结构与关键行正确",
+      "config": {
+        "kind": "csv",
+        "path": "matrix.csv",
+        "requiredColumns": [
+          "competitor",
+          "pricing",
+          "strength",
+          "risk",
+          "source"
+        ],
+        "minRows": 3,
+        "requiredValues": [
+          {
+            "column": "competitor",
+            "equals": "Beta"
+          },
+          {
+            "column": "risk",
+            "equals": "审计日志需高价版"
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 matrix.csv",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "knowledge_grounding",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "三家竞品信息完整且逐条可追溯到来源；价格与风险没有被混淆；矩阵可直接用于比较。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对每行来源与原始材料。",
+    "sampleRate": 0.1
+  }
+}

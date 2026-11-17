@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "id": "RES-03",
+  "version": 1,
+  "title": "发布稿事实核查",
+  "family": "research",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "核对发布稿中的数字、引用与绝对化表述，输出逐条判定。",
+  "goal": "读取 input.json 的发布稿和来源，生成 result.json。verdicts 至少覆盖三个 claim，每条包含 id、claim、verdict（supported/unsupported/misleading）和evidence；把“唯一”“100%”等无来源绝对化表述标为 unsupported 或 misleading。",
+  "tags": [
+    "fact-check",
+    "claims",
+    "sources"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "verdicts",
+          "overall"
+        ],
+        "minArrayLength": {
+          "verdicts": 3
+        },
+        "keyedArrays": [
+          {
+            "path": "verdicts",
+            "key": "id",
+            "expected": {
+              "c1": {
+                "verdict": "unsupported"
+              },
+              "c2": {
+                "verdict": "misleading"
+              },
+              "c3": {
+                "verdict": "supported"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "knowledge_grounding",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "三条声明均逐条判定并引用来源；绝对化表述被识别；结论可直接指导发布修订。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对事实判定与来源证据。",
+    "sampleRate": 0.1
+  }
+}

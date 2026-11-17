@@ -1,0 +1,23 @@
+{
+  "verdicts": [
+    {
+      "id": "c1",
+      "claim": "市场唯一支持全部模型",
+      "verdict": "unsupported",
+      "evidence": "没有市场范围与竞品清单来源"
+    },
+    {
+      "id": "c2",
+      "claim": "客户满意度 100%",
+      "verdict": "misleading",
+      "evidence": "来源 s2 为 42 人样本、91% 满意度"
+    },
+    {
+      "id": "c3",
+      "claim": "支持 10 种工具集成",
+      "verdict": "supported",
+      "evidence": "来源 s1 产品文档列出 10 种集成"
+    }
+  ],
+  "overall": "发布稿含两处无依据表述，需修改后发布。"
+}

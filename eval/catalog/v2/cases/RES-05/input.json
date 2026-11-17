@@ -1,0 +1,26 @@
+{
+  "topic": "AI 生成内容披露要求",
+  "sources": [
+    {
+      "id": "s1",
+      "jurisdiction": "EU",
+      "date": "2026-08-02",
+      "change": "AI 生成内容需标注",
+      "url": "eu.example/ai-act-50"
+    },
+    {
+      "id": "s2",
+      "jurisdiction": "CN",
+      "date": "2026-09-01",
+      "change": "深度合成内容需显著标识",
+      "url": "cac.example/labeling"
+    },
+    {
+      "id": "s3",
+      "jurisdiction": "US-CA",
+      "date": "2026-10-15",
+      "change": "选举广告披露合成内容",
+      "url": "ca.example/ab-2655"
+    }
+  ]
+}

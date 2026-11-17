@@ -1,0 +1,37 @@
+{
+  "gaps": [
+    {
+      "id": "g1",
+      "area": "样本",
+      "detail": "仅 12 家中国企业和 2 份日本报告"
+    },
+    {
+      "id": "g2",
+      "area": "地域",
+      "detail": "东南亚缺少 2026 年数据"
+    },
+    {
+      "id": "g3",
+      "area": "时效",
+      "detail": "现有公开报告多发布于 2025 年"
+    }
+  ],
+  "nextQueries": [
+    {
+      "id": "q1",
+      "gapId": "g1",
+      "query": "APAC enterprise agent pilot survey 2026 sample"
+    },
+    {
+      "id": "q2",
+      "gapId": "g2",
+      "query": "Southeast Asia AI agent adoption 2026 report"
+    },
+    {
+      "id": "q3",
+      "gapId": "g3",
+      "query": "2026 APAC agent deployment statistics"
+    }
+  ],
+  "summary": "现有证据不足以比较亚太区域采用率，需要补样本、地域和时效数据。"
+}

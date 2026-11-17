@@ -1,0 +1,25 @@
+{
+  "question": "客户为什么放弃试用？",
+  "cards": [
+    {
+      "id": "e1",
+      "source": "访谈 A",
+      "claim": "SSO 配置耗时导致流失",
+      "confidence": "medium"
+    },
+    {
+      "id": "e2",
+      "source": "访谈 B",
+      "claim": "权限模型复杂是主要障碍",
+      "confidence": "medium"
+    },
+    {
+      "id": "e3",
+      "source": "工单统计",
+      "claim": "SSO 配置是高频问题",
+      "confidence": "high"
+    }
+  ],
+  "limitation": "访谈样本仅两人，需扩大样本后确认因果。",
+  "summary": "证据共同指向 SSO 与权限配置复杂度，但因果判断仍需更多样本。"
+}

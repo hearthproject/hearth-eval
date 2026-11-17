@@ -1,0 +1,26 @@
+{
+  "market": "企业 AI 工作台",
+  "competitors": [
+    {
+      "name": "Alpha",
+      "pricing": "$30/user/mo",
+      "strength": "模板丰富",
+      "risk": "数据驻留选项少",
+      "source": "alpha.example/pricing"
+    },
+    {
+      "name": "Beta",
+      "pricing": "按用量计费",
+      "strength": "自动化强",
+      "risk": "审计日志需高价版",
+      "source": "beta.example/plans"
+    },
+    {
+      "name": "Gamma",
+      "pricing": "¥199/user/mo",
+      "strength": "本地化好",
+      "risk": "生态集成少",
+      "source": "gamma.example/docs"
+    }
+  ]
+}

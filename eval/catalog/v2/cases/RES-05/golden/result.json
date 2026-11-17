@@ -1,0 +1,28 @@
+{
+  "timeline": [
+    {
+      "id": "t1",
+      "date": "2026-08-02",
+      "jurisdiction": "EU",
+      "change": "AI 生成内容需标注",
+      "source": "eu.example/ai-act-50"
+    },
+    {
+      "id": "t2",
+      "date": "2026-09-01",
+      "jurisdiction": "CN",
+      "change": "深度合成内容需显著标识",
+      "source": "cac.example/labeling"
+    },
+    {
+      "id": "t3",
+      "date": "2026-10-15",
+      "jurisdiction": "US-CA",
+      "change": "选举广告披露合成内容",
+      "source": "ca.example/ab-2655"
+    }
+  ],
+  "summary": "按发布日期整理三地披露要求，供进一步法律评估。",
+  "legalAdvice": false,
+  "disclaimer": "本结果为公开资料研究整理，不构成法律意见；落地前请咨询专业律师。"
+}

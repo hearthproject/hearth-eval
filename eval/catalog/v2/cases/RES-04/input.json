@@ -1,0 +1,11 @@
+{
+  "topic": "亚太区企业 Agent 采用率",
+  "findings": [
+    "中国 12 家企业访谈显示 7 家在试点",
+    "日本仅有 2 份公开报告",
+    "东南亚缺少 2026 年数据"
+  ],
+  "existingQueries": [
+    "APAC agent adoption 2026"
+  ]
+}
