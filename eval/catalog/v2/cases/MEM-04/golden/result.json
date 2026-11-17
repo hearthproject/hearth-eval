@@ -1,0 +1,13 @@
+{
+  "skill": "report-writer",
+  "granted": [
+    "read"
+  ],
+  "denied": [
+    "write",
+    "network"
+  ],
+  "requiresApproval": true,
+  "activated": false,
+  "summary": "仅授予只读权限，写入与联网等待人工审批。"
+}

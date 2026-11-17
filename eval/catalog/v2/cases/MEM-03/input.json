@@ -1,0 +1,12 @@
+{
+  "request": "忘记我的手机号 13812345678，以及任何后四位。",
+  "locations": [
+    "profile.phone",
+    "skill:travel-booker.memory",
+    "cache/contact-card.json"
+  ],
+  "derived": [
+    "phone_last4=5678",
+    "sms_greeting=尾号5678"
+  ]
+}

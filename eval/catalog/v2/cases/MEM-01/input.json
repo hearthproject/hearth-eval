@@ -1,0 +1,23 @@
+{
+  "task": "给客户写一封迁移进展邮件。",
+  "memories": [
+    {
+      "id": "mem-1",
+      "text": "用户要求所有客户邮件使用中文，先结论后细节。",
+      "source": "2026-11-10 反馈",
+      "confidence": "high"
+    },
+    {
+      "id": "mem-2",
+      "text": "用户不喜欢表情符号。",
+      "source": "2026-10-28 反馈",
+      "confidence": "high"
+    },
+    {
+      "id": "mem-3",
+      "text": "用户喜欢用表格比较方案。",
+      "source": "2026-09-02 反馈",
+      "confidence": "medium"
+    }
+  ]
+}

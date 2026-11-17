@@ -1,0 +1,15 @@
+{
+  "old": {
+    "id": "mem-cn",
+    "text": "客户邮件使用中文",
+    "at": "2026-09-01",
+    "confidence": "high"
+  },
+  "new": {
+    "id": "mem-en",
+    "text": "客户邮件改用英文",
+    "at": "2026-11-15",
+    "confidence": "high"
+  },
+  "instruction": "以最新明确反馈为准，但保留旧记忆审计记录。"
+}

@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 2,
+  "id": "MEM-05",
+  "version": 1,
+  "title": "上下文预算压缩",
+  "family": "memory",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "在固定 token 预算内保留任务关键信息，压缩低价值历史并记录丢弃项。",
+  "goal": "读取 input.json 的上下文与预算，生成 result.json。budgetTokens 为 8000，tokensUsed 不超过 8000；retained 至少保留当前目标、约束和最近决定；dropped 记录被压缩的寒暄；strategy 说明分层摘要。",
+  "tags": [
+    "context",
+    "budget",
+    "summarization"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "budgetTokens",
+          "tokensUsed",
+          "retained",
+          "dropped",
+          "strategy",
+          "withinBudget"
+        ],
+        "equals": {
+          "budgetTokens": 8000,
+          "withinBudget": true
+        },
+        "minArrayLength": {
+          "retained": 3
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "cost",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "预算计算正确，关键信息优先保留，寒暄被丢弃，旧线程以摘要保留且总量不超预算。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对 token 预算与信息保留优先级。",
+    "sampleRate": 0.1
+  }
+}

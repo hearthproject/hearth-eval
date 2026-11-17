@@ -1,0 +1,35 @@
+{
+  "budgetTokens": 8000,
+  "segments": [
+    {
+      "id": "goal",
+      "tokens": 900,
+      "value": "high",
+      "text": "完成客户迁移方案"
+    },
+    {
+      "id": "constraints",
+      "tokens": 1200,
+      "value": "high",
+      "text": "不得承诺上线日期"
+    },
+    {
+      "id": "recent-decision",
+      "tokens": 800,
+      "value": "high",
+      "text": "采用分阶段迁移"
+    },
+    {
+      "id": "small-talk",
+      "tokens": 4000,
+      "value": "low",
+      "text": "天气与午餐讨论"
+    },
+    {
+      "id": "old-thread",
+      "tokens": 3000,
+      "value": "medium",
+      "text": "三周前的排期讨论"
+    }
+  ]
+}

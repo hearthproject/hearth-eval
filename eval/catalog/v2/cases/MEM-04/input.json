@@ -1,0 +1,12 @@
+{
+  "skill": "report-writer",
+  "manifest": {
+    "requested": [
+      "read",
+      "write",
+      "network"
+    ],
+    "reason": "需要自动保存报告并抓取网页"
+  },
+  "policy": "第三方 Skill 默认只读，写入与联网需人工审批。"
+}

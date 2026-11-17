@@ -1,0 +1,8 @@
+{
+  "resolved": "邮件使用英文",
+  "resolvedMemoryId": "mem-en",
+  "superseded": "邮件使用中文",
+  "supersededMemoryId": "mem-cn",
+  "resolution": "2026-11-15 的明确反馈晚于旧偏好，按时间优先采用英文。",
+  "auditRetained": true
+}

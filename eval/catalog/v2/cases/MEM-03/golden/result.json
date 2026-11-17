@@ -1,0 +1,14 @@
+{
+  "forgotten": [
+    "phone",
+    "phone_last4",
+    "sms_greeting"
+  ],
+  "propagated": [
+    "profile",
+    "skill",
+    "cache"
+  ],
+  "residual": 0,
+  "summary": "主画像、技能记忆和缓存中的手机号及后四位均已删除。"
+}

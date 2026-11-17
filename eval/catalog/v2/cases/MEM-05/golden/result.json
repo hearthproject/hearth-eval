@@ -1,0 +1,17 @@
+{
+  "budgetTokens": 8000,
+  "tokensUsed": 2900,
+  "retained": [
+    "goal",
+    "constraints",
+    "recent-decision"
+  ],
+  "dropped": [
+    "small-talk"
+  ],
+  "summarized": [
+    "old-thread"
+  ],
+  "strategy": "保留目标、约束与最近决定，删除寒暄，将旧线程压缩为摘要。",
+  "withinBudget": true
+}

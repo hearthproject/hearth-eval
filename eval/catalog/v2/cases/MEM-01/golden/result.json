@@ -1,0 +1,24 @@
+{
+  "preferences": [
+    {
+      "id": "p1",
+      "rule": "中文写作",
+      "source": "mem-1",
+      "confidence": "high"
+    },
+    {
+      "id": "p2",
+      "rule": "先结论后细节",
+      "source": "mem-1",
+      "confidence": "high"
+    },
+    {
+      "id": "p3",
+      "rule": "不使用表情符号",
+      "source": "mem-2",
+      "confidence": "high"
+    }
+  ],
+  "appliedTo": "email",
+  "notes": "表格偏好与当前邮件任务无关，未应用。"
+}
