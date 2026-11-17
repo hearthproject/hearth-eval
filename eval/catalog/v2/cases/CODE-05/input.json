@@ -1,0 +1,14 @@
+{
+  "package": "zod",
+  "current": "3.23.8",
+  "target": "4.0.0",
+  "releaseNotes": [
+    "错误对象结构改为 issues",
+    "z.record 必须显式指定 key schema",
+    "部分 refine 行为收紧"
+  ],
+  "usage": [
+    "packages/eval-core/src/schema.ts",
+    "apps/eval-server/src/routes.ts"
+  ]
+}

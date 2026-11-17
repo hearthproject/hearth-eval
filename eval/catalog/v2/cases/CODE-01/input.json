@@ -1,0 +1,5 @@
+{
+  "failingTest": "expect(runWithRetry(task, {maxRetries: 2})).toHaveBeenCalledTimes(3)",
+  "observed": "task 被调用 2 次后抛出 RetryExhausted",
+  "source": "export async function runWithRetry(task, {maxRetries}) { let attempt = 0; while (attempt <= maxRetries) { attempt += 1; try { return await task(); } catch {} } throw new RetryExhausted(); }"
+}

@@ -1,0 +1,8 @@
+{
+  "endpoint": "POST /v1/tasks",
+  "contract": {
+    "rateLimit": "超过 10 req/s 返回 429 与 Retry-After",
+    "idempotency": "相同 idempotency-key 返回首次结果",
+    "pagination": "无效 cursor 返回 400"
+  }
+}

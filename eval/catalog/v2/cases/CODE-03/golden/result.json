@@ -1,0 +1,7 @@
+{
+  "failingJob": "unit",
+  "rootCause": "测试机使用 UTC，缺少 TZ=Asia/Shanghai，导致固定日期断言偏移 8 小时",
+  "fix": "在 CI unit job 中设置 TZ=Asia/Shanghai 后重跑",
+  "confidence": "high",
+  "notCausedBy": "业务代码回归"
+}

@@ -1,0 +1,6 @@
+diff --git a/src/retry.ts b/src/retry.ts
+--- a/src/retry.ts
++++ b/src/retry.ts
+@@
+- while (attempt <= maxRetries) {
++ while (attempt < maxRetries) {

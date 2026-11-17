@@ -1,0 +1,8 @@
+{
+  "pr": "feat: bulk update billing",
+  "diff": [
+    "app/api/billing/route.ts: const tenantId = body.tenantId; await db.update(tenantId, body.amount)",
+    "lib/client.ts: fetch('/api/billing', { method: 'POST', body })"
+  ],
+  "context": "接口会被前端重试，且服务端已有 session.user.tenantId。"
+}

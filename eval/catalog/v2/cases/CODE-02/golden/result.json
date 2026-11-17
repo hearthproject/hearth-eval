@@ -1,0 +1,18 @@
+{
+  "verdict": "request_changes",
+  "findings": [
+    {
+      "id": "f1",
+      "file": "app/api/billing/route.ts",
+      "severity": "blocker",
+      "reason": "使用请求体 tenantId，未校验 session 租户，存在越权写入"
+    },
+    {
+      "id": "f2",
+      "file": "lib/client.ts",
+      "severity": "blocker",
+      "reason": "POST 缺少 idempotency-key，前端重试会重复扣款"
+    }
+  ],
+  "summary": "存在越权与重复扣款风险，不能合并。"
+}

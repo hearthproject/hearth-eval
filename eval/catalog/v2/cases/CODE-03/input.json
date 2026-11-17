@@ -1,0 +1,21 @@
+{
+  "runId": "ci-7781",
+  "jobs": [
+    {
+      "name": "lint",
+      "status": "passed"
+    },
+    {
+      "name": "unit",
+      "status": "failed",
+      "log": "Expected 2026-11-18 00:00 but received 2026-11-17 16:00. TZ=UTC"
+    },
+    {
+      "name": "build",
+      "status": "skipped"
+    }
+  ],
+  "recentChanges": [
+    "仅修改了测试中的日期断言"
+  ]
+}

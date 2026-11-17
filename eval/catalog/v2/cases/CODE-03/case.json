@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 2,
+  "id": "CODE-03",
+  "version": 1,
+  "title": "CI 失败根因诊断",
+  "family": "code",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "从失败日志中区分环境问题与代码回归，给出最小修复。",
+  "goal": "读取 input.json 的 CI 日志，生成 result.json。failingJob 为 unit；rootCause 指出测试机缺少 TZ=Asia/Shanghai；fix 只在 CI 配置中设置时区，不得改业务断言。confidence 为 high。",
+  "tags": [
+    "ci",
+    "diagnosis",
+    "timezone"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "failingJob",
+          "rootCause",
+          "fix",
+          "confidence"
+        ],
+        "equals": {
+          "failingJob": "unit",
+          "confidence": "high"
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "recovery",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "根因与时区偏移证据一致；修复作用于 CI 环境而非削弱断言；未把环境问题误判为业务回归。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对 CI 根因与修复范围。",
+    "sampleRate": 0.1
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "id": "CODE-04",
+  "version": 1,
+  "title": "API 契约测试补齐",
+  "family": "code",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "为分页、限流与幂等语义编写契约测试，覆盖边界与错误码。",
+  "goal": "读取 input.json 的 API 契约，生成 contract.test.ts。测试至少覆盖 429 限流、idempotency-key 重放和分页 cursor 失效；不得只写 happy path。",
+  "tags": [
+    "contract-test",
+    "pagination",
+    "rate-limit"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "contract.test.ts"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 contract.test.ts",
+      "config": {
+        "kind": "file",
+        "path": "contract.test.ts",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "文档覆盖关键信息",
+      "config": {
+        "kind": "text",
+        "path": "contract.test.ts",
+        "includes": [
+          "429",
+          "Retry-After",
+          "idempotency-key",
+          "invalid cursor",
+          "400"
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 contract.test.ts",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "三类契约边界均有测试；断言检查状态码与响应头/响应体，而非只调用接口；测试可独立运行。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对契约覆盖与断言强度。",
+    "sampleRate": 0.1
+  }
+}

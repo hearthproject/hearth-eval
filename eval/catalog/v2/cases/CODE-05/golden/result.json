@@ -1,0 +1,27 @@
+{
+  "package": "zod",
+  "from": "3.23.8",
+  "to": "4.0.0",
+  "breakingChanges": [
+    "错误对象结构改为 issues",
+    "z.record 需要显式 key schema"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "action": "运行官方 codemod 并修正 z.record",
+      "gate": "typecheck"
+    },
+    {
+      "id": "s2",
+      "action": "在分支保留 v3 依赖并做双版本契约测试",
+      "gate": "test"
+    },
+    {
+      "id": "s3",
+      "action": "灰度合并，保留 24 小时回滚点",
+      "gate": "rollback-ready"
+    }
+  ],
+  "rollback": "回退 lockfile 与 codemod 提交，恢复 v3.23.8"
+}

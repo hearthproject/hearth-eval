@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 2,
+  "id": "CODE-05",
+  "version": 1,
+  "title": "依赖升级兼容性计划",
+  "family": "code",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "评估 major 版本升级的破坏性变更，生成分阶段升级与回滚方案。",
+  "goal": "读取 input.json 的依赖与变更日志，生成 result.json。package 为 zod，from 为 3.23.8，to 为 4.0.0；breakingChanges 至少两条，steps 至少三步，包含 codemod、双版本测试与回滚点；不得直接全量升级。",
+  "tags": [
+    "dependency",
+    "upgrade",
+    "rollback"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "package",
+          "from",
+          "to",
+          "breakingChanges",
+          "steps",
+          "rollback"
+        ],
+        "equals": {
+          "package": "zod",
+          "from": "3.23.8",
+          "to": "4.0.0"
+        },
+        "minArrayLength": {
+          "breakingChanges": 2,
+          "steps": 3
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "破坏性变更覆盖错误结构与 z.record；升级步骤有质量门禁和回滚点；没有跳过测试直接全量升级。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对升级步骤与回滚方案。",
+    "sampleRate": 0.1
+  }
+}

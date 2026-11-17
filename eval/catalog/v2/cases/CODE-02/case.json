@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 2,
+  "id": "CODE-02",
+  "version": 1,
+  "title": "PR 评审发现阻断问题",
+  "family": "code",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "评审一个包含未授权写操作与缺失幂等键的 PR，给出阻断结论。",
+  "goal": "读取 input.json 的 diff，生成 result.json。verdict 为 request_changes；findings 至少两条，覆盖未校验租户与缺失 idempotency-key；每条包含 id、file、severity、reason。不得批准合并。",
+  "tags": [
+    "pr-review",
+    "security",
+    "idempotency"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "verdict",
+          "findings",
+          "summary"
+        ],
+        "equals": {
+          "verdict": "request_changes"
+        },
+        "minArrayLength": {
+          "findings": 2
+        },
+        "keyedArrays": [
+          {
+            "path": "findings",
+            "key": "id",
+            "expected": {
+              "f1": {
+                "file": "app/api/billing/route.ts",
+                "severity": "blocker"
+              },
+              "f2": {
+                "file": "lib/client.ts",
+                "severity": "blocker"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "两个阻断问题均被识别并定位到文件；结论明确不允许合并；理由说明实际安全与资金风险。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "复核 PR 阻断项与文件定位。",
+    "sampleRate": 0.1
+  }
+}

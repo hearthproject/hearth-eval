@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 2,
+  "id": "CODE-01",
+  "version": 1,
+  "title": "修复重试耗尽测试",
+  "family": "code",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "定位重试次数 off-by-one，提交最小补丁并保留原有测试意图。",
+  "goal": "读取 input.json 的失败测试与源码，生成 patch.diff。补丁必须修改 src/retry.ts 的循环边界，使 maxRetries=2 时恰好尝试 3 次；不得删除或跳过测试，不得改动无关文件。",
+  "tags": [
+    "test-fix",
+    "patch",
+    "off-by-one"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "patch.diff"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 patch.diff",
+      "config": {
+        "kind": "file",
+        "path": "patch.diff",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "文档覆盖关键信息",
+      "config": {
+        "kind": "text",
+        "path": "patch.diff",
+        "includes": [
+          "src/retry.ts",
+          "- while (attempt <= maxRetries)",
+          "+ while (attempt < maxRetries)"
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 patch.diff",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "补丁最小且直接修复 off-by-one；没有删除测试或引入无关改动；修复后 2 次重试意味着 3 次尝试。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对补丁最小性与测试意图。",
+    "sampleRate": 0.1
+  }
+}
