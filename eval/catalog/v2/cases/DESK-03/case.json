@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 2,
+  "id": "DESK-03",
+  "version": 1,
+  "title": "客户表格清洗",
+  "family": "desktop",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "清洗邮箱、金额和币种，去重并输出规范 CSV。",
+  "goal": "读取 input.json 的原始行，生成 cleaned.csv。表头为 name,email,amount,currency，至少三行；邮箱统一小写并去空格，金额转数值，CNY/USD 统一大写；重复邮箱只保留首条。",
+  "tags": [
+    "spreadsheet",
+    "cleaning",
+    "dedupe"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "cleaned.csv"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 cleaned.csv",
+      "config": {
+        "kind": "file",
+        "path": "cleaned.csv",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "表格结构与关键行正确",
+      "config": {
+        "kind": "csv",
+        "path": "cleaned.csv",
+        "requiredColumns": [
+          "name",
+          "email",
+          "amount",
+          "currency"
+        ],
+        "minRows": 3,
+        "requiredValues": [
+          {
+            "column": "email",
+            "equals": "alice@acme.cn"
+          },
+          {
+            "column": "currency",
+            "equals": "CNY"
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 cleaned.csv",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "邮箱与币种规范化正确，金额去掉符号与千分位，重复 alice 行被合并，未丢失 Carol。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对清洗规则与去重结果。",
+    "sampleRate": 0.1
+  }
+}

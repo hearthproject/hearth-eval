@@ -1,0 +1,28 @@
+{
+  "rows": [
+    {
+      "name": " Alice ",
+      "email": " Alice@Acme.CN ",
+      "amount": "¥1,200.00",
+      "currency": "rmb"
+    },
+    {
+      "name": "Bob",
+      "email": "bob@northwind.example",
+      "amount": "89.5",
+      "currency": "usd"
+    },
+    {
+      "name": "Alice",
+      "email": "alice@acme.cn",
+      "amount": "1200",
+      "currency": "cny"
+    },
+    {
+      "name": "Carol",
+      "email": "carol@london.example",
+      "amount": "300",
+      "currency": "gbp"
+    }
+  ]
+}

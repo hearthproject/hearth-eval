@@ -1,0 +1,14 @@
+{
+  "session": "desk-441",
+  "checkpoint": "cp-7",
+  "completed": [
+    "open-app",
+    "select-export",
+    "write-temp-file"
+  ],
+  "pending": [
+    "export-csv",
+    "upload-report"
+  ],
+  "crash": "renderer process exited at 2026-11-17T09:42:11+08:00"
+}

@@ -1,0 +1,23 @@
+{
+  "moves": [
+    {
+      "source": "invoice-881.pdf",
+      "target": "Finance/2026-11/invoice-881.pdf",
+      "reason": "发票按月份归档"
+    },
+    {
+      "source": "shot-2026-11-17.png",
+      "target": "Images/2026-11/shot-2026-11-17.png",
+      "reason": "截图按月份归档"
+    },
+    {
+      "source": "northwind-contract.pdf",
+      "target": "Legal/Contracts/northwind-contract.pdf",
+      "reason": "合同进入法务合同库"
+    }
+  ],
+  "skipped": [
+    "notes.tmp"
+  ],
+  "summary": "计划移动三个已知文件，unknown 文件保持原位。"
+}

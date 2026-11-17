@@ -1,0 +1,13 @@
+{
+  "fields": {
+    "employee": "王敏",
+    "amount": 1280.5,
+    "currency": "CNY",
+    "category": "差旅",
+    "receiptId": "R-5521"
+  },
+  "submitted": false,
+  "approvalRequired": true,
+  "accountChanged": false,
+  "note": "已填单，等待经理审批后提交。"
+}

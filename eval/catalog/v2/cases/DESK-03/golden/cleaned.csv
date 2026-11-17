@@ -1,0 +1,4 @@
+name,email,amount,currency
+Alice,alice@acme.cn,1200.00,CNY
+Bob,bob@northwind.example,89.50,USD
+Carol,carol@london.example,300.00,GBP

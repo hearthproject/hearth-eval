@@ -1,0 +1,10 @@
+{
+  "meeting": "Northwind 迁移周会",
+  "notes": [
+    "数据盘点已完成",
+    "下周三前给出迁移方案",
+    "需要客户确认 11 月 22 日维护窗口",
+    "上线日期尚未确定"
+  ],
+  "customer": "carol@northwind.example"
+}

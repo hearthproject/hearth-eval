@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 2,
+  "id": "DESK-02",
+  "version": 1,
+  "title": "从会议笔记生成邮件草稿",
+  "family": "desktop",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "把会议要点转成给客户的项目进展邮件，语气专业且只陈述已确认事实。",
+  "goal": "读取 input.json 的会议笔记，生成 mail.json。收件人为 carol@northwind.example，主题为“Hearth 迁移进展与下一步”，正文覆盖已完成数据盘点、下周三提供迁移方案、请客户确认维护窗口三项；不得承诺未讨论的上线日期。",
+  "tags": [
+    "email-draft",
+    "notes",
+    "customer"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "mail.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 mail.json",
+      "config": {
+        "kind": "file",
+        "path": "mail.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "邮件收件人、主题与正文正确",
+      "config": {
+        "kind": "mail_draft",
+        "path": "mail.json",
+        "expected": {
+          "To": "carol@northwind.example",
+          "Subject": "Hearth 迁移进展与下一步",
+          "Body": "Carol 您好，\n\n本周数据盘点已完成。我们会在下周三前提供迁移方案，并请贵方确认 11 月 22 日的维护窗口。\n\n上线日期尚未确定，待方案确认后再共同评估。\n\n谢谢\nHearth 项目组"
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 mail.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "邮件准确覆盖三项已确认事实，明确上线日期未定，未添加未经讨论的承诺；语气适合客户沟通。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对邮件事实边界与语气。",
+    "sampleRate": 0.1
+  }
+}

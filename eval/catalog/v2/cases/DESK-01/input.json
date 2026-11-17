@@ -1,0 +1,25 @@
+{
+  "root": "C:/Users/demo/Downloads",
+  "files": [
+    {
+      "path": "invoice-881.pdf",
+      "kind": "invoice",
+      "month": "2026-11"
+    },
+    {
+      "path": "shot-2026-11-17.png",
+      "kind": "screenshot",
+      "month": "2026-11"
+    },
+    {
+      "path": "northwind-contract.pdf",
+      "kind": "contract",
+      "month": "2026-11"
+    },
+    {
+      "path": "notes.tmp",
+      "kind": "unknown",
+      "month": "2026-11"
+    }
+  ]
+}

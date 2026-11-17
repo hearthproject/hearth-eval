@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 2,
+  "id": "DESK-01",
+  "version": 1,
+  "title": "下载目录文件整理",
+  "family": "desktop",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "按类型和日期整理下载目录，生成可审阅的移动计划而非直接执行。",
+  "goal": "读取 input.json 的文件清单，生成 result.json。moves 至少四条，每条包含 source、target、reason；发票 PDF 移到 Finance/2026-11，截图移到 Images/2026-11，合同移到 Legal/Contracts；保留原始文件名；不得移动 unknown 文件。",
+  "tags": [
+    "files",
+    "organize",
+    "plan"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "moves",
+          "skipped",
+          "summary"
+        ],
+        "minArrayLength": {
+          "moves": 3
+        },
+        "keyedArrays": [
+          {
+            "path": "moves",
+            "key": "source",
+            "expected": {
+              "invoice-881.pdf": {
+                "target": "Finance/2026-11/invoice-881.pdf"
+              },
+              "shot-2026-11-17.png": {
+                "target": "Images/2026-11/shot-2026-11-17.png"
+              },
+              "northwind-contract.pdf": {
+                "target": "Legal/Contracts/northwind-contract.pdf"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "移动计划分类正确、保留文件名、未知文件不移动；目标路径清晰可审阅。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对文件分类与未知文件处理。",
+    "sampleRate": 0.1
+  }
+}

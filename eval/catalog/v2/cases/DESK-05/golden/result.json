@@ -1,0 +1,15 @@
+{
+  "resumeFrom": "cp-7",
+  "completedSteps": [
+    "open-app",
+    "select-export",
+    "write-temp-file"
+  ],
+  "pendingSteps": [
+    "export-csv",
+    "upload-report"
+  ],
+  "stepsReplayed": 0,
+  "sideEffects": [],
+  "summary": "从 cp-7 恢复，继续两个未完成步骤，不重放已完成副作用。"
+}

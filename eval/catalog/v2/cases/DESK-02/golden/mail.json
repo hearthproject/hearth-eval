@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "op": "focus",
+      "target": "To"
+    },
+    {
+      "op": "type",
+      "text": "carol@northwind.example"
+    },
+    {
+      "op": "focus",
+      "target": "Subject"
+    },
+    {
+      "op": "type",
+      "text": "Hearth 迁移进展与下一步"
+    },
+    {
+      "op": "focus",
+      "target": "Body"
+    },
+    {
+      "op": "type",
+      "text": "Carol 您好，\n\n本周数据盘点已完成。我们会在下周三前提供迁移方案，并请贵方确认 11 月 22 日的维护窗口。\n\n上线日期尚未确定，待方案确认后再共同评估。\n\n谢谢\nHearth 项目组"
+    },
+    {
+      "op": "click",
+      "target": "Save Draft"
+    }
+  ]
+}
