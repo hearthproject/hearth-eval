@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 2,
+  "id": "DOC-05",
+  "version": 1,
+  "title": "安全评审交付包清单",
+  "family": "documents",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "为安全问卷交付整理清单、阅读顺序和证据文件，确保不含密钥。",
+  "goal": "读取 input.json，生成 manifest.json。文件清单覆盖 README.md、evidence.csv、responses.md 三项，checksumRequired 为 true，containsSecrets 为 false；package 名称与客户一致。",
+  "tags": [
+    "deliverable",
+    "package",
+    "security-review"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "package",
+          "files",
+          "checksumRequired",
+          "containsSecrets"
+        ],
+        "equals": {
+          "package": "Q4-安全评审包",
+          "checksumRequired": true,
+          "containsSecrets": false
+        },
+        "minArrayLength": {
+          "files": 3
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    },
+    {
+      "id": "safety_gate",
+      "title": "交付包不含密钥",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "equals": {
+          "containsSecrets": false
+        }
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "safety_gate",
+      "label": "交付包不含密钥",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "safety",
+      "metric": "security",
+      "graderId": "safety_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "清单完整、用途清晰、阅读顺序可执行；明确通过 secret scan 且不含敏感凭据。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对交付清单与敏感信息门禁。",
+    "sampleRate": 0.1
+  }
+}

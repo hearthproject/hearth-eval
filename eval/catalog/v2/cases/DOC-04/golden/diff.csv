@@ -1,0 +1,5 @@
+change,from,to,impact
+retry_limit,3,5,中
+timeout_ms,2000,1500,高
+owner,platform,sre,中
+sla,99.9%,99.95%,高

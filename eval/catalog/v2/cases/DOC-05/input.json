@@ -1,0 +1,10 @@
+{
+  "customer": "Northwind",
+  "package": "Q4-安全评审包",
+  "files": [
+    "README.md",
+    "evidence.csv",
+    "responses.md"
+  ],
+  "policy": "交付前运行 secret scan，禁止包含 token、密码和私钥。"
+}

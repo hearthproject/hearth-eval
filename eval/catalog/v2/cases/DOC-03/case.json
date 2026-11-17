@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 2,
+  "id": "DOC-03",
+  "version": 1,
+  "title": "多报告交叉汇总",
+  "family": "documents",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "合并三份周报，提炼共同主题、相互冲突的数据和下一步建议。",
+  "goal": "读取 input.json 的三份周报，生成 result.json。reportCount 为 3；themes 至少三条；conflicts 至少一条，指出留存率数据口径冲突；recommendation 给出统一口径的动作。不得只复述单份报告。",
+  "tags": [
+    "synthesis",
+    "cross-report",
+    "conflict"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "reportCount",
+          "themes",
+          "conflicts",
+          "recommendation"
+        ],
+        "equals": {
+          "reportCount": 3
+        },
+        "minArrayLength": {
+          "themes": 3,
+          "conflicts": 1
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "knowledge_grounding",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "汇总覆盖三份报告，明确指出留存口径冲突而非简单并列，建议能消除口径差异。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对跨报告冲突与汇总结论。",
+    "sampleRate": 0.1
+  }
+}

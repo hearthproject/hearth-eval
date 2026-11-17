@@ -1,0 +1,17 @@
+{
+  "document": "支付回调运行手册",
+  "fromVersion": "v3",
+  "toVersion": "v4",
+  "from": {
+    "retry_limit": "3",
+    "timeout_ms": "2000",
+    "owner": "platform",
+    "sla": "99.9%"
+  },
+  "to": {
+    "retry_limit": "5",
+    "timeout_ms": "1500",
+    "owner": "sre",
+    "sla": "99.95%"
+  }
+}

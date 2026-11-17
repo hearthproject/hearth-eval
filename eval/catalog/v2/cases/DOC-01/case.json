@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 2,
+  "id": "DOC-01",
+  "version": 1,
+  "title": "产品评审会议纪要",
+  "family": "documents",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "把会议转写整理成含决策、行动项、负责人、截止日期和风险的纪要。",
+  "goal": "读取 input.json 的会议转写，生成 minutes.md。文档必须包含日期、决策、行动项、负责人与截止日期，并单列导出功能的数据库慢查询风险。不得把讨论中的提议写成已决定事项。",
+  "tags": [
+    "meeting",
+    "minutes",
+    "decisions"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "minutes.md"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 minutes.md",
+      "config": {
+        "kind": "file",
+        "path": "minutes.md",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "文档覆盖关键信息",
+      "config": {
+        "kind": "text",
+        "path": "minutes.md",
+        "includes": [
+          "2026-11-17",
+          "## 决策",
+          "## 行动项",
+          "王敏",
+          "2026-11-19",
+          "李哲",
+          "2026-11-20",
+          "安全评审",
+          "慢查询"
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 minutes.md",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "纪要完整覆盖决策、两个行动项、负责人和截止日期；区分讨论与决定；风险单列且可执行。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对决策与行动项是否忠实于转写。",
+    "sampleRate": 0.1
+  }
+}

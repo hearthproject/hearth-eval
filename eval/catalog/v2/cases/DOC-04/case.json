@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 2,
+  "id": "DOC-04",
+  "version": 1,
+  "title": "运行手册版本差异",
+  "family": "documents",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "比较两版运行手册，输出结构化变更表并标注影响等级。",
+  "goal": "读取 input.json 的两个版本，生成 diff.csv。表头为 change,from,to,impact，至少四行，覆盖 retry_limit、timeout_ms、owner、sla 四项变化；impact 使用高/中/低。不得遗漏超时缩短带来的高风险。",
+  "tags": [
+    "diff",
+    "runbook",
+    "change-review"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "diff.csv"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 diff.csv",
+      "config": {
+        "kind": "file",
+        "path": "diff.csv",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "表格结构与关键行正确",
+      "config": {
+        "kind": "csv",
+        "path": "diff.csv",
+        "requiredColumns": [
+          "change",
+          "from",
+          "to",
+          "impact"
+        ],
+        "minRows": 4,
+        "requiredValues": [
+          {
+            "column": "change",
+            "equals": "timeout_ms"
+          },
+          {
+            "column": "impact",
+            "equals": "高"
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 diff.csv",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "四项变更全部识别，from/to 值准确，超时缩短与 SLA 提升被标为高影响。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对差异表是否漏项或标错影响。",
+    "sampleRate": 0.1
+  }
+}

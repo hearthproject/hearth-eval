@@ -1,0 +1,19 @@
+{
+  "package": "Q4-安全评审包",
+  "files": [
+    {
+      "path": "README.md",
+      "purpose": "阅读顺序与联系人"
+    },
+    {
+      "path": "evidence.csv",
+      "purpose": "控制项证据索引"
+    },
+    {
+      "path": "responses.md",
+      "purpose": "问卷逐项答复"
+    }
+  ],
+  "checksumRequired": true,
+  "containsSecrets": false
+}

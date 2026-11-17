@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "id": "DOC-02",
+  "version": 1,
+  "title": "采购合同风险审阅",
+  "family": "documents",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "从合同条款中识别自动续约与责任上限风险，给出可执行修改建议。",
+  "goal": "读取 input.json 的合同条款，生成 result.json。overallRisk 为 high；risks 至少覆盖自动续约与责任上限，每条包含 id、clause、level、reason；recommendations 给出按月续约与提高责任上限的具体建议。不得提供正式法律意见。",
+  "tags": [
+    "contract",
+    "risk",
+    "procurement"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "overallRisk",
+          "risks",
+          "recommendations",
+          "disclaimer"
+        ],
+        "equals": {
+          "overallRisk": "high"
+        },
+        "minArrayLength": {
+          "recommendations": 2
+        },
+        "keyedArrays": [
+          {
+            "path": "risks",
+            "key": "id",
+            "expected": {
+              "r1": {
+                "level": "high"
+              },
+              "r2": {
+                "level": "high"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "knowledge_grounding",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "两处高风险均有条款依据与业务影响；建议具体可谈判；明确声明非正式法律意见。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对条款引用与风险等级。",
+    "sampleRate": 0.1
+  }
+}
