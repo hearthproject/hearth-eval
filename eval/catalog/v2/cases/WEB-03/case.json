@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 2,
+  "id": "WEB-03",
+  "version": 1,
+  "title": "商品表格抽取",
+  "family": "web",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "从带重复表头和脚注的页面抽取商品价格与库存，输出规范 CSV。",
+  "goal": "读取 input.json 的页面片段，生成 products.csv。表头为 sku,name,price,stock,currency，至少三行；价格只保留数值，库存转为整数；忽略脚注与重复表头。",
+  "tags": [
+    "extraction",
+    "table",
+    "normalization"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "products.csv"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 products.csv",
+      "config": {
+        "kind": "file",
+        "path": "products.csv",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "表格结构与关键行正确",
+      "config": {
+        "kind": "csv",
+        "path": "products.csv",
+        "requiredColumns": [
+          "sku",
+          "name",
+          "price",
+          "stock",
+          "currency"
+        ],
+        "minRows": 3,
+        "requiredValues": [
+          {
+            "column": "sku",
+            "equals": "C-3"
+          },
+          {
+            "column": "stock",
+            "equals": "0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 products.csv",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "三行商品完整，价格去除货币符号与千分位，库存转为整数，重复表头与脚注未混入数据。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对数值规范化与重复表头处理。",
+    "sampleRate": 0.1
+  }
+}

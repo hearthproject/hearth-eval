@@ -1,0 +1,21 @@
+{
+  "page": "https://console.example.com/releases",
+  "elements": [
+    {
+      "role": "button",
+      "name": "publish",
+      "label": "发布"
+    },
+    {
+      "role": "button",
+      "name": "confirm",
+      "label": "确认发布"
+    },
+    {
+      "role": "button",
+      "name": "rollback",
+      "label": "回滚"
+    }
+  ],
+  "policy": "先 10% 灰度，观察 10 分钟错误率后再全量；异常时回滚。"
+}

@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 2,
+  "id": "WEB-01",
+  "version": 1,
+  "title": "后台发布页操作指南",
+  "family": "web",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "根据页面结构说明生成可执行发布指南，包含前置条件、步骤和回滚。",
+  "goal": "读取 input.json 的页面结构与发布策略，生成 guide.md。指南包含前置检查、灰度发布、验证与回滚四部分；至少引用 publish、confirm、rollback 三个按钮；不得省略回滚步骤。",
+  "tags": [
+    "web",
+    "runbook",
+    "release"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "guide.md"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 guide.md",
+      "config": {
+        "kind": "file",
+        "path": "guide.md",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "文档覆盖关键信息",
+      "config": {
+        "kind": "text",
+        "path": "guide.md",
+        "includes": [
+          "## 前置检查",
+          "## 灰度发布",
+          "publish",
+          "confirm",
+          "## 回滚",
+          "rollback",
+          "10 分钟"
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 guide.md",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "指南覆盖四段流程，按钮名称准确，灰度观察与回滚条件明确可执行。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对发布步骤与回滚路径。",
+    "sampleRate": 0.1
+  }
+}

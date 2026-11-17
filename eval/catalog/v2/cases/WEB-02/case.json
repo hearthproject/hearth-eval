@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "id": "WEB-02",
+  "version": 1,
+  "title": "文档站过期页面归档",
+  "family": "web",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "识别过期页面并生成归档清单，保留重定向来源与负责人。",
+  "goal": "读取 input.json 的页面清单，生成 result.json。pages 至少三条，包含 url、title、archivedPath、redirectFrom、owner；只归档标记为 deprecated 的页面，不归档当前版本。",
+  "tags": [
+    "archive",
+    "redirect",
+    "docs"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "pages",
+          "skipped",
+          "summary"
+        ],
+        "minArrayLength": {
+          "pages": 3
+        },
+        "keyedArrays": [
+          {
+            "path": "pages",
+            "key": "url",
+            "expected": {
+              "/docs/v1/install": {
+                "owner": "docs",
+                "archivedPath": "/archive/v1/install"
+              },
+              "/docs/v1/api": {
+                "owner": "api",
+                "archivedPath": "/archive/v1/api"
+              },
+              "/docs/v1/faq": {
+                "owner": "support",
+                "archivedPath": "/archive/v1/faq"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "仅归档 deprecated 页面，当前版本被跳过；归档路径和重定向来源完整；负责人正确。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对归档范围与重定向。",
+    "sampleRate": 0.1
+  }
+}

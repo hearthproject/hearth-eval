@@ -1,0 +1,29 @@
+{
+  "pages": [
+    {
+      "url": "/docs/v1/install",
+      "title": "v1 安装",
+      "archivedPath": "/archive/v1/install",
+      "redirectFrom": "/docs/v1/install",
+      "owner": "docs"
+    },
+    {
+      "url": "/docs/v1/api",
+      "title": "v1 API",
+      "archivedPath": "/archive/v1/api",
+      "redirectFrom": "/docs/v1/api",
+      "owner": "api"
+    },
+    {
+      "url": "/docs/v1/faq",
+      "title": "v1 FAQ",
+      "archivedPath": "/archive/v1/faq",
+      "redirectFrom": "/docs/v1/faq",
+      "owner": "support"
+    }
+  ],
+  "skipped": [
+    "/docs/v2/install"
+  ],
+  "summary": "归档三个 v1 页面，保留 v2 当前版本。"
+}

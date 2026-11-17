@@ -1,0 +1,8 @@
+{
+  "status": "degraded",
+  "fallback": "cached",
+  "cachedAt": "2026-11-17T08:30:00+08:00",
+  "userNotice": "实时状态页暂时不可用，以下为 08:30 的缓存数据，可能已过期。",
+  "fabricated": false,
+  "incidents": 2
+}

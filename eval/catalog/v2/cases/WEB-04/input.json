@@ -1,0 +1,9 @@
+{
+  "url": "https://status.example.com/incidents",
+  "error": "navigation timeout after 15000ms",
+  "cache": {
+    "cachedAt": "2026-11-17T08:30:00+08:00",
+    "incidents": 2,
+    "source": "redis:status:v3"
+  }
+}

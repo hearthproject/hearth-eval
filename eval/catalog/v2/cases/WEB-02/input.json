@@ -1,0 +1,28 @@
+{
+  "pages": [
+    {
+      "url": "/docs/v1/install",
+      "title": "v1 安装",
+      "status": "deprecated",
+      "owner": "docs"
+    },
+    {
+      "url": "/docs/v2/install",
+      "title": "v2 安装",
+      "status": "current",
+      "owner": "docs"
+    },
+    {
+      "url": "/docs/v1/api",
+      "title": "v1 API",
+      "status": "deprecated",
+      "owner": "api"
+    },
+    {
+      "url": "/docs/v1/faq",
+      "title": "v1 FAQ",
+      "status": "deprecated",
+      "owner": "support"
+    }
+  ]
+}
