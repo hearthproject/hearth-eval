@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "status": "staging",
+  "scoring": {
+    "deterministic": 60,
+    "judge": 30,
+    "human": 10,
+    "passThreshold": 80
+  },
+  "matrix": {
+    "email": 0,
+    "calendar": 0,
+    "documents": 0,
+    "research": 0,
+    "code": 0,
+    "web": 0,
+    "desktop": 0,
+    "cross-app": 0,
+    "operations": 0,
+    "memory": 0
+  },
+  "liveOnly": [
+    "LIVE-EMAIL-SEND",
+    "LIVE-GITHUB-PR",
+    "LIVE-GITHUB-REVIEW",
+    "LIVE-SCHEDULE-TRIGGER",
+    "LIVE-MEMORY-SKILL-PROMOTION"
+  ],
+  "qualityBar": {
+    "gateLayers": ["trajectory", "action", "knowledge", "system", "safety"],
+    "requiresMetricAnnotation": true,
+    "requiresGoldenForOffline": true
+  },
+  "note": "v2 在 staging 中构建，全部完成后一次性切换为活动 catalog；v1 保持只读。",
+  "updatedAt": "2026-11-17"
+}

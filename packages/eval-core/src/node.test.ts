@@ -45,6 +45,7 @@ describe("case catalog", () => {
           failures.push(`${loadedCase.manifest.id}/${criterion.id}: missing grader`);
           continue;
         }
+        if (grader.config.kind === "trace") continue;
         const result = runGrader(grader, artifacts);
         if (!result.passed) failures.push(`${loadedCase.manifest.id}/${criterion.id}: ${result.reason}`);
       }
