@@ -1,0 +1,14 @@
+{
+  "topic": "试用流失原因",
+  "findings": [
+    "SSO 配置耗时",
+    "权限模型复杂",
+    "缺少迁移示例"
+  ],
+  "sources": [
+    "访谈 A",
+    "访谈 B",
+    "工单统计"
+  ],
+  "recipient": "product-lead@acme.cn"
+}

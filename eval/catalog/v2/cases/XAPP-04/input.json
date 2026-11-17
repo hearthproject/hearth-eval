@@ -1,0 +1,24 @@
+{
+  "candidate": {
+    "name": "赵宁",
+    "email": "zhao@example.com",
+    "availability": [
+      "2026-11-20T14:00:00+08:00",
+      "2026-11-20T16:00:00+08:00"
+    ]
+  },
+  "interviewers": [
+    {
+      "name": "alice",
+      "email": "alice@acme.cn",
+      "busy": [
+        "2026-11-20T16:00:00+08:00/2026-11-20T17:00:00+08:00"
+      ]
+    },
+    {
+      "name": "bob",
+      "email": "bob@acme.cn",
+      "busy": []
+    }
+  ]
+}

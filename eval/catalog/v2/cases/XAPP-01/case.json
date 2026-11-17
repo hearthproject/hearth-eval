@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 2,
+  "id": "XAPP-01",
+  "version": 1,
+  "title": "会议纪要转行动任务",
+  "family": "cross-app",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "从会议记录中抽取任务，写入任务系统所需字段并绑定来源。",
+  "goal": "读取 input.json 的会议记录，生成 result.json。tasks 至少三条，每条包含 id、title、owner、due、source、priority；任务与负责人、截止日期一一对应；不得把讨论项写成已分配任务。",
+  "tags": [
+    "meeting",
+    "tasks",
+    "cross-app"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "tasks",
+          "summary"
+        ],
+        "minArrayLength": {
+          "tasks": 3
+        },
+        "keyedArrays": [
+          {
+            "path": "tasks",
+            "key": "id",
+            "expected": {
+              "t1": {
+                "owner": "王敏",
+                "due": "2026-11-19"
+              },
+              "t2": {
+                "owner": "李哲",
+                "due": "2026-11-20"
+              },
+              "t3": {
+                "owner": "陈可",
+                "due": null
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "三项任务、负责人和日期准确；待定日期没有被编造；来源会议绑定完整。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对任务字段与会议原文。",
+    "sampleRate": 0.1
+  }
+}

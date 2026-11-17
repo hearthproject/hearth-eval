@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "op": "focus",
+      "target": "To"
+    },
+    {
+      "op": "type",
+      "text": "customer@northwind.example"
+    },
+    {
+      "op": "focus",
+      "target": "Subject"
+    },
+    {
+      "op": "type",
+      "text": "关于导出任务失败的说明"
+    },
+    {
+      "op": "focus",
+      "target": "Body"
+    },
+    {
+      "op": "type",
+      "text": "您好，\n\n导出任务失败的原因是超时配置过短。我们已完成修复并通过回归测试，您可以在 2026-11-17 18:00 后重试。\n\n如仍失败，请直接回复本邮件。\n\n此致\nHearth 支持团队"
+    },
+    {
+      "op": "click",
+      "target": "Save Draft"
+    }
+  ]
+}

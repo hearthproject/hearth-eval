@@ -1,0 +1,16 @@
+{
+  "package": "试用流失研究交付包",
+  "files": [
+    {
+      "path": "research.md",
+      "purpose": "三条发现与来源"
+    },
+    {
+      "path": "email.md",
+      "purpose": "给产品负责人的摘要草稿"
+    }
+  ],
+  "sent": false,
+  "externalRecipients": [],
+  "recipient": "product-lead@acme.cn"
+}

@@ -1,0 +1,17 @@
+{
+  "candidate": "赵宁",
+  "event": {
+    "startUtc": "2026-11-20T06:00:00Z",
+    "durationMinutes": 60,
+    "interviewers": [
+      "alice@acme.cn",
+      "bob@acme.cn"
+    ]
+  },
+  "notify": [
+    "zhao@example.com",
+    "alice@acme.cn",
+    "bob@acme.cn"
+  ],
+  "rationale": "选择候选人 14:00 可用且两位面试官均空闲的时段。"
+}

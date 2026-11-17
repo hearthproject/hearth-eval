@@ -1,0 +1,29 @@
+{
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "整理灰度名单",
+      "owner": "王敏",
+      "due": "2026-11-19",
+      "source": "M-31",
+      "priority": "high"
+    },
+    {
+      "id": "t2",
+      "title": "完成权限回归",
+      "owner": "李哲",
+      "due": "2026-11-20",
+      "source": "M-31",
+      "priority": "high"
+    },
+    {
+      "id": "t3",
+      "title": "跟进安全评审",
+      "owner": "陈可",
+      "due": null,
+      "source": "M-31",
+      "priority": "medium"
+    }
+  ],
+  "summary": "创建两项有明确日期的任务，安全评审任务保留待定日期。"
+}

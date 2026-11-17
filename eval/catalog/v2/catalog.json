@@ -15,7 +15,7 @@
     "code": 5,
     "web": 5,
     "desktop": 5,
-    "cross-app": 0,
+    "cross-app": 5,
     "operations": 0,
     "memory": 0
   },

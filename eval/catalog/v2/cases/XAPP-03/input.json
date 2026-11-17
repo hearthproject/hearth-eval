@@ -1,0 +1,7 @@
+{
+  "ticketId": "T-908",
+  "customer": "customer@northwind.example",
+  "rootCause": "export-worker timeout_ms=1500 太小",
+  "fix": "已将导出超时提高到 5000ms 并回归",
+  "eta": "2026-11-17T18:00:00+08:00"
+}

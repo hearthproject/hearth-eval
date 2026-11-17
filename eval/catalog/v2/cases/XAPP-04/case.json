@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 2,
+  "id": "XAPP-04",
+  "version": 1,
+  "title": "招聘面试跨应用排期",
+  "family": "cross-app",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "从候选人邮件和面试官日历中选出时段，创建面试事件并通知双方。",
+  "goal": "读取 input.json，生成 result.json。candidate 为“赵宁”；event 包含 startUtc 2026-11-20T06:00:00Z、durationMinutes 60、interviewers 两名；notify 覆盖候选人与两位面试官；不得安排与面试官忙碌时间冲突。",
+  "tags": [
+    "recruiting",
+    "calendar",
+    "cross-app"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "candidate",
+          "event",
+          "notify",
+          "rationale"
+        ],
+        "equals": {
+          "candidate": "赵宁",
+          "event.startUtc": "2026-11-20T06:00:00Z",
+          "event.durationMinutes": 60
+        },
+        "minArrayLength": {
+          "event.interviewers": 2,
+          "notify": 3
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "时段同时满足候选人与面试官可用性，UTC 换算正确，通知对象完整。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对面试排期与三方可用性。",
+    "sampleRate": 0.1
+  }
+}
