@@ -108,6 +108,7 @@ describe("EvalRunner", () => {
     expect(run?.reviewReasons).toContain("sampled");
     runner.review(run?.id ?? "", "pass", "owner", "人工确认");
     expect(store.getRun(run?.id ?? "")?.status).toBe("passed");
+    expect(store.getRun(run?.id ?? "")?.reviewReasons).toContain("sampled");
     expect(store.getHumanReview(run?.id ?? "")?.decision).toBe("pass");
   });
 

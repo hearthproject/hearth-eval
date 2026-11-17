@@ -291,7 +291,8 @@ export class EvalRunner {
       humanReviewed: decision !== "unknown",
       reviewReasonSeed: run.id,
       runFailed: ["failed", "error", "blocked"].includes(run.status),
-      sampleRate: 0
+      sampleRate: 0,
+      priorReviewReasons: run.reviewReasons
     });
     const timestamp = this.now().toISOString();
     const review: HumanReviewRecord = {

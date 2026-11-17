@@ -79,7 +79,7 @@ describe("scoreRun", () => {
     expect(outcome.reviewReasons).toContain("low_confidence");
   });
 
-  it("clears automatic review triggers after a human decision", () => {
+  it("keeps automatic review triggers as audit evidence after a human decision", () => {
     const outcome = scoreRun({
       manifest,
       deterministic: {
@@ -94,7 +94,8 @@ describe("scoreRun", () => {
       runFailed: false
     });
     expect(outcome.verdict).toBe("passed");
-    expect(outcome.reviewReasons).toEqual([]);
+    expect(outcome.reviewReasons).toContain("low_confidence");
+    expect(outcome.humanOverride).toBe(true);
     expect(outcome.humanScore).toBe(100);
   });
 
@@ -114,7 +115,8 @@ describe("scoreRun", () => {
     });
     expect(outcome.verdict).toBe("passed");
     expect(outcome.score).toBe(100);
-    expect(outcome.reviewReasons).toEqual([]);
+    expect(outcome.reviewReasons).toContain("judge_unavailable");
+    expect(outcome.humanOverride).toBe(true);
   });
 
   it("uses deterministic-only normalization when judge is explicitly disabled", () => {
@@ -211,5 +213,72 @@ describe("scoreRun gates and budgets", () => {
     expect(outcome.verdict).toBe("failed");
     expect(outcome.score).toBe(0);
     expect(outcome.blockerFailures).toContain("budget.maxSteps");
+  });
+
+  it("routes a blocker with missing evidence to review instead of failing it", () => {
+    const outcome = scoreRun({
+      manifest,
+      deterministic: { content: { passed: true, reason: "ok", evidence: [] } },
+      judge: healthyJudge,
+      judgeExpected: true,
+      humanDecision: null,
+      reviewReasonSeed: "run-evidence-1",
+      runFailed: false
+    });
+    expect(outcome.verdict).toBe("needs_review");
+    expect(outcome.blockerFailures).toEqual([]);
+    expect(outcome.reviewReasons).toContain("blocker_anomaly");
+  });
+
+  it("does not flag a judge conflict when deterministic and judge criteria differ", () => {
+    const outcome = scoreRun({
+      manifest,
+      deterministic: healthy,
+      judge: { criteria: { quality: { passed: false, confidence: 0.9, reason: "weak" } }, overallConfidence: 0.9 },
+      judgeExpected: true,
+      humanDecision: null,
+      reviewReasonSeed: "run-conflict-1",
+      runFailed: false
+    });
+    expect(outcome.reviewReasons).not.toContain("judge_conflict");
+    expect(outcome.verdict).toBe("failed");
+  });
+
+  it("flags a judge conflict when the same criterion is judged inconsistently", () => {
+    const aligned: CaseManifest = {
+      ...manifest,
+      criteria: [
+        { id: "shared", label: "同一判定", source: "deterministic", points: 30, severity: "scored", graderId: "file" },
+        { id: "shared", label: "同一判定", source: "judge", points: 30, severity: "scored", rubric: "检查内容" },
+        { id: "review", label: "人工复核", source: "human", points: 10, severity: "scored" }
+      ]
+    };
+    const outcome = scoreRun({
+      manifest: aligned,
+      deterministic: { shared: { passed: true, reason: "ok", evidence: [] } },
+      judge: { criteria: { shared: { passed: false, confidence: 0.9, reason: "no" } }, overallConfidence: 0.9 },
+      judgeExpected: true,
+      humanDecision: null,
+      reviewReasonSeed: "run-conflict-2",
+      runFailed: false
+    });
+    expect(outcome.verdict).toBe("needs_review");
+    expect(outcome.reviewReasons).toContain("judge_conflict");
+  });
+
+  it("fails a run when a human reviewer rejects it even if the weighted score passes", () => {
+    const outcome = scoreRun({
+      manifest,
+      deterministic: healthy,
+      judge: healthyJudge,
+      judgeExpected: true,
+      humanDecision: "fail",
+      humanReviewed: true,
+      reviewReasonSeed: "run-human-fail",
+      runFailed: false
+    });
+    expect(outcome.verdict).toBe("failed");
+    expect(outcome.humanOverride).toBe(true);
+    expect(outcome.score).toBeGreaterThan(80);
   });
 });

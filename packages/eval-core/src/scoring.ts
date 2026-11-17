@@ -26,6 +26,7 @@ export interface ScoreRunInput {
   sampleRate?: number;
   gates?: GateOutcomeInput[];
   budgetViolations?: string[];
+  priorReviewReasons?: ReviewTriggerKind[];
 }
 
 export interface GateOutcomeInput {
@@ -41,7 +42,7 @@ export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 
 export function scoreRun(input: ScoreRunInput): ScoringOutcome {
   const { manifest } = input;
-  const reviewReasons = new Set<ReviewTriggerKind>();
+  const reviewReasons = new Set<ReviewTriggerKind>(input.priorReviewReasons ?? []);
   const resultCriteria = manifest.criteria.filter((criterion) => (criterion.layer ?? "result") === "result");
   const deterministicCriteria = resultCriteria.filter((criterion) => criterion.source === "deterministic");
   const judgeCriteria = resultCriteria.filter((criterion) => criterion.source === "judge");
@@ -56,7 +57,7 @@ export function scoreRun(input: ScoreRunInput): ScoringOutcome {
 
   const blockerFailures = deterministicCriteria
     .filter((criterion) => criterion.severity === "blocker")
-    .filter((criterion) => input.deterministic[criterion.id]?.passed !== true)
+    .filter((criterion) => input.deterministic[criterion.id]?.passed === false)
     .map((criterion) => criterion.id);
   const gateWarnings: string[] = [];
   for (const gate of input.gates ?? []) {
@@ -87,9 +88,7 @@ export function scoreRun(input: ScoreRunInput): ScoringOutcome {
       if (result && result.confidence < LOW_CONFIDENCE_THRESHOLD) reviewReasons.add("low_confidence");
     }
     if (input.judge.overallConfidence < LOW_CONFIDENCE_THRESHOLD) reviewReasons.add("low_confidence");
-    const deterministicAllPassed = objectiveAvailable && deterministicCriteria.every((criterion) => input.deterministic[criterion.id]?.passed === true);
-    const judgeAllPassed = judgeCriteria.every((criterion) => input.judge?.criteria[criterion.id]?.passed === true);
-    if (deterministicAllPassed !== judgeAllPassed) reviewReasons.add("judge_conflict");
+    if (hasAlignedJudgeConflict(manifest, input.deterministic, input.judge)) reviewReasons.add("judge_conflict");
   }
 
   if (shouldSample(input.reviewReasonSeed, input.sampleRate ?? manifest.humanReview.sampleRate)) {
@@ -103,9 +102,7 @@ export function scoreRun(input: ScoreRunInput): ScoringOutcome {
       : null;
 
   if (input.humanDecision === "unknown") reviewReasons.add("low_confidence");
-  if (input.humanReviewed && (input.humanDecision === "pass" || input.humanDecision === "fail")) {
-    reviewReasons.clear();
-  }
+  const humanOverride = Boolean(input.humanReviewed && (input.humanDecision === "pass" || input.humanDecision === "fail"));
   if (blockerFailures.length > 0) {
     return {
       verdict: "failed",
@@ -115,10 +112,11 @@ export function scoreRun(input: ScoreRunInput): ScoringOutcome {
       humanScore,
       blockerFailures,
       gateWarnings,
-      reviewReasons: [...reviewReasons]
+      reviewReasons: [...reviewReasons],
+      humanOverride
     };
   }
-  if (reviewReasons.size > 0) {
+  if (reviewReasons.size > 0 && !humanOverride) {
     return {
       verdict: "needs_review",
       score: projectedScore(objectiveScore, judgeScore, humanScore, humanCriteria.length, input.judgeExpected),
@@ -127,21 +125,39 @@ export function scoreRun(input: ScoreRunInput): ScoringOutcome {
       humanScore,
       blockerFailures: [],
       gateWarnings,
-      reviewReasons: [...reviewReasons]
+      reviewReasons: [...reviewReasons],
+      humanOverride
     };
   }
 
   const score = projectedScore(objectiveScore, judgeScore, humanScore, humanCriteria.length, input.judgeExpected);
+  const humanRejected = humanOverride && input.humanDecision === "fail";
   return {
-    verdict: score !== null && score >= PASS_THRESHOLD ? "passed" : "failed",
+    verdict: !humanRejected && score !== null && score >= PASS_THRESHOLD ? "passed" : "failed",
     score,
     objectiveScore,
     judgeScore,
     humanScore,
     blockerFailures: [],
     gateWarnings,
-    reviewReasons: []
+    reviewReasons: [...reviewReasons],
+    humanOverride
   };
+}
+
+function hasAlignedJudgeConflict(
+  manifest: CaseManifest,
+  deterministic: Record<string, GraderOutcome>,
+  judge: JudgeOutcome
+): boolean {
+  const judged = new Set(
+    manifest.criteria
+      .filter((criterion) => (criterion.layer ?? "result") === "result" && criterion.source === "judge")
+      .map((criterion) => criterion.id)
+  );
+  return Object.entries(deterministic).some(([id, outcome]) =>
+    judged.has(id) && judge.criteria[id] !== undefined && judge.criteria[id].passed !== outcome.passed
+  );
 }
 
 function pointsScore(criteria: EvalCriterion[], passed: (criterion: EvalCriterion) => boolean, sourceTotal: number): number {

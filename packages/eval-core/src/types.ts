@@ -411,6 +411,7 @@ export interface ScoringOutcome {
   blockerFailures: string[];
   gateWarnings: string[];
   reviewReasons: ReviewTriggerKind[];
+  humanOverride: boolean;
 }
 
 export const ATTRIBUTION_CAUSES = [
