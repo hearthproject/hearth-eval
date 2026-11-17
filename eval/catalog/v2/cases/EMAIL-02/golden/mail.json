@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "op": "focus",
+      "target": "To"
+    },
+    {
+      "op": "type",
+      "text": "buyer@northwind.example"
+    },
+    {
+      "op": "focus",
+      "target": "Subject"
+    },
+    {
+      "op": "type",
+      "text": "Re: 询价：Hearth 团队版 50 席位"
+    },
+    {
+      "op": "focus",
+      "target": "Body"
+    },
+    {
+      "op": "type",
+      "text": "您好，\n\n感谢询价。Hearth 团队版 50 席位年费为 ¥48,000，包含 SSO、审计日志与 5 个自动化工作流。报价有效期 30 天。\n\n如需试用，我可以安排 30 分钟演示。\n\n此致\nHearth 销售团队"
+    },
+    {
+      "op": "click",
+      "target": "Save Draft"
+    }
+  ]
+}

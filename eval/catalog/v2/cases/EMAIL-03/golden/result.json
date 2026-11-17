@@ -1,0 +1,9 @@
+{
+  "ticketId": "CS-2041",
+  "severity": "P1",
+  "owner": "billing-oncall",
+  "slaHours": 4,
+  "customerReply": "已确认同一订阅发生重复扣款，我们将在 1 个工作日内原路退回多收金额，并同步处理进度。",
+  "internalNote": "核对 pay_881 与 pay_882 的支付流水、订阅记录和退款单，确认只保留一笔有效扣款。",
+  "compensationPromised": false
+}

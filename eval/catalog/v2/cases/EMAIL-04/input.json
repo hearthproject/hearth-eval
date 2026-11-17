@@ -1,0 +1,20 @@
+{
+  "subject": "Enterprise migration security review",
+  "messages": [
+    {
+      "from": "alice@acme.cn",
+      "at": "2026-11-16T10:00:00Z",
+      "body": "We can move to Enterprise only after the security review. I will send the SOC 2 report by Nov 20."
+    },
+    {
+      "from": "bob@acme.cn",
+      "at": "2026-11-16T11:30:00Z",
+      "body": "The security questionnaire is still pending. I can finish it by Nov 25."
+    },
+    {
+      "from": "carol@customer.example",
+      "at": "2026-11-17T01:00:00Z",
+      "body": "Confirmed. We will schedule the migration after both items are complete."
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 2,
+  "id": "EMAIL-02",
+  "version": 1,
+  "title": "客户询价回复草稿",
+  "family": "email",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "根据产品价格表与客户询价，生成可直接发送的报价邮件。",
+  "goal": "读取 input.json 中的客户询价和价格表，生成 mail.json。To、Subject、Body 必须与销售政策一致：50 席位团队版年费 48000 元，包含 SSO、审计日志和 5 个自动化工作流，报价有效期 30 天，并邀请 30 分钟演示。不得虚构折扣。",
+  "tags": [
+    "rfq",
+    "reply",
+    "pricing"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "mail.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 mail.json",
+      "config": {
+        "kind": "file",
+        "path": "mail.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "邮件收件人、主题与正文正确",
+      "config": {
+        "kind": "mail_draft",
+        "path": "mail.json",
+        "expected": {
+          "To": "buyer@northwind.example",
+          "Subject": "Re: 询价：Hearth 团队版 50 席位",
+          "Body": "您好，\n\n感谢询价。Hearth 团队版 50 席位年费为 ¥48,000，包含 SSO、审计日志与 5 个自动化工作流。报价有效期 30 天。\n\n如需试用，我可以安排 30 分钟演示。\n\n此致\nHearth 销售团队"
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 mail.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "邮件准确引用价格、席位、包含能力与有效期，语气专业，不添加未经授权的折扣或承诺。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对价格与有效期，确认没有越权折扣。",
+    "sampleRate": 0.1
+  }
+}

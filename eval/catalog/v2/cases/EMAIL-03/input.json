@@ -1,0 +1,23 @@
+{
+  "ticket": "CS-2041",
+  "customer": "星河零售",
+  "plan": "团队版",
+  "messages": [
+    "本月被扣了两次 48000 元，财务已经无法对账。",
+    "如果今天不能确认退款，我们会暂停续费并升级投诉。"
+  ],
+  "paymentRecords": [
+    {
+      "id": "pay_881",
+      "amountCny": 48000,
+      "status": "succeeded",
+      "at": "2026-11-16T09:12:00+08:00"
+    },
+    {
+      "id": "pay_882",
+      "amountCny": 48000,
+      "status": "succeeded",
+      "at": "2026-11-16T09:13:00+08:00"
+    }
+  ]
+}

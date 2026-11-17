@@ -8,7 +8,7 @@
     "passThreshold": 80
   },
   "matrix": {
-    "email": 0,
+    "email": 5,
     "calendar": 0,
     "documents": 0,
     "research": 0,
@@ -27,7 +27,13 @@
     "LIVE-MEMORY-SKILL-PROMOTION"
   ],
   "qualityBar": {
-    "gateLayers": ["trajectory", "action", "knowledge", "system", "safety"],
+    "gateLayers": [
+      "trajectory",
+      "action",
+      "knowledge",
+      "system",
+      "safety"
+    ],
     "requiresMetricAnnotation": true,
     "requiresGoldenForOffline": true
   },

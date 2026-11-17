@@ -1,0 +1,16 @@
+{
+  "from": "buyer@northwind.example",
+  "subject": "询价：Hearth 团队版 50 席位",
+  "body": "请提供 50 席位团队版的年费、包含能力和报价有效期。我们希望本月完成采购。",
+  "priceList": {
+    "plan": "团队版",
+    "seats": 50,
+    "annualCny": 48000,
+    "includes": [
+      "SSO",
+      "审计日志",
+      "5 个自动化工作流"
+    ],
+    "validityDays": 30
+  }
+}

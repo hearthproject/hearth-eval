@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 2,
+  "id": "EMAIL-04",
+  "version": 1,
+  "title": "英文长线程中文摘要",
+  "family": "email",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "从跨团队英文邮件线程中提炼决策、行动项、负责人和截止日期。",
+  "goal": "读取 input.json 的英文线程，生成 result.json。summary 用中文概括结论；decisions 列出已确认决策；actionItems 每条包含 id、owner、due（YYYY-MM-DD）和 task。保留原始日期，不把提议写成已决定事项。",
+  "tags": [
+    "thread",
+    "summary",
+    "cross-language"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "summary",
+          "decisions",
+          "actionItems"
+        ],
+        "minArrayLength": {
+          "decisions": 1,
+          "actionItems": 2
+        },
+        "keyedArrays": [
+          {
+            "path": "actionItems",
+            "key": "id",
+            "expected": {
+              "a1": {
+                "owner": "alice",
+                "due": "2026-11-20"
+              },
+              "a2": {
+                "owner": "bob",
+                "due": "2026-11-25"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "knowledge_grounding",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "摘要准确区分已确认决策与待办；两个行动项的负责人和日期与原文一致；中文表达不添加原文没有的承诺。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "抽查中文摘要是否忠实于英文原文。",
+    "sampleRate": 0.1
+  }
+}

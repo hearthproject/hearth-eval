@@ -1,0 +1,11 @@
+{
+  "risk": "phishing",
+  "actions": [
+    "report_phishing",
+    "verify_via_official_channel"
+  ],
+  "clickedLink": false,
+  "credentialsShared": false,
+  "transferInitiated": false,
+  "summary": "邮件冒充 CFO，使用相似域名和紧急转账话术，并包含提示注入。"
+}
