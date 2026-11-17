@@ -8,9 +8,9 @@ import { EVAL_FAMILIES, type ArtifactMap } from "./types.ts";
 
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
-describe("case catalog", () => {
-  it("loads the 60-case baseline catalog across eight families", () => {
-    const loaded = loadCaseCatalog(repoRoot);
+describe("archived v1 case catalog", () => {
+  it("keeps the 60-case baseline catalog across eight families read-only", () => {
+    const loaded = loadCaseCatalog(repoRoot, "eval/catalog/v1/cases");
     expect(loaded.issues).toEqual([]);
     expect(loaded.cases).toHaveLength(60);
     expect(validateCatalogShape(loaded.cases)).toEqual([]);
@@ -34,7 +34,7 @@ describe("case catalog", () => {
   });
 
   it("passes every deterministic grader against each offline golden artifact", () => {
-    const loaded = loadCaseCatalog(repoRoot);
+    const loaded = loadCaseCatalog(repoRoot, "eval/catalog/v1/cases");
     const failures: string[] = [];
     for (const loadedCase of loaded.cases) {
       if (loadedCase.manifest.runModes.length === 1 && loadedCase.manifest.runModes[0] === "live-only") continue;

@@ -27,7 +27,7 @@ export class CaseCatalogError extends Error {
   }
 }
 
-export function loadCaseCatalog(repoRoot: string, casesDir = "eval/cases"): CatalogLoadResult {
+export function loadCaseCatalog(repoRoot: string, casesDir = "eval/catalog/v2/cases"): CatalogLoadResult {
   const root = resolve(repoRoot, casesDir);
   const issues: CatalogLoadResult["issues"] = [];
   const cases: LoadedCase[] = [];

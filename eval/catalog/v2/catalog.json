@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "status": "staging",
+  "status": "active",
   "scoring": {
     "deterministic": 60,
     "judge": 30,
@@ -37,6 +37,6 @@
     "requiresMetricAnnotation": true,
     "requiresGoldenForOffline": true
   },
-  "note": "v2 在 staging 中构建，全部完成后一次性切换为活动 catalog；v1 保持只读。",
+  "note": "v2 为活动 catalog；v1 已归档到 eval/catalog/v1/cases 仅用于历史回归。",
   "updatedAt": "2026-11-17"
 }

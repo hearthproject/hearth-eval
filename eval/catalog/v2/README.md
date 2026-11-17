@@ -1,7 +1,7 @@
 # Catalog v2
 
-`cases/` 是下一代活动任务集的 staging 目录。它不会参与当前服务启动时的
-catalog 加载，直到全部任务族、live-only 冒烟任务和文档完成切换。
+`cases/` 是当前活动任务集，由服务启动时加载；`live/` 保存发布前手动执行的
+live-only 冒烟任务，不进入离线矩阵。
 
 规则：
 
@@ -10,4 +10,4 @@ catalog 加载，直到全部任务族、live-only 冒烟任务和文档完成�
 - Trajectory、Action、Knowledge、System、Safety 是独立门禁，`points` 必须为 0。
 - 离线 case 必须有 `golden/`，且所有确定性 grader 能对 golden 通过。
 - 每个 case 至少标注一个八项指标维度。
-- 切换时 `eval/cases/` 整体归档到 `eval/catalog/v1/cases/`，保持只读。
+- 旧 60 题已归档到 `eval/catalog/v1/cases/`，保持只读，仅用于历史回归。

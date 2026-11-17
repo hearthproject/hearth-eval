@@ -5,7 +5,7 @@ import { validateCaseManifest } from "./schema.ts";
 import { scoreRun } from "./scoring.ts";
 import type { CaseManifest } from "./types.ts";
 
-const root = new URL("../../../eval/cases/DESK02/", import.meta.url);
+const root = new URL("../../../eval/catalog/v1/cases/DESK02/", import.meta.url);
 const read = (path: string) => JSON.parse(readFileSync(new URL(path, root), "utf8"));
 const manifest = read("case.json") as CaseManifest;
 const golden = read("golden/actions.json");

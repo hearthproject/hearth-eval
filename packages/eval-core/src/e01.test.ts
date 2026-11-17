@@ -8,7 +8,7 @@ import { runGrader } from "./graders.ts";
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
 describe("E01 triage grading", () => {
-  const loadedCase = loadCaseCatalog(repoRoot).cases.find((item) => item.manifest.id === "E01")!;
+  const loadedCase = loadCaseCatalog(repoRoot, "eval/catalog/v1/cases").cases.find((item) => item.manifest.id === "E01")!;
   const grader = loadedCase.manifest.graders.find((item) => item.id === "shape")!;
   const golden = JSON.parse(readFileSync(join(loadedCase.directory, "golden/triage.json"), "utf8")) as {
     items: Array<{ id: string; priority: string; action: string; reason: string }>;

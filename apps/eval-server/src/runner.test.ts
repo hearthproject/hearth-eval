@@ -28,7 +28,7 @@ describe("EvalRunner", () => {
     const judge = client instanceof HearthClient ? new HearthJudgeAdapter(client) : fakeJudge();
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     expect(loaded.issues).toEqual([]);
     const catalog = new Map(loaded.cases.map((item) => [item.manifest.id, item]));
     store.syncCases(loaded.cases);
@@ -87,7 +87,7 @@ describe("EvalRunner", () => {
     const workspace = await fixture(root, { sampleRate: 1 });
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     const catalog = new Map(loaded.cases.map((item) => [item.manifest.id, item]));
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
@@ -126,7 +126,7 @@ describe("EvalRunner", () => {
     const judge = fakeJudge();
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store, client, judge, repoRoot: root,
@@ -157,7 +157,7 @@ describe("EvalRunner", () => {
     const client = fakeAgent(root);
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store, client, judge: fakeJudge(), repoRoot: root,
@@ -185,7 +185,7 @@ describe("EvalRunner", () => {
     const client = fakeAgent(root);
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store, client, judge: fakeJudge(), repoRoot: root,
@@ -231,7 +231,7 @@ describe("EvalRunner", () => {
     const client = fakeAgent(root);
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store, client, judge: fakeJudge(), repoRoot: root,
@@ -264,7 +264,7 @@ describe("EvalRunner", () => {
     else client.getArtifacts.mockRejectedValue(new Error("Artifact service unavailable"));
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store, client, judge, repoRoot: root,
@@ -294,7 +294,7 @@ describe("EvalRunner", () => {
     if (mode === "retry") judge.judge.mockRejectedValueOnce(new Error("Temporary judge failure"));
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store, client, repoRoot: root,
@@ -339,7 +339,7 @@ describe("EvalRunner", () => {
     client.getTask.mockImplementation(async (id) => ({ task: { id, status, nextAction } }));
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({ store, client, judge: fakeJudge(), repoRoot: root,
       catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])), evalVersion: "test", pollIntervalMs: 5 });
@@ -373,7 +373,7 @@ describe("EvalRunner", () => {
     });
     const store = new EvalStore(":memory:");
     cleanup.push(() => store.close());
-    const loaded = loadCaseCatalog(root);
+    const loaded = loadCaseCatalog(root, "eval/cases");
     store.syncCases(loaded.cases);
     const runner = new EvalRunner({
       store, client, judge, repoRoot: root,
