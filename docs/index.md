@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Hearth Eval Agent"
   text: "为个人 Agent 建立可信的评测闭环"
-  tagline: 60 个真实任务、8 个任务族、30 个白盒场景。把任务、实验、轨迹、评分、人工复核与对比放在同一个控制面。
+  tagline: 50 个离线任务、5 个 live-only 冒烟、10 个任务族、30 个白盒场景。把任务、实验、轨迹、评分、人工复核与对比放在同一个控制面。
   image:
     src: /logo.svg
     alt: Hearth
@@ -22,7 +22,7 @@ hero:
 features:
   - icon: 🧪
     title: 任务不是演示
-    details: 60 个 case 覆盖文档、邮件、日历、网页、研究、代码、桌面和跨应用任务。每个 case 都有输入、期望产物、grader 与 golden。
+    details: 50 个离线 case 覆盖邮件、日历、文档、研究、代码、网页、桌面、跨应用、运维闭环与记忆。每个 case 都有输入、期望产物、grader、独立门禁与 golden。
   - icon: 🔁
     title: 全周期可追踪
     details: 从运行排队、Hearth 任务创建、执行轨迹到评分、复核、完成或失败，每一步都有状态、事件和证据。

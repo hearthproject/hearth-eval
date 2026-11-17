@@ -10,7 +10,7 @@ outline: [2, 3]
 
 ## Native 30 题
 
-运行条件：30 个离线 case（8 个任务族均匀分布）、仅 `native` 执行器、重复 1 次、自动评分与自动重试开启、并发 4。
+以下数字全部来自 v1 的 30 题子集：8 个任务族、仅 `native` 执行器、重复 1 次、自动评分与自动重试开启、并发 4。v2 的 50 题基线需要重新运行，不能与 v1 数字直接比较。
 
 | 指标 | 结果 |
 |---|---:|
@@ -34,7 +34,7 @@ outline: [2, 3]
 1. 主服务设置 `HEARTH_EVAL_INPUT_ROOT=D:\App\hearth-eval\eval`。
 2. 评测服务设置 `HEARTH_EVAL_ARTIFACT_ROOT=D:\App\hearth-os\.hearth\eval-artifacts`。
 3. 重启后通过 `GET /api/system` 确认 `artifactRoot` 和 `hearthUrl`。
-4. 在控制台选择 30 个离线 case、`native`、重复 1 次、离线模式、自动评分和自动重试。
+4. 在控制台选择 v2 的 50 个离线 case、`native`、重复 1 次、离线模式、自动评分和自动重试；先用 v1 归档做历史对照时，必须单独说明 case 集合不同。
 5. 不要在 provider 抖动或服务版本不一致时把单轮结果当作最终结论。
 
 ## 口径边界

@@ -81,7 +81,7 @@ npm run dev
 | `HEARTH_URL` | `http://127.0.0.1:4317` | Hearth 主服务地址 |
 | `HEARTH_EVAL_DATA_DIR` | `.hearth/eval` | SQLite 数据目录 |
 | `HEARTH_EVAL_ARTIFACT_ROOT` | `.hearth/eval-artifacts` | 评测产物根目录 |
-| `HEARTH_EVAL_CASES_DIR` | `eval/cases` | case 目录 |
+| `HEARTH_EVAL_CASES_DIR` | `eval/catalog/v2/cases` | 活动 case 目录 |
 | `HEARTH_EVAL_INPUT_ROOT` | 无 | Hearth 允许读取的评测输入根目录 |
 
 ## 生产启动

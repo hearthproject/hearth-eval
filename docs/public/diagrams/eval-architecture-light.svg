@@ -71,6 +71,6 @@
 
   <rect x="110" y="616" width="680" height="72" rx="10" fill="#EDF4EE" stroke="#A9CBB4" stroke-width="1"/>
   <text x="132" y="636" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;font-weight:500;fill:#23543A">数据资产　（由 eval-core 的 loadCaseCatalog 加载）</text>
-  <text x="132" y="654" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">eval/cases 60 个 case · 8 个任务族　|　eval/scenarios 30 个白盒场景</text>
+  <text x="132" y="654" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">catalog v2 50 题 · 10 个任务族 + 5 live　|　eval/scenarios 30 个白盒场景</text>
   <text x="132" y="672" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">scenario-runner/ 9 个文件 · 30 个 handler · tsconfig paths 读取同级 ../hearth-os</text>
 </svg>

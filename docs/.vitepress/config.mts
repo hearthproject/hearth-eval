@@ -14,7 +14,7 @@ export default withMermaid(defineConfig({
   lang: "zh-CN",
   title: "Hearth Eval Agent",
   titleTemplate: ":title · Hearth Eval",
-  description: "Hearth 独立评测 Agent：60 个任务、实验编排、评分复核、全周期轨迹与对比。",
+  description: "Hearth 独立评测 Agent：50 个离线任务、5 个 live-only 冒烟、实验编排、评分复核、全周期轨迹与对比。",
   base: "/hearth-eval/",
   cleanUrls: false,
   lastUpdated: true,
@@ -51,7 +51,8 @@ export default withMermaid(defineConfig({
           text: "评测方法",
           items: [
             { text: "任务集", link: "/guide/task-catalog" },
-            { text: "评分与复核", link: "/guide/scoring" }
+            { text: "评分与复核", link: "/guide/scoring" },
+            { text: "live-only 冒烟", link: "/guide/live-smoke" }
           ]
         }
       ],

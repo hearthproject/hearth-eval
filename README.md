@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>像实验室一样运行个人 Agent 评测。</strong><br>
-  60 个真实任务 · 8 个任务族 · 30 个白盒场景 · 全周期可视化
+  50 个离线任务 + 5 个 live-only 冒烟 · 10 个任务族 · 30 个白盒场景 · 全周期可视化
 </p>
 
 <p align="center">
@@ -22,10 +22,11 @@
 </p>
 
 <p align="center">
-  <img alt="60 cases" src="https://img.shields.io/badge/cases-60-2f7d4f">
-  <img alt="8 families" src="https://img.shields.io/badge/families-8-2f7fa8">
+  <img alt="50 offline cases" src="https://img.shields.io/badge/offline--cases-50-2f7d4f">
+  <img alt="5 live smoke" src="https://img.shields.io/badge/live--smoke-5-b8872f">
+  <img alt="10 families" src="https://img.shields.io/badge/families-10-2f7fa8">
   <img alt="30 scenarios" src="https://img.shields.io/badge/scenarios-30-b8471d">
-  <img alt="42 tests passing" src="https://img.shields.io/badge/tests-42%20passing-2f7d4f">
+  <img alt="120 tests passing" src="https://img.shields.io/badge/tests-120%20passing-2f7d4f">
   <img alt="Node.js 22.13+" src="https://img.shields.io/badge/node-22.13%2B-3c8773">
   <img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-1b1815">
 </p>
@@ -53,10 +54,11 @@ Hearth Eval Agent 不是一个散落着脚本的评测集，而是一个**独立
 
 | 能力 | 当前实现 |
 |---|---|
-| **任务目录** | 60 个 case、8 个任务族；按任务族、难度、运行模式和关键词筛选 |
+| **任务目录** | 50 个离线 case、5 个 live-only 冒烟、10 个任务族；按任务族、难度、运行模式和关键词筛选 |
 | **实验编排** | 多 case、多执行器、1–5 次重复、离线/在线模式、并发上限与取消 |
 | **全周期轨迹** | 从任务创建、执行、等待审批到评分、复核、完成或失败的逐事件记录 |
-| **三层评分** | 确定性检查、模型 rubric 评分、人工复核；blocker 失败直接归零 |
+| **三层评分** | 确定性 60、Judge 30、人工 10；六层独立门禁与 blocker 失败直接归零 |
+| **指标与校准** | 八项指标聚合、Judge 覆盖率/一致率、固定证据 replay 与回归门禁 |
 | **人工复核队列** | 低置信度、评委冲突、抽样复核与 `pass/fail/unknown` 决定 |
 | **实验对比** | 对齐 case、执行器、重复次数与运行模式；不可比时明确警告 |
 | **产物审计** | 受控预览运行产物、grader 证据、Token、耗时、重试与审批次数 |
@@ -64,14 +66,14 @@ Hearth Eval Agent 不是一个散落着脚本的评测集，而是一个**独立
 
 ## 最新结果
 
-2026-11-11 至 11-12 使用 30 个离线 case（8 个任务族均匀分布）、仅 `native` 执行器、重复 1 次、自动评分与自动重试开启、并发 4：
+2026-11-17 已完成 catalog v2 切换：10 个任务族各 5 个离线 case，另有 5 个需人工触发的 live-only 冒烟任务。旧 60 题归档在 `eval/catalog/v1/cases`，仅用于历史回归。v2 还没有可对外引用的完整真实实验，以下历史数字只描述 v1 基线：
 
 | 指标 | 结果 |
 |---|---:|
-| 最好完整单轮 | **18/30 通过（60%）**，平均分 88.89，`EXP-20261111145332-7a95ea` |
+| v1 最好完整单轮 | **18/30 通过（60%）**，平均分 88.89，`EXP-20261111145332-7a95ea` |
 | 累计定向确认 | **19/30** 个 case 曾达到 100 分；不是一次连续实验 |
-| 最近完整单轮 | 12/30 通过（40%），平均分 73.33，`EXP-20261112003215-b1172b` |
-| 最终修复提交 | `eb32ad5`，尚未做不中断的完整 30 题复测 |
+| v1 最近完整单轮 | 12/30 通过（40%），平均分 73.33，`EXP-20261112003215-b1172b` |
+| v2 状态 | 目录、门禁、replay、指标与前端已就绪；等待真实执行器完整跑一轮 |
 
 最近完整实验受到 provider 慢响应、评分 JSON 截断和任务超时影响，且早于最后四个归一化修复；40% 不能直接等同于最终代码能力。完整报告见 [hearth-os 评测页](https://hearthproject.github.io/hearth-os/evaluation/) 和[本仓库结果页](https://hearthproject.github.io/hearth-eval/reference/results.html)。
 
@@ -170,16 +172,18 @@ flowchart LR
 
 | 任务族 | 数量 | 典型任务 |
 |---|---:|---|
-| `documents` | 9 | 会议纪要、合同提取、多报告摘要、课程教案 |
-| `email` | 8 | 收件箱分流、回复草稿、投诉处理、发票与账单 |
-| `calendar` | 7 | 日程规划、冲突处理、周视图、里程碑、隐私 |
-| `web` | 8 | 网页归档、表格提取、来源追踪、安全审计 |
-| `research` | 8 | 多源检索、证据链、事实核验、研究缺口 |
-| `code` | 8 | Bug 修复、PR 评审、CI 复现、契约检查、升级 |
-| `desktop` | 5 | 应用操作、恢复、边界与不可逆动作 |
-| `cross-app` | 7 | 邮件、日历、文档、桌面之间的组合任务 |
+| `email` | 5 | 分流、询价、客诉、跨语言摘要、CEO 钓鱼注入 |
+| `calendar` | 5 | 跨时区、改期、冲突、自然语言排周、隐私边界 |
+| `documents` | 5 | 纪要、合同风险、多报告汇总、版本差异、交付包 |
+| `research` | 5 | 竞品矩阵、证据卡、事实核查、研究缺口、政策时间线 |
+| `code` | 5 | 修测试、PR 评审、CI 诊断、契约测试、依赖升级 |
+| `web` | 5 | 页面指南、归档、表格抽取、超时降级、网页注入 |
+| `desktop` | 5 | 文件整理、邮件草稿、表格清洗、表单审批、会话恢复 |
+| `cross-app` | 5 | 会议、票据、工单、招聘、研究到文档邮件 |
+| `operations` | 5 | 审批发送、零效果拒绝、幂等、对账、检查点续跑 |
+| `memory` | 5 | 偏好召回、冲突纠正、遗忘传播、Skill 权限、上下文预算 |
 
-每个 case 都有 `case.json`，声明目标、输入、期望产物、grader、评分标准和人工复核策略。目录名必须与 manifest `id` 一致；离线 case 必须提供 `golden/`。
+另有 5 个 `live-only` 冒烟任务：邮件发送、GitHub PR、GitHub 评审、定时触发、Skill 晋级。它们不进入离线矩阵，默认要求审批与效果上限。每个离线 case 都是 `schemaVersion: 2`，Result 层固定 60/30/10，至少一个独立门禁，至少一个八项指标标注；离线 case 必须提供 `golden/`。
 
 ## 架构
 
@@ -248,7 +252,9 @@ apps/
 packages/
   eval-core/            Case 契约、目录加载、grader、评分与场景统计
 eval/
-  cases/                60 个 case，含输入、case.json 与 golden
+  catalog/v2/cases/     50 个活动 case，含输入、case.json 与 golden
+  catalog/v2/live/      5 个 live-only 冒烟任务
+  catalog/v1/cases/     旧 60 题只读归档
   inputs/               第一阶段 15 个任务的固定输入
   runs/                 第一阶段验收产物与证据
   scenarios/            30 个白盒场景 manifest
@@ -258,10 +264,10 @@ docs/                   VitePress 中文文档站与结果页
 
 ## 验证
 
-2026-11-12 在当前分支运行：
+2026-11-17 在当前分支运行：
 
 ```bash
-npm test                    # 11 个测试文件、42 个测试全部通过
+npm test                    # 120 个测试全部通过
 npm run typecheck
 npm run typecheck:scenarios # 已补 turndown-plugin-gfm 模块声明
 npm run build
@@ -276,7 +282,9 @@ npm run docs:build
 |---|---|
 | `.hearth/eval/eval.sqlite` | case 版本、实验、运行、grader、复核与事件 |
 | `.hearth/eval-artifacts/<experiment>/<case>/<executor>/r<n>` | 单次运行产物与证据 |
-| `eval/cases/<caseId>/` | 输入、manifest、golden 与可选 live 输入 |
+| `eval/catalog/v2/cases/<caseId>/` | 活动输入、manifest、golden 与可选 live 输入 |
+| `eval/catalog/v2/live/<caseId>/` | live-only 冒烟 manifest，不进入离线矩阵 |
+| `eval/catalog/v1/cases/<caseId>/` | 旧 60 题只读归档 |
 | `eval/scenario-runs/<timestamp>/` | 本地场景报告，已忽略 |
 
 评测服务不接受任意本地输入路径，不写仓库外目录，不把评测产物混入个人 Agent 的正式产物。服务恢复时会把中断运行标记为需要处理，而不是当作通过。

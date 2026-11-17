@@ -20,7 +20,7 @@ flowchart TB
   HJ -->|judge request| HEARTH
   CORE[eval-core] --> API
   CORE --> UI
-  CASE[eval/cases] --> CORE
+  CASE[eval/catalog/v2/cases] --> CORE
 ```
 
 | 模块 | 职责 |
@@ -30,7 +30,9 @@ flowchart TB
 | `apps/eval-server/agent-adapter.ts` | `AgentAdapter` 契约：创建任务、任务视图、产物、取消与健康检查 |
 | `apps/eval-server/judge-adapter.ts` | `JudgeAdapter` 契约与 Hearth 默认裁判实现 |
 | `packages/eval-core` | API 契约、case schema、grader、评分与场景统计 |
-| `eval/cases` | 任务事实来源：输入、manifest 与 golden |
+| `eval/catalog/v2/cases` | 活动任务事实来源：输入、manifest 与 golden |
+| `eval/catalog/v2/live` | live-only 冒烟任务，不进入离线矩阵 |
+| `eval/catalog/v1/cases` | 旧 60 题只读归档 |
 | `scenario-runner` | 读取同级 Hearth 源码的白盒集成场景 |
 
 ## 两个运行仓库
@@ -65,7 +67,7 @@ Eval:   case → run → 等待任务 → 评分 → 复核 → 实验汇总
 | `hearth-os/.hearth/artifacts` | 个人 Agent 正式产物 |
 | `hearth-os/.hearth/eval-artifacts` | 评测运行产物 |
 | `hearth-eval/.hearth/eval` | 评测 SQLite |
-| `hearth-eval/eval/cases` | 任务与输入 |
+| `hearth-eval/eval/catalog/v2/cases` | 活动任务与输入 |
 | `hearth-eval/eval/scenario-runs` | 本地场景证据，已忽略 |
 
 评测输入只从 `HEARTH_EVAL_INPUT_ROOT` 读取；输出只写 `.hearth/eval-artifacts/`；离线模式禁用 URL 输入和网络。
