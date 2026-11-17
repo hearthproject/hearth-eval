@@ -1,0 +1,26 @@
+{
+  "day": "2026-11-18",
+  "events": [
+    {
+      "id": "EV-1",
+      "title": "客户安全评审",
+      "startUtc": "2026-11-18T06:00:00Z",
+      "endUtc": "2026-11-18T07:00:00Z",
+      "priority": "high"
+    },
+    {
+      "id": "EV-2",
+      "title": "内部周会",
+      "startUtc": "2026-11-18T06:30:00Z",
+      "endUtc": "2026-11-18T07:30:00Z",
+      "priority": "low"
+    },
+    {
+      "id": "EV-3",
+      "title": "一对一",
+      "startUtc": "2026-11-18T06:45:00Z",
+      "endUtc": "2026-11-18T07:15:00Z",
+      "priority": "medium"
+    }
+  ]
+}

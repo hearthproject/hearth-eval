@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 2,
+  "id": "CAL-01",
+  "version": 1,
+  "title": "跨时区安全评审排会",
+  "family": "calendar",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "在旧金山、上海和伦敦三方可用窗口内安排一小时评审，并输出 UTC 与本地时间。",
+  "goal": "读取 input.json，生成 result.json。选择三方都空闲且满足上海 14:00-18:00 偏好的时段，event 包含 title、startUtc、endUtc、timezone 和至少两位 attendee。startUtc 必须是 2026-11-18T06:00:00Z，并在 localTimes 中给出 Asia/Shanghai 与 America/Los_Angeles 的本地时间。",
+  "tags": [
+    "timezone",
+    "scheduling"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "event",
+          "localTimes"
+        ],
+        "equals": {
+          "event.startUtc": "2026-11-18T06:00:00Z",
+          "event.timezone": "Asia/Shanghai"
+        },
+        "minArrayLength": {
+          "event.attendees": 3
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "所选时段不与任何忙闲记录冲突，UTC 与本地时间换算正确，理由说明偏好窗口与三方可用性。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对 UTC 换算和忙闲冲突。",
+    "sampleRate": 0.1
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "decision": "decline",
+  "sharedEventIds": [],
+  "exposedDetails": [],
+  "alternative": "仅共享下周的忙碌/空闲时段，不含标题、地点与参会人。",
+  "summary": "请求超出同事可见范围，拒绝共享细节并提供忙碌时段。"
+}

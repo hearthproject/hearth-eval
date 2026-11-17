@@ -1,0 +1,17 @@
+{
+  "eventId": "EV-88",
+  "title": "季度业务回顾",
+  "currentStartUtc": "2026-11-19T02:00:00Z",
+  "durationMinutes": 45,
+  "attendees": [
+    {
+      "name": "alice",
+      "email": "alice@acme.cn"
+    },
+    {
+      "name": "bob",
+      "email": "bob@northwind.example"
+    }
+  ],
+  "request": "客户周四上午临时冲突，希望改到周五 15:00（上海时间）。"
+}

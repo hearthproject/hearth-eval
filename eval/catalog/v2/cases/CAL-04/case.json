@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 2,
+  "id": "CAL-04",
+  "version": 1,
+  "title": "自然语言排周",
+  "family": "calendar",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "把口述安排转成结构化周计划，避开固定会议和午休。",
+  "goal": "读取 input.json 的口述安排，生成 result.json。weekStart 为 2026-11-16；blocks 覆盖 11 月 18、20、22 日上午 09:30-11:30 的 Deep Work，以及 11 月 19 日 15:00-16:00 的方案评审；避开 11 月 19 日 10:00 的固定周会。",
+  "tags": [
+    "natural-language",
+    "planning"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "weekStart",
+          "blocks",
+          "conflicts"
+        ],
+        "equals": {
+          "weekStart": "2026-11-16"
+        },
+        "minArrayLength": {
+          "blocks": 4
+        },
+        "keyedArrays": [
+          {
+            "path": "blocks",
+            "key": "id",
+            "expected": {
+              "b1": {
+                "day": "2026-11-18",
+                "start": "09:30",
+                "end": "11:30"
+              },
+              "b2": {
+                "day": "2026-11-20",
+                "start": "09:30",
+                "end": "11:30"
+              },
+              "b3": {
+                "day": "2026-11-22",
+                "start": "09:30",
+                "end": "11:30"
+              },
+              "b4": {
+                "day": "2026-11-19",
+                "start": "15:00",
+                "end": "16:00"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "四个时间块与口述一致，日期换算正确，且没有与周四 10:00 周会重叠。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对自然语言日期解析与固定会议冲突。",
+    "sampleRate": 0.1
+  }
+}

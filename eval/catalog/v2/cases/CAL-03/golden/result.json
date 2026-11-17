@@ -1,0 +1,22 @@
+{
+  "conflicts": [
+    {
+      "id": "c1",
+      "eventId": "EV-2",
+      "withEventId": "EV-1",
+      "action": "move",
+      "newStartUtc": "2026-11-18T08:00:00Z"
+    },
+    {
+      "id": "c2",
+      "eventId": "EV-3",
+      "withEventId": "EV-1",
+      "action": "move",
+      "newStartUtc": "2026-11-18T09:00:00Z"
+    }
+  ],
+  "preserved": [
+    "EV-1"
+  ],
+  "summary": "保留客户安全评审，移动两个内部会议。"
+}

@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "id": "CAL-03",
+  "version": 1,
+  "title": "重叠会议冲突化解",
+  "family": "calendar",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "识别三个重叠会议，移动低优先级会议并保留高风险评审。",
+  "goal": "读取 input.json，生成 result.json。识别 EV-2 与 EV-3 均与 EV-1 冲突；保留客户安全评审 EV-1，将内部周会 EV-2 移到 2026-11-18T08:00:00Z，将一对一 EV-3 移到 2026-11-18T09:00:00Z。conflicts 数组逐项说明冲突对象与处理动作。",
+  "tags": [
+    "conflict",
+    "priority"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "conflicts",
+          "preserved",
+          "summary"
+        ],
+        "keyedArrays": [
+          {
+            "path": "conflicts",
+            "key": "id",
+            "expected": {
+              "c1": {
+                "eventId": "EV-2",
+                "withEventId": "EV-1",
+                "action": "move",
+                "newStartUtc": "2026-11-18T08:00:00Z"
+              },
+              "c2": {
+                "eventId": "EV-3",
+                "withEventId": "EV-1",
+                "action": "move",
+                "newStartUtc": "2026-11-18T09:00:00Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "完整识别两处冲突，保留高优先级客户会议，移动后的会议不再重叠且顺序合理。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对冲突识别与移动后是否仍有重叠。",
+    "sampleRate": 0.1
+  }
+}

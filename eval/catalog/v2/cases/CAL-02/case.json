@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "id": "CAL-02",
+  "version": 1,
+  "title": "客户会议改期并通知",
+  "family": "calendar",
+  "difficulty": "normal",
+  "runModes": [
+    "offline"
+  ],
+  "description": "按客户新窗口改期，保留原时长，输出新旧时间与通知对象。",
+  "goal": "读取 input.json，生成 result.json。EV-88 从 2026-11-19T02:00:00Z 改到 2026-11-20T07:00:00Z，保持 45 分钟；notify 覆盖 alice 与 bob；reason 说明客户临时冲突。不得取消会议或改变参会人。",
+  "tags": [
+    "reschedule",
+    "notification"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "eventId",
+          "oldStartUtc",
+          "newStartUtc",
+          "newEndUtc",
+          "reason"
+        ],
+        "equals": {
+          "eventId": "EV-88",
+          "oldStartUtc": "2026-11-19T02:00:00Z",
+          "newStartUtc": "2026-11-20T07:00:00Z"
+        },
+        "minArrayLength": {
+          "notify": 2
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 12,
+        "maxToolCalls": 8,
+        "maxDurationMs": 120000,
+        "requireNoErrors": true
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "改期时间换算正确，时长保持 45 分钟，通知对象完整，理由与客户请求一致。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 12,
+    "maxToolCalls": 8,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对改期窗口与通知名单。",
+    "sampleRate": 0.1
+  }
+}
