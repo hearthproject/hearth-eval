@@ -2,5 +2,6 @@ export * from "./types.ts";
 export * from "./schema.ts";
 export * from "./graders.ts";
 export * from "./scoring.ts";
+export * from "./trace.ts";
 export * from "./api.ts";
 export * from "./scenarios.ts";

@@ -6,6 +6,7 @@ import type {
   CaseManifest,
   CaseVersionSummary,
   EvalEventRecord,
+  EvalTrace,
   ExperimentRecord,
   ExperimentRunRecord,
   GraderResultRecord,
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS experiment_runs (
   finished_at TEXT,
   score REAL,
   error TEXT,
+  primary_cause TEXT,
   review_reasons_json TEXT NOT NULL,
   usage_json TEXT,
   retry_count INTEGER NOT NULL DEFAULT 0,
@@ -106,6 +108,12 @@ CREATE TABLE IF NOT EXISTS eval_events (
   payload_json TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS run_traces (
+  run_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL,
+  trace_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS experiment_runs_experiment_idx ON experiment_runs(experiment_id, status);
 CREATE INDEX IF NOT EXISTS experiment_runs_review_idx ON experiment_runs(status, updated_at);
 CREATE INDEX IF NOT EXISTS grader_results_run_idx ON grader_results(run_id);
@@ -123,6 +131,14 @@ export class EvalStore {
     this.db.exec("PRAGMA foreign_keys = ON;");
     this.db.exec("PRAGMA busy_timeout = 5000;");
     this.db.exec(SCHEMA);
+    this.migrate();
+  }
+
+  private migrate(): void {
+    const columns = this.db.prepare("PRAGMA table_info(experiment_runs)").all() as DbRow[];
+    if (!columns.some((column) => column.name === "primary_cause")) {
+      this.db.exec("ALTER TABLE experiment_runs ADD COLUMN primary_cause TEXT");
+    }
   }
 
   close(): void {
@@ -218,15 +234,15 @@ export class EvalStore {
 
   createRuns(runs: ExperimentRunRecord[]): void {
     const statement = this.db.prepare(
-      `INSERT INTO experiment_runs (id, experiment_id, case_key, case_version, case_content_hash, executor_id, repetition, status, hearth_task_id, output_dir, external_ref, attempt, started_at, finished_at, score, error, review_reasons_json, usage_json, retry_count, approval_count, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO experiment_runs (id, experiment_id, case_key, case_version, case_content_hash, executor_id, repetition, status, hearth_task_id, output_dir, external_ref, attempt, started_at, finished_at, score, error, primary_cause, review_reasons_json, usage_json, retry_count, approval_count, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     this.transaction(() => {
       for (const run of runs) {
         statement.run(
           run.id, run.experimentId, run.caseKey, run.caseVersion, run.caseContentHash,
           run.executorId, run.repetition, run.status, run.hearthTaskId, run.outputDir,
-          run.externalRef, run.attempt, run.startedAt, run.finishedAt, run.score, run.error,
+          run.externalRef, run.attempt, run.startedAt, run.finishedAt, run.score, run.error, run.primaryCause ?? null,
           JSON.stringify(run.reviewReasons), null, 0, 0, run.createdAt, run.updatedAt
         );
       }
@@ -242,6 +258,7 @@ export class EvalStore {
       finishedAt: "finished_at",
       score: "score",
       error: "error",
+      primaryCause: "primary_cause",
       updatedAt: "updated_at"
     };
     for (const [key, column] of Object.entries(columns)) {
@@ -259,6 +276,20 @@ export class EvalStore {
   setRunMetrics(id: string, metrics: RunMetrics): void {
     this.db.prepare("UPDATE experiment_runs SET usage_json = ?, retry_count = ?, approval_count = ? WHERE id = ?")
       .run(JSON.stringify({ inputTokens: metrics.inputTokens, outputTokens: metrics.outputTokens }), metrics.retryCount, metrics.approvalCount, id);
+  }
+
+  saveTrace(runId: string, trace: EvalTrace): void {
+    this.db.prepare(
+      `INSERT INTO run_traces (run_id, task_id, trace_json, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(run_id) DO UPDATE SET
+         task_id=excluded.task_id, trace_json=excluded.trace_json, created_at=excluded.created_at`
+    ).run(runId, trace.taskId, JSON.stringify(trace), trace.fetchedAt);
+  }
+
+  getTrace(runId: string): EvalTrace | null {
+    const row = this.db.prepare("SELECT trace_json FROM run_traces WHERE run_id = ?").get(runId) as DbRow | undefined;
+    if (!row) return null;
+    return JSON.parse(String(row.trace_json)) as EvalTrace;
   }
 
   getRunMetrics(id: string): RunMetrics | null {
@@ -486,6 +517,7 @@ function rowToRun(row: DbRow): ExperimentRunRecord {
     finishedAt: row.finished_at == null ? null : String(row.finished_at),
     score: row.score == null ? null : Number(row.score),
     error: row.error == null ? null : String(row.error),
+    primaryCause: row.primary_cause == null ? null : String(row.primary_cause) as NonNullable<ExperimentRunRecord["primaryCause"]>,
     reviewReasons: JSON.parse(String(row.review_reasons_json)) as ExperimentRunRecord["reviewReasons"],
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at)

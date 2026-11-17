@@ -251,6 +251,7 @@ export interface ExperimentRunRecord {
   finishedAt: string | null;
   score: number | null;
   error: string | null;
+  primaryCause?: AttributionCause | null;
   reviewReasons: ReviewTriggerKind[];
   createdAt: string;
   updatedAt: string;
@@ -386,6 +387,45 @@ export interface ScoringOutcome {
   humanScore: number | null;
   blockerFailures: string[];
   reviewReasons: ReviewTriggerKind[];
+}
+
+export const ATTRIBUTION_CAUSES = [
+  "none",
+  "task_timeout",
+  "tool_error",
+  "approval_blocked",
+  "artifact_missing",
+  "grader_failure",
+  "judge_unavailable",
+  "model_error",
+  "policy_denied",
+  "trace_unavailable",
+  "unknown"
+] as const;
+export type AttributionCause = (typeof ATTRIBUTION_CAUSES)[number];
+
+export interface EvalTraceEvent {
+  seq: number;
+  type: string;
+  runId: string | null;
+  step: number;
+  phase: "run" | "approval" | "effect" | "artifact" | "error" | "outbox" | "other";
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface EvalTrace {
+  taskId: string;
+  fetchedAt: string;
+  events: EvalTraceEvent[];
+  truncated: boolean;
+  steps: number;
+  toolCalls: number;
+  approvals: number;
+  effects: number;
+  artifacts: number;
+  errors: Array<{ seq: number; message: string }>;
+  primaryCause: AttributionCause;
 }
 
 export type ArtifactMap = Record<string, { text: string; bytes: number; mimeType?: string }>;

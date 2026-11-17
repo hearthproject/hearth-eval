@@ -3,6 +3,7 @@ import type {
   CaseVersionSummary,
   EvalEventRecord,
   EvalFamily,
+  EvalTrace,
   ExperimentComparison,
   ExperimentRecord,
   ExperimentRunRecord,
@@ -62,6 +63,7 @@ export interface RunDetailResponse {
   review: HumanReviewRecord | null;
   events: EvalEventRecord[];
   artifacts: RunArtifactView[];
+  trace: EvalTrace | null;
   hearthTask: Record<string, unknown> | null;
 }
 

@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { requireCaseCatalog } from "@hearth/eval-core/node";
-import type { ExperimentRecord, ExperimentRunRecord, GraderResultRecord } from "@hearth/eval-core";
+import { buildEvalTrace, type ExperimentRecord, type ExperimentRunRecord, type GraderResultRecord } from "@hearth/eval-core";
 import { describe, expect, it } from "vitest";
 import { EvalStore } from "./store.ts";
 
@@ -25,6 +25,8 @@ describe("EvalStore", () => {
       store.updateRun(run.id, { status: "needs_review", score: 86, reviewReasons: ["low_confidence"] });
       store.setRunMetrics(run.id, { inputTokens: 120, outputTokens: 30, retryCount: 1, approvalCount: 2 });
       expect(store.getRunMetrics(run.id)).toEqual({ inputTokens: 120, outputTokens: 30, retryCount: 1, approvalCount: 2 });
+      store.saveTrace(run.id, buildEvalTrace("hearth-task-1", [{ seq: 1, type: "run.started", payload: {} }]));
+      expect(store.getTrace(run.id)).toMatchObject({ taskId: "hearth-task-1", steps: 1, primaryCause: "none" });
       expect(store.countPendingReviews()).toBe(1);
 
       const grader: GraderResultRecord = {

@@ -15,12 +15,16 @@ import type {
 } from "@hearth/eval-core";
 import {
   EVAL_FAMILIES,
+  attributePrimaryCause,
+  buildEvalTrace,
   emptyFamilySummaries,
   familySummary,
   runGrader,
   scoreRun,
   type GraderOutcome,
-  type JudgeOutcome
+  type JudgeOutcome,
+  type EvalTrace,
+  type RawTraceEvent
 } from "@hearth/eval-core";
 import { resolveCaseInput, type LoadedCase } from "@hearth/eval-core/node";
 import { isTerminalTaskStatus, type AgentAdapter, type AgentTaskView } from "./agent-adapter.ts";
@@ -405,6 +409,7 @@ export class EvalRunner {
         payload: { hearthTaskId: created.task.id, created: created.created }
       });
       const wait = await this.waitForTask({ ...run, hearthTaskId: created.task.id }, manifest);
+      const trace = await this.captureTrace(run, created.task.id, wait).catch(() => null);
       this.store.updateRun(run.id, { status: "grading", updatedAt: this.now().toISOString() });
       this.store.appendEvent("run.grading", {
         experimentId: run.experimentId,
@@ -420,6 +425,7 @@ export class EvalRunner {
       this.store.updateRun(run.id, {
         status,
         score: graded.outcome.score,
+        primaryCause: trace?.primaryCause ?? null,
         reviewReasons: graded.outcome.reviewReasons,
         error: runError(wait, graded),
         finishedAt,
@@ -497,6 +503,33 @@ export class EvalRunner {
     }
     const task = last?.task ?? { id: run.hearthTaskId, status: "running" };
     return { status: "timeout", task, view: last, timedOut: true };
+  }
+
+  private async captureTrace(run: ExperimentRunRecord, taskId: string, wait: TaskWaitResult): Promise<EvalTrace> {
+    const raw = this.client.getTrace
+      ? await this.client.getTrace(taskId)
+      : buildEvalTrace(taskId, (wait.view?.events ?? []) as RawTraceEvent[], {});
+    const trace: EvalTrace = {
+      ...raw,
+      primaryCause: attributePrimaryCause(raw.events, {
+        taskStatus: wait.status,
+        timedOut: wait.timedOut,
+        error: wait.task.error?.message ?? null
+      })
+    };
+    this.store.saveTrace(run.id, trace);
+    this.store.appendEvent("run.trace", {
+      experimentId: run.experimentId,
+      runId: run.id,
+      payload: {
+        taskId,
+        steps: trace.steps,
+        events: trace.events.length,
+        primaryCause: trace.primaryCause,
+        truncated: trace.truncated
+      }
+    });
+    return trace;
   }
 
   private async gradeRun(run: ExperimentRunRecord, manifest: CaseManifest, artifacts: ArtifactMap, wait: TaskWaitResult): Promise<GradeResult> {

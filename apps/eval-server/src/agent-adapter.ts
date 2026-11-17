@@ -1,6 +1,7 @@
 import type {
   ArtifactMap,
   EvalTaskRequest,
+  EvalTrace,
 } from "@hearth/eval-core";
 
 /** Adapters translate provider-specific task states into the states consumed by EvalRunner. */
@@ -51,6 +52,7 @@ export interface AgentAdapter {
   ): Promise<{ task: AgentTask; created: boolean }>;
   getTask(taskId: string): Promise<AgentTaskView>;
   getArtifacts(request: AgentArtifactRequest): Promise<ArtifactMap>;
+  getTrace?(taskId: string): Promise<EvalTrace>;
   cancelTask(taskId: string): Promise<Record<string, unknown>>;
   health(): Promise<Record<string, unknown>>;
 }

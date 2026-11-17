@@ -3,10 +3,12 @@ import { extname, join, resolve } from "node:path";
 import { resolveRunOutputDir } from "./artifact-path.ts";
 import type {
   ArtifactMap,
+  EvalTrace,
   EvalTaskRequest,
   JudgeRequest,
   JudgeResponse,
 } from "@hearth/eval-core";
+import { buildEvalTrace, type RawTraceEvent } from "@hearth/eval-core";
 import type {
   AgentAdapter,
   AgentArtifactRequest,
@@ -63,6 +65,24 @@ export class HearthClient implements AgentAdapter {
 
   async getTask(taskId: string): Promise<HearthTaskView> {
     return this.request(`/api/tasks/${encodeURIComponent(taskId)}`);
+  }
+
+  async getTrace(taskId: string): Promise<EvalTrace> {
+    const events: RawTraceEvent[] = [];
+    let afterSeq = 0;
+    let truncated = false;
+    for (let page = 0; page < 12; page += 1) {
+      const window = await this.request<{
+        events?: RawTraceEvent[];
+        hasMore?: boolean;
+        nextSeq?: number;
+      }>(`/api/eval/tasks/${encodeURIComponent(taskId)}/trace?afterSeq=${afterSeq}&limit=500`);
+      events.push(...(window.events ?? []));
+      if (!window.hasMore) break;
+      afterSeq = typeof window.nextSeq === "number" ? window.nextSeq : afterSeq;
+      if (page === 11) truncated = true;
+    }
+    return buildEvalTrace(taskId, events, { truncated });
   }
 
   //按照规则取出作业

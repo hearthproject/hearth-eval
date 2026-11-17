@@ -5,6 +5,41 @@ import { describe, expect, it } from "vitest";
 import { HearthClient } from "./hearth-client.ts";
 
 describe("Hearth artifact adapter", () => {
+  it("paginates the task trace until hasMore is false", async () => {
+    const calls: string[] = [];
+    const fetchImpl = (async (input: unknown) => {
+      const url = String(input);
+      calls.push(url);
+      const afterSeq = Number(new URL(url).searchParams.get("afterSeq") ?? "0");
+      const body = afterSeq === 0
+        ? {
+            events: [
+              { seq: 1, type: "task.created", runId: null, payload: {}, createdAt: "2026-11-17T00:00:00.000Z" },
+              { seq: 2, type: "approval.created", runId: "run-1", payload: { status: "pending" }, createdAt: "2026-11-17T00:00:01.000Z" }
+            ],
+            hasMore: true,
+            nextSeq: 2
+          }
+        : {
+            events: [
+              { seq: 3, type: "effect.updated", runId: "run-1", payload: { status: "succeeded" }, createdAt: "2026-11-17T00:00:02.000Z" }
+            ],
+            hasMore: false,
+            nextSeq: 3
+          };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch;
+    const client = new HearthClient({ baseUrl: "http://hearth.test", fetchImpl });
+
+    const trace = await client.getTrace("task-1");
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toContain("afterSeq=2");
+    expect(trace.events.map((event) => event.seq)).toEqual([1, 2, 3]);
+    expect(trace.approvals).toBe(1);
+    expect(trace.effects).toBe(1);
+    expect(trace.primaryCause).toBe("none");
+  });
+
   it("reads nested text and binary metadata and skips oversized files", async ({ onTestFinished }) => {
     const repoRoot = mkdtempSync(join(tmpdir(), "eval-artifacts-"));
     onTestFinished(() => rmSync(repoRoot, { recursive: true, force: true }));
