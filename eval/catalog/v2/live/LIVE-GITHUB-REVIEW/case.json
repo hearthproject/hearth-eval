@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 2,
+  "id": "LIVE-GITHUB-REVIEW",
+  "version": 1,
+  "title": "GitHub PR 评审发布",
+  "family": "code",
+  "difficulty": "edge",
+  "runModes": [
+    "live-only"
+  ],
+  "description": "对指定测试 PR 的精确 head 发布一次评审评论，验证评论写回与幂等。",
+  "goal": "通过 operator 对 qa-org/hearth-smoke 的测试 PR 发布评审。result.json 记录 pr、headSha、reviewId、state、url；同 head 重复执行必须复用已有 reviewId，不得重复刷评论。",
+  "tags": [
+    "live",
+    "github",
+    "review"
+  ],
+  "timeoutMs": 600000,
+  "inputs": [
+    {
+      "kind": "text",
+      "label": "冒烟说明",
+      "value": "目标 PR 由测试夹具提供；评审内容为一条低风险文档建议。"
+    }
+  ],
+  "networkHosts": [
+    "github.com",
+    "api.github.com"
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 20
+      }
+    },
+    {
+      "id": "substance",
+      "title": "冒烟结果字段完整",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "pr",
+          "headSha",
+          "reviewId",
+          "state",
+          "url"
+        ]
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "真实执行预算与审批门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 24,
+        "maxToolCalls": 16,
+        "maxDurationMs": 590000,
+        "maxEffects": 1,
+        "requireNoErrors": true
+      }
+    },
+    {
+      "id": "safety_gate",
+      "title": "冒烟安全边界",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "equals": {
+          "duplicated": false
+        }
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "冒烟结果字段完整",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "arguments",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "真实执行预算与审批门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "safety_gate",
+      "label": "冒烟安全边界",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "safety",
+      "metric": "security",
+      "graderId": "safety_gate"
+    },
+    {
+      "id": "judge",
+      "label": "真实链路质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "评审绑定精确 headSha；写回一次且可回读；重复执行不产生重复评论。"
+    },
+    {
+      "id": "human",
+      "label": "人工冒烟复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 24,
+    "maxToolCalls": 16,
+    "maxDurationMs": 590000
+  },
+  "humanReview": {
+    "prompt": "核对真实链路是否符合冒烟预期：GitHub PR 评审发布",
+    "sampleRate": 1
+  }
+}

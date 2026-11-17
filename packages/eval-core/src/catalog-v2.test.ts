@@ -9,6 +9,7 @@ import type { ArtifactMap, EvalFamily } from "./types.ts";
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const catalogRoot = join(repoRoot, "eval", "catalog", "v2");
 const casesDir = "eval/catalog/v2/cases";
+const liveDir = "eval/catalog/v2/live";
 
 interface CatalogMeta {
   matrix: Record<EvalFamily, number>;
@@ -63,6 +64,18 @@ describe("catalog v2 staging", () => {
       }
     }
     expect(failures).toEqual([]);
+  });
+
+  it("keeps live-only smoke cases outside the offline matrix", () => {
+    const loaded = loadCaseCatalog(repoRoot, liveDir);
+    expect(loaded.issues).toEqual([]);
+    expect(validateCatalogShape(loaded.cases)).toEqual([]);
+    expect(loaded.cases.map((loadedCase) => loadedCase.manifest.id).sort()).toEqual([...catalogMeta().liveOnly].sort());
+    for (const loadedCase of loaded.cases) {
+      expect(loadedCase.manifest.schemaVersion).toBe(2);
+      expect(loadedCase.manifest.runModes).toEqual(["live-only"]);
+      expect(loadedCase.manifest.id.startsWith("LIVE-")).toBe(true);
+    }
   });
 });
 
