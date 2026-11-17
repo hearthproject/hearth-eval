@@ -2,6 +2,7 @@ import type {
   CaseManifest,
   EvalCriterion,
   FamilySummary,
+  GateLayer,
   ReviewTriggerKind,
   ScoringOutcome
 } from "./types.ts";
@@ -23,6 +24,16 @@ export interface ScoreRunInput {
   reviewReasonSeed: string;
   runFailed: boolean;
   sampleRate?: number;
+  gates?: GateOutcomeInput[];
+  budgetViolations?: string[];
+}
+
+export interface GateOutcomeInput {
+  id: string;
+  layer: GateLayer;
+  severity: "blocker" | "scored";
+  passed: boolean | null;
+  reason: string;
 }
 
 export const PASS_THRESHOLD = 80;
@@ -31,9 +42,10 @@ export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 export function scoreRun(input: ScoreRunInput): ScoringOutcome {
   const { manifest } = input;
   const reviewReasons = new Set<ReviewTriggerKind>();
-  const deterministicCriteria = manifest.criteria.filter((criterion) => criterion.source === "deterministic");
-  const judgeCriteria = manifest.criteria.filter((criterion) => criterion.source === "judge");
-  const humanCriteria = manifest.criteria.filter((criterion) => criterion.source === "human");
+  const resultCriteria = manifest.criteria.filter((criterion) => (criterion.layer ?? "result") === "result");
+  const deterministicCriteria = resultCriteria.filter((criterion) => criterion.source === "deterministic");
+  const judgeCriteria = resultCriteria.filter((criterion) => criterion.source === "judge");
+  const humanCriteria = resultCriteria.filter((criterion) => criterion.source === "human");
 
   if (input.runFailed) reviewReasons.add("failed_sample");
   for (const criterion of deterministicCriteria) {
@@ -46,6 +58,17 @@ export function scoreRun(input: ScoreRunInput): ScoringOutcome {
     .filter((criterion) => criterion.severity === "blocker")
     .filter((criterion) => input.deterministic[criterion.id]?.passed !== true)
     .map((criterion) => criterion.id);
+  const gateWarnings: string[] = [];
+  for (const gate of input.gates ?? []) {
+    if (gate.passed === null) {
+      reviewReasons.add(gate.severity === "blocker" ? "blocker_anomaly" : "low_confidence");
+      continue;
+    }
+    if (gate.passed) continue;
+    if (gate.severity === "blocker") blockerFailures.push(`${gate.layer}.${gate.id}`);
+    else gateWarnings.push(`${gate.layer}.${gate.id}`);
+  }
+  for (const violation of input.budgetViolations ?? []) blockerFailures.push(violation);
 
   const objectiveAvailable = deterministicCriteria.every((criterion) => Boolean(input.deterministic[criterion.id]));
   const judgeAvailable = !input.judgeExpected || Boolean(input.judge && judgeCriteria.every((criterion) => input.judge?.criteria[criterion.id]));
@@ -91,6 +114,7 @@ export function scoreRun(input: ScoreRunInput): ScoringOutcome {
       judgeScore,
       humanScore,
       blockerFailures,
+      gateWarnings,
       reviewReasons: [...reviewReasons]
     };
   }
@@ -102,6 +126,7 @@ export function scoreRun(input: ScoreRunInput): ScoringOutcome {
       judgeScore,
       humanScore,
       blockerFailures: [],
+      gateWarnings,
       reviewReasons: [...reviewReasons]
     };
   }
@@ -114,6 +139,7 @@ export function scoreRun(input: ScoreRunInput): ScoringOutcome {
     judgeScore,
     humanScore,
     blockerFailures: [],
+    gateWarnings,
     reviewReasons: []
   };
 }

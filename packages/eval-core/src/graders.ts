@@ -1,4 +1,15 @@
-import type { ArtifactMap, CsvGraderConfig, GraderConfig, GraderSpec, JsonGraderConfig, MailDraftGraderConfig, StateGraderConfig, TextGraderConfig } from "./types.ts";
+import type {
+  ArtifactMap,
+  CsvGraderConfig,
+  EvalTrace,
+  GraderConfig,
+  GraderSpec,
+  JsonGraderConfig,
+  MailDraftGraderConfig,
+  StateGraderConfig,
+  TextGraderConfig,
+  TraceGraderConfig
+} from "./types.ts";
 
 export interface GraderOutcome {
   passed: boolean;
@@ -18,7 +29,85 @@ export function runGrader(spec: GraderSpec, artifacts: ArtifactMap): GraderOutco
   }
 }
 
+export interface TraceObservation {
+  steps: number;
+  toolCalls: number;
+  approvals: number;
+  effects: number;
+  errors: number;
+  durationMs: number | null;
+  tokens: number | null;
+}
+
+export function observeTrace(
+  trace: EvalTrace,
+  extra: { durationMs?: number | null; tokens?: number | null } = {}
+): TraceObservation {
+  return {
+    steps: trace.steps,
+    toolCalls: trace.toolCalls,
+    approvals: trace.approvals,
+    effects: trace.effects,
+    errors: trace.errors.length,
+    durationMs: extra.durationMs ?? null,
+    tokens: extra.tokens ?? null
+  };
+}
+
+export function runTraceGrader(spec: GraderSpec, trace: EvalTrace, observed = observeTrace(trace)): GraderOutcome {
+  const config = spec.config;
+  if (config.kind !== "trace") return { passed: false, reason: `grader ${spec.id} 不是 trace grader`, evidence: [] };
+  const checks: Array<{ ok: boolean; reason: string; evidence: string }> = [];
+  checks.push(limitCheck("steps", observed.steps, config.maxSteps));
+  checks.push(limitCheck("toolCalls", observed.toolCalls, config.maxToolCalls));
+  checks.push(limitCheck("durationMs", observed.durationMs, config.maxDurationMs));
+  checks.push(limitCheck("tokens", observed.tokens, config.maxTokens));
+  if (config.minApprovals !== undefined) {
+    checks.push({
+      ok: observed.approvals >= config.minApprovals,
+      reason: `审批 ${observed.approvals} 次，要求至少 ${config.minApprovals} 次`,
+      evidence: `approvals=${observed.approvals}`
+    });
+  }
+  if (config.minEffects !== undefined) {
+    checks.push({
+      ok: observed.effects >= config.minEffects,
+      reason: `效果 ${observed.effects} 个，要求至少 ${config.minEffects} 个`,
+      evidence: `effects=${observed.effects}`
+    });
+  }
+  if (config.maxEffects !== undefined) {
+    checks.push({
+      ok: observed.effects <= config.maxEffects,
+      reason: `效果 ${observed.effects} 个，要求最多 ${config.maxEffects} 个`,
+      evidence: `effects=${observed.effects}`
+    });
+  }
+  if (config.requireNoErrors) {
+    checks.push({
+      ok: observed.errors === 0,
+      reason: `trace 包含 ${observed.errors} 个错误事件`,
+      evidence: `errors=${observed.errors}`
+    });
+  }
+  const failed = checks.filter((check) => !check.ok);
+  return failed.length === 0
+    ? { passed: true, reason: `trace 门禁通过（${checks.length} 项）`, evidence: checks.map((check) => check.evidence) }
+    : { passed: false, reason: failed.map((check) => check.reason).join("；"), evidence: failed.map((check) => check.evidence) };
+}
+
+function limitCheck(name: string, value: number | null, limit: number | undefined): { ok: boolean; reason: string; evidence: string } {
+  if (limit === undefined) return { ok: true, reason: "", evidence: "" };
+  if (value === null) return { ok: false, reason: `${name} 无观测值`, evidence: `${name}=null` };
+  return {
+    ok: value <= limit,
+    reason: `${name}=${value}，超过上限 ${limit}`,
+    evidence: `${name}=${value}`
+  };
+}
+
 function gradeConfig(config: GraderConfig, artifacts: ArtifactMap): GraderOutcome {
+  if (config.kind === "trace") return fail("trace grader 需要任务 trace，不能只对产物评分");
   if (config.kind === "file") {
     const artifact = findArtifact(artifacts, config.path);
     if (!artifact) return fail(`缺少产物 ${config.path}`);

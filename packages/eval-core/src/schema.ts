@@ -65,6 +65,26 @@ const stateGraderSchema = z.object({
   expected: z.record(z.string(), z.unknown())
 }).strict();
 
+const traceGraderSchema = z.object({
+  kind: z.literal("trace"),
+  maxSteps: z.number().int().positive().optional(),
+  maxToolCalls: z.number().int().nonnegative().optional(),
+  maxDurationMs: z.number().int().positive().optional(),
+  maxTokens: z.number().int().positive().optional(),
+  minApprovals: z.number().int().nonnegative().optional(),
+  minEffects: z.number().int().nonnegative().optional(),
+  maxEffects: z.number().int().nonnegative().optional(),
+  requireNoErrors: z.boolean().optional()
+}).strict();
+
+const budgetSchema = z.object({
+  maxSteps: z.number().int().positive().optional(),
+  maxToolCalls: z.number().int().nonnegative().optional(),
+  maxDurationMs: z.number().int().positive().optional(),
+  maxTokens: z.number().int().positive().optional(),
+  maxCostUsd: z.number().positive().optional()
+}).strict();
+
 export const graderConfigSchema = z.discriminatedUnion("kind", [
   fileGraderSchema,
   textGraderSchema,
@@ -72,6 +92,7 @@ export const graderConfigSchema = z.discriminatedUnion("kind", [
   csvGraderSchema,
   artifactCountGraderSchema,
   stateGraderSchema,
+  traceGraderSchema,
   z.object({
     kind: z.literal("mail_draft"),
     path: z.string().trim().min(1),
@@ -115,6 +136,7 @@ export const caseManifestSchema = z.object({
   expectedOutputs: z.array(z.string().trim().min(1).max(300)).min(1).max(30),
   graders: z.array(graderSpecSchema).min(1).max(80),
   criteria: z.array(criterionSchema).min(2).max(80),
+  budgets: budgetSchema.optional(),
   humanReview: z.object({
     prompt: z.string().trim().min(1).max(2000),
     sampleRate: z.number().min(0).max(1)

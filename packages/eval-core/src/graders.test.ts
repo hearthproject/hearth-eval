@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseCsv, runGrader } from "./graders.ts";
-import type { ArtifactMap, GraderSpec } from "./types.ts";
+import { observeTrace, parseCsv, runGrader, runTraceGrader } from "./graders.ts";
+import type { ArtifactMap, EvalTrace, GraderSpec } from "./types.ts";
 
 const artifacts: ArtifactMap = {
   "notes.md": { text: "项目结论\n负责人：张三\n", bytes: 24 },
@@ -44,5 +44,56 @@ describe("runGrader", () => {
 
   it("parses quoted CSV cells", () => {
     expect(parseCsv('name,note\nA,"x, y"\n')).toEqual([["name", "note"], ["A", "x, y"]]);
+  });
+
+  it("refuses to run a trace grader against artifacts only", () => {
+    const result = grade({ id: "tr", title: "trace", config: { kind: "trace", maxSteps: 5 } });
+    expect(result.passed).toBe(false);
+    expect(result.reason).toContain("trace");
+  });
+});
+
+const trace: EvalTrace = {
+  taskId: "task-1",
+  fetchedAt: "2026-11-17T00:00:00.000Z",
+  events: [],
+  truncated: false,
+  steps: 6,
+  toolCalls: 3,
+  approvals: 1,
+  effects: 2,
+  artifacts: 1,
+  errors: [{ seq: 9, message: "boom" }],
+  primaryCause: "none"
+};
+
+describe("runTraceGrader", () => {
+  it("passes when every observed metric is inside the limits", () => {
+    const result = runTraceGrader(
+      { id: "tr", title: "trace", config: { kind: "trace", maxSteps: 6, maxToolCalls: 3, minApprovals: 1, minEffects: 2, maxEffects: 2, requireNoErrors: false } },
+      trace
+    );
+    expect(result.passed).toBe(true);
+  });
+
+  it("fails on max steps, tool calls, approvals and effects", () => {
+    const result = runTraceGrader(
+      { id: "tr", title: "trace", config: { kind: "trace", maxSteps: 5, maxToolCalls: 2, minApprovals: 2, minEffects: 3 } },
+      trace
+    );
+    expect(result.passed).toBe(false);
+    expect(result.reason).toContain("steps");
+    expect(result.reason).toContain("toolCalls");
+    expect(result.reason).toContain("审批");
+    expect(result.reason).toContain("效果");
+  });
+
+  it("fails when errors are forbidden or a measured value is missing", () => {
+    const errors = runTraceGrader({ id: "tr", title: "trace", config: { kind: "trace", requireNoErrors: true } }, trace);
+    expect(errors.passed).toBe(false);
+    expect(observeTrace(trace)).toMatchObject({ steps: 6, toolCalls: 3, approvals: 1, effects: 2, errors: 1, durationMs: null, tokens: null });
+    const missing = runTraceGrader({ id: "tr", title: "trace", config: { kind: "trace", maxDurationMs: 1000 } }, trace);
+    expect(missing.passed).toBe(false);
+    expect(missing.reason).toContain("无观测值");
   });
 });

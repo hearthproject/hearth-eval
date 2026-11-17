@@ -19,11 +19,16 @@ import {
   buildEvalTrace,
   emptyFamilySummaries,
   familySummary,
+  observeTrace,
   runGrader,
+  runTraceGrader,
   scoreRun,
   type GraderOutcome,
+  type GateOutcomeInput,
+  type GateLayer,
   type JudgeOutcome,
   type EvalTrace,
+  type TraceObservation,
   type RawTraceEvent
 } from "@hearth/eval-core";
 import { resolveCaseInput, type LoadedCase } from "@hearth/eval-core/node";
@@ -417,7 +422,7 @@ export class EvalRunner {
         payload: { taskStatus: wait.status }
       });
       const artifacts = await this.client.getArtifacts({ taskId: created.task.id, outputDir: run.outputDir });
-      const graded = await this.gradeRun(run, manifest, artifacts, wait);
+      const graded = await this.gradeRun(run, manifest, artifacts, wait, trace);
       this.store.setRunMetrics(run.id, metricsFromView(wait.view));
       const finishedAt = this.now().toISOString();
       const runFailed = wait.status !== "completed";
@@ -532,15 +537,30 @@ export class EvalRunner {
     return trace;
   }
 
-  private async gradeRun(run: ExperimentRunRecord, manifest: CaseManifest, artifacts: ArtifactMap, wait: TaskWaitResult): Promise<GradeResult> {
+  private async gradeRun(
+    run: ExperimentRunRecord,
+    manifest: CaseManifest,
+    artifacts: ArtifactMap,
+    wait: TaskWaitResult,
+    trace: EvalTrace | null
+  ): Promise<GradeResult> {
     const deterministic: Record<string, GraderOutcome> = {};
     const graderRecords: GraderResultRecord[] = [];
     const createdAt = this.now().toISOString();
+    const tokens = (wait.view?.runs ?? []).reduce(
+      (sum, item) => sum + (item.usage?.inputTokens ?? 0) + (item.usage?.outputTokens ?? 0),
+      0
+    );
+    const durationMs = run.startedAt ? Math.max(0, Date.parse(createdAt) - Date.parse(run.startedAt)) : null;
+    const observed = trace ? observeTrace(trace, { durationMs, tokens }) : null;
     for (const criterion of manifest.criteria.filter((item) => item.source === "deterministic")) {
       const grader = manifest.graders.find((item) => item.id === criterion.graderId);
       let result: GraderOutcome;
       if (!grader) {
         result = { passed: false, reason: `缺少 grader：${criterion.graderId}`, evidence: [] };
+      } else if (grader.config.kind === "trace") {
+        if (!trace || !observed) continue;
+        result = runTraceGrader(grader, trace, observed);
       } else {
         try {
           result = runGrader(grader, artifacts);
@@ -596,8 +616,17 @@ export class EvalRunner {
       humanDecision: null,
       reviewReasonSeed: run.id,
       runFailed: wait.status !== "completed",
-      sampleRate: manifest.humanReview.sampleRate
+      sampleRate: manifest.humanReview.sampleRate,
+      gates: gateOutcomes(manifest, deterministic, judge),
+      budgetViolations: budgetViolations(manifest, observed)
     });
+    if (outcome.gateWarnings.length > 0) {
+      this.store.appendEvent("run.gate-warning", {
+        experimentId: run.experimentId,
+        runId: run.id,
+        payload: { warnings: outcome.gateWarnings }
+      });
+    }
     return { graderRecords, deterministic, judge, judgeExpected, outcome };
   }
 
@@ -749,6 +778,54 @@ function metricsFromView(view: AgentTaskView | null): RunMetrics {
     retryCount: runs.reduce((sum, run) => sum + Math.max(0, run.attempt - 1), 0),
     approvalCount: view?.approvals?.length ?? 0
   };
+}
+
+function gateOutcomes(
+  manifest: CaseManifest,
+  deterministic: Record<string, GraderOutcome>,
+  judge: JudgeOutcome | null
+): GateOutcomeInput[] {
+  return manifest.criteria
+    .filter((criterion) => (criterion.layer ?? "result") !== "result")
+    .map((criterion) => {
+      const layer = (criterion.layer ?? "result") as GateLayer;
+      if (criterion.source === "deterministic") {
+        const outcome = deterministic[criterion.id];
+        return {
+          id: criterion.id,
+          layer,
+          severity: criterion.severity,
+          passed: outcome ? outcome.passed : null,
+          reason: outcome?.reason ?? "缺少证据"
+        };
+      }
+      if (criterion.source === "judge") {
+        const item = judge?.criteria[criterion.id];
+        return {
+          id: criterion.id,
+          layer,
+          severity: criterion.severity,
+          passed: item ? item.passed : null,
+          reason: item?.reason ?? "缺少裁判结果"
+        };
+      }
+      return { id: criterion.id, layer, severity: criterion.severity, passed: null, reason: "需要人工判断" };
+    });
+}
+
+function budgetViolations(manifest: CaseManifest, observed: TraceObservation | null): string[] {
+  const budgets = manifest.budgets;
+  if (!budgets || !observed) return [];
+  const violations: string[] = [];
+  if (budgets.maxSteps !== undefined && observed.steps > budgets.maxSteps) violations.push("budget.maxSteps");
+  if (budgets.maxToolCalls !== undefined && observed.toolCalls > budgets.maxToolCalls) violations.push("budget.maxToolCalls");
+  if (budgets.maxDurationMs !== undefined && observed.durationMs !== null && observed.durationMs > budgets.maxDurationMs) {
+    violations.push("budget.maxDurationMs");
+  }
+  if (budgets.maxTokens !== undefined && observed.tokens !== null && observed.tokens > budgets.maxTokens) {
+    violations.push("budget.maxTokens");
+  }
+  return violations;
 }
 
 function diagnosticGroups(runs: ExperimentRunRecord[]): ExperimentSummary["failureDiagnostics"] {

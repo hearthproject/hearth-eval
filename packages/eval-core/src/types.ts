@@ -74,7 +74,8 @@ export const GRADER_KINDS = [
   "csv",
   "artifact_count",
   "state",
-  "mail_draft"
+  "mail_draft",
+  "trace"
 ] as const;
 export type GraderKind = (typeof GRADER_KINDS)[number];
 
@@ -137,6 +138,18 @@ export interface MailDraftGraderConfig {
   expected: { To: string; Subject: string; Body: string };
 }
 
+export interface TraceGraderConfig {
+  kind: "trace";
+  maxSteps?: number;
+  maxToolCalls?: number;
+  maxDurationMs?: number;
+  maxTokens?: number;
+  minApprovals?: number;
+  minEffects?: number;
+  maxEffects?: number;
+  requireNoErrors?: boolean;
+}
+
 export type GraderConfig =
   | FileGraderConfig
   | TextGraderConfig
@@ -144,7 +157,16 @@ export type GraderConfig =
   | CsvGraderConfig
   | ArtifactCountGraderConfig
   | StateGraderConfig
-  | MailDraftGraderConfig;
+  | MailDraftGraderConfig
+  | TraceGraderConfig;
+
+export interface BudgetLimits {
+  maxSteps?: number;
+  maxToolCalls?: number;
+  maxDurationMs?: number;
+  maxTokens?: number;
+  maxCostUsd?: number;
+}
 
 export interface GraderSpec {
   id: string;
@@ -182,6 +204,7 @@ export interface CaseManifest {
   expectedOutputs: string[];
   graders: GraderSpec[];
   criteria: EvalCriterion[];
+  budgets?: BudgetLimits;
   humanReview: {
     prompt: string;
     sampleRate: number;
@@ -386,6 +409,7 @@ export interface ScoringOutcome {
   judgeScore: number | null;
   humanScore: number | null;
   blockerFailures: string[];
+  gateWarnings: string[];
   reviewReasons: ReviewTriggerKind[];
 }
 

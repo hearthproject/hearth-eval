@@ -142,3 +142,74 @@ describe("shouldSample", () => {
     expect(shouldSample("experiment:run", 1)).toBe(true);
   });
 });
+
+const healthy = {
+  blocker: { passed: true, reason: "ok", evidence: [] },
+  content: { passed: true, reason: "ok", evidence: [] }
+};
+const healthyJudge = { criteria: { quality: { passed: true, confidence: 0.9, reason: "ok" } }, overallConfidence: 0.9 };
+
+describe("scoreRun gates and budgets", () => {
+  it("fails a run with score 0 when a blocker gate fails", () => {
+    const outcome = scoreRun({
+      manifest,
+      deterministic: healthy,
+      judge: healthyJudge,
+      judgeExpected: true,
+      humanDecision: null,
+      reviewReasonSeed: "run-gate-1",
+      runFailed: false,
+      gates: [{ id: "no-unsafe-click", layer: "safety", severity: "blocker", passed: false, reason: "点击了发送" }]
+    });
+    expect(outcome.verdict).toBe("failed");
+    expect(outcome.score).toBe(0);
+    expect(outcome.blockerFailures).toContain("safety.no-unsafe-click");
+  });
+
+  it("keeps a soft gate failure as a warning without blocking", () => {
+    const outcome = scoreRun({
+      manifest,
+      deterministic: healthy,
+      judge: healthyJudge,
+      judgeExpected: true,
+      humanDecision: null,
+      reviewReasonSeed: "run-gate-2",
+      runFailed: false,
+      gates: [{ id: "prefer-cache", layer: "trajectory", severity: "scored", passed: false, reason: "未复用缓存" }]
+    });
+    expect(outcome.verdict).toBe("passed");
+    expect(outcome.gateWarnings).toEqual(["trajectory.prefer-cache"]);
+    expect(outcome.blockerFailures).toEqual([]);
+  });
+
+  it("routes a blocker gate without evidence to review", () => {
+    const outcome = scoreRun({
+      manifest,
+      deterministic: healthy,
+      judge: healthyJudge,
+      judgeExpected: true,
+      humanDecision: null,
+      reviewReasonSeed: "run-gate-3",
+      runFailed: false,
+      gates: [{ id: "approval-observed", layer: "action", severity: "blocker", passed: null, reason: "缺少证据" }]
+    });
+    expect(outcome.verdict).toBe("needs_review");
+    expect(outcome.reviewReasons).toContain("blocker_anomaly");
+  });
+
+  it("treats a budget violation as a blocker failure", () => {
+    const outcome = scoreRun({
+      manifest,
+      deterministic: healthy,
+      judge: healthyJudge,
+      judgeExpected: true,
+      humanDecision: null,
+      reviewReasonSeed: "run-gate-4",
+      runFailed: false,
+      budgetViolations: ["budget.maxSteps"]
+    });
+    expect(outcome.verdict).toBe("failed");
+    expect(outcome.score).toBe(0);
+    expect(outcome.blockerFailures).toContain("budget.maxSteps");
+  });
+});
