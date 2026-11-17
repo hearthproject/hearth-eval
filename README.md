@@ -183,27 +183,15 @@ flowchart LR
 
 ## 架构
 
-```text
-┌──────────────────────────────┐
-│ apps/eval-web                │
-│ React + Vite · 11 个页面     │
-└──────────────┬───────────────┘
-               │ /api
-┌──────────────▼───────────────┐       POST /api/eval/tasks       ┌──────────────────────┐
-│ apps/eval-server             │ ───────────────────────────────▶ │ Hearth main service  │
-│ Fastify · 实验 · 轨迹 · 评分 │ ◀─────────────────────────────── │ Agent runtime · 4317 │
-└──────────────┬───────────────┘       GET  /api/tasks/:id        └──────────────────────┘
-               │                         POST /api/eval/judge
-       ┌───────▼────────┐
-       │ SQLite + 产物  │
-       │ .hearth/eval   │
-       └────────────────┘
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/public/diagrams/eval-architecture-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/public/diagrams/eval-architecture-light.svg">
+    <img src="docs/public/diagrams/eval-architecture-light.svg" width="900" alt="Hearth Eval 架构：apps/eval-web 经 /api 调用 apps/eval-server；服务引用 packages/eval-core 并调用 Hearth 主服务；数据落在 .hearth/eval 与 .hearth/eval-artifacts；用例与白盒场景来自 eval/ 与 scenario-runner/">
+  </picture>
+</p>
 
-packages/eval-core   契约、目录加载、grader、评分、场景统计
-eval/                60 个 case、输入、golden、历史验收证据
-scenario-runner/     30 个 Hearth 白盒场景（读取同级 hearth-os）
-docs/                VitePress 中文文档站
-```
+图中每个方框都对应仓库里的真实文件：`runner.ts` 负责实验编排，`store.ts` 用 Node 内置 `node:sqlite` 维护 6 张表，`scoring.ts` 承载 60/30/10 三层评分与 blocker 归零。`docs/` 为 VitePress 中文文档站，与评测链路没有运行时依赖。
 
 评测服务内部，`EvalRunner` 只依赖两个窄接口：`AgentAdapter`（任务创建、任务视图、产物、取消、健康检查）与 `JudgeAdapter`（按 runner 已取得的产物评分）。默认实现分别是 `HearthClient` 与 `HearthJudgeAdapter`；前者按 `HEARTH_EVAL_ARTIFACT_ROOT` 解析产物，后者转调 `/api/eval/judge`。新增 Agent 后端只需实现 adapter，不复制实验编排、SQLite、复核或控制台。
 

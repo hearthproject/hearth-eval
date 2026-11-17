@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 718" width="900" height="718" role="img" aria-labelledby="archTitle archDesc">
+  <title id="archTitle">Hearth Eval 架构</title>
+  <desc id="archDesc">评测控制台 apps/eval-web 通过 /api 调用 apps/eval-server；服务依赖 packages/eval-core 并调用外部 Hearth 主服务；数据落在 .hearth/eval 与 .hearth/eval-artifacts；用例与白盒场景来自 eval/ 与 scenario-runner/。</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#8A8A80" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect x="270" y="36" width="360" height="76" rx="12" fill="#EDF3F7" stroke="#A9C4D3" stroke-width="1"/>
+  <text x="450" y="54" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;font-weight:500;fill:#1D4E66">apps/eval-web　·　:5175</text>
+  <text x="450" y="74" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;fill:#5C5A52">React 18 · Vite 7 · TanStack Query 5</text>
+  <text x="450" y="94" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">main.tsx · App.tsx · lib/api.ts · pages/ ×12</text>
+
+  <path d="M450 112L450 132" fill="none" stroke="#8A8A80" stroke-width="1.2" marker-end="url(#ar)"/>
+  <text x="462" y="122" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11px;fill:#7D7A70">/api</text>
+
+  <rect x="110" y="138" width="680" height="238" rx="20" fill="#F8FAF9" stroke="#C2D2C8" stroke-width="1"/>
+  <text x="132" y="164" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;font-weight:500;fill:#23543A">apps/eval-server　·　Fastify 5　·　:4318</text>
+
+  <rect x="126" y="182" width="208" height="84" rx="8" fill="#F2F7F3" stroke="#B9CFC1" stroke-width="1"/>
+  <text x="230" y="204" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:13px;font-weight:500;fill:#23543A">index.ts</text>
+  <text x="230" y="227" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11.5px;fill:#5C5A52">进程入口</text>
+  <text x="230" y="245" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">load → sync → listen</text>
+
+  <rect x="346" y="182" width="208" height="84" rx="8" fill="#F2F7F3" stroke="#B9CFC1" stroke-width="1"/>
+  <text x="450" y="204" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:13px;font-weight:500;fill:#23543A">app.ts</text>
+  <text x="450" y="227" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11.5px;fill:#5C5A52">buildEvalApp</text>
+  <text x="450" y="245" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">21 条 /api 路由</text>
+
+  <rect x="566" y="182" width="208" height="84" rx="8" fill="#F2F7F3" stroke="#B9CFC1" stroke-width="1"/>
+  <text x="670" y="204" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:13px;font-weight:500;fill:#23543A">runner.ts</text>
+  <text x="670" y="227" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11.5px;fill:#5C5A52">EvalRunner</text>
+  <text x="670" y="245" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">create → execute → grade</text>
+
+  <rect x="126" y="278" width="208" height="84" rx="8" fill="#F2F7F3" stroke="#B9CFC1" stroke-width="1"/>
+  <text x="230" y="300" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:13px;font-weight:500;fill:#23543A">store.ts</text>
+  <text x="230" y="323" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11.5px;fill:#5C5A52">EvalStore</text>
+  <text x="230" y="341" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">node:sqlite · 6 张表</text>
+
+  <rect x="346" y="278" width="208" height="84" rx="8" fill="#F2F7F3" stroke="#B9CFC1" stroke-width="1"/>
+  <text x="450" y="300" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:12px;font-weight:500;fill:#23543A">hearth-client.ts</text>
+  <text x="450" y="323" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11.5px;fill:#5C5A52">AgentAdapter 默认实现</text>
+  <text x="450" y="341" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">POST /api/eval/tasks</text>
+
+  <rect x="566" y="278" width="208" height="84" rx="8" fill="#F2F7F3" stroke="#B9CFC1" stroke-width="1"/>
+  <text x="670" y="300" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:12px;font-weight:500;fill:#23543A">judge-adapter.ts</text>
+  <text x="670" y="323" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11.5px;fill:#5C5A52">JudgeAdapter 默认实现</text>
+  <text x="670" y="341" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">POST /api/eval/judge</text>
+
+  <path d="M265 376L265 408" fill="none" stroke="#8A8A80" stroke-width="1.2" marker-end="url(#ar)"/>
+  <text x="275" y="392" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11px;fill:#7D7A70">引用</text>
+  <path d="M635 376L635 408" fill="none" stroke="#8A8A80" stroke-width="1.2" marker-end="url(#ar)"/>
+  <text x="645" y="392" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11px;fill:#7D7A70">HTTP</text>
+  <path d="M450 376L450 510" fill="none" stroke="#8A8A80" stroke-width="1.2" marker-end="url(#ar)"/>
+
+  <rect x="110" y="414" width="310" height="80" rx="10" fill="#EDF4EE" stroke="#A9CBB4" stroke-width="1"/>
+  <text x="265" y="436" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;font-weight:500;fill:#23543A">packages/eval-core</text>
+  <text x="265" y="456" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11.5px;fill:#5C5A52">契约 · Zod 校验 · 7 种 grader · 评分</text>
+  <text x="265" y="474" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">types · schema · graders · scoring · node</text>
+
+  <rect x="480" y="414" width="310" height="80" rx="10" fill="#F4F2EB" stroke="#D2CDC0" stroke-width="1"/>
+  <text x="635" y="436" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;font-weight:500;fill:#4A4740">Hearth 主服务（外部）</text>
+  <text x="635" y="456" text-anchor="middle" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:11.5px;fill:#5C5A52">Agent runtime · 127.0.0.1:4317</text>
+  <text x="635" y="474" text-anchor="middle" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">POST /api/eval/tasks · /api/eval/judge</text>
+
+  <rect x="110" y="516" width="680" height="80" rx="10" fill="#F3F1E8" stroke="#D2CEC2" stroke-width="1"/>
+  <text x="132" y="538" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;font-weight:500;fill:#1B1815">持久化与产物</text>
+  <text x="132" y="557" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">.hearth/eval/eval.sqlite　（eval-server 写入，6 张表 + 事件流）</text>
+  <text x="132" y="575" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">.hearth/eval-artifacts/&lt;exp&gt;/&lt;case&gt;/&lt;executor&gt;/r&lt;n&gt;　（Hearth 写入，eval-server 读取）</text>
+
+  <rect x="110" y="616" width="680" height="72" rx="10" fill="#EDF4EE" stroke="#A9CBB4" stroke-width="1"/>
+  <text x="132" y="636" dominant-baseline="central" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;font-weight:500;fill:#23543A">数据资产　（由 eval-core 的 loadCaseCatalog 加载）</text>
+  <text x="132" y="654" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">eval/cases 60 个 case · 8 个任务族　|　eval/scenarios 30 个白盒场景</text>
+  <text x="132" y="672" dominant-baseline="central" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:10.5px;fill:#7D7A70">scenario-runner/ 9 个文件 · 30 个 handler · tsconfig paths 读取同级 ../hearth-os</text>
+</svg>
