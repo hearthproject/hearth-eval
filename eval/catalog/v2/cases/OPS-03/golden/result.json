@@ -1,0 +1,10 @@
+{
+  "requestId": "REQ-42",
+  "appliedOnce": true,
+  "duplicateSuppressed": true,
+  "effectsApplied": 1,
+  "result": {
+    "chargeId": "ch_991",
+    "status": "succeeded"
+  }
+}

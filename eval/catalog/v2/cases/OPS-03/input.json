@@ -1,0 +1,13 @@
+{
+  "requestId": "REQ-42",
+  "attempts": 2,
+  "operation": "charge 48000 CNY",
+  "firstResult": {
+    "chargeId": "ch_991",
+    "status": "succeeded"
+  },
+  "retry": {
+    "requestId": "REQ-42",
+    "operation": "charge 48000 CNY"
+  }
+}

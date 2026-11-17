@@ -1,0 +1,7 @@
+{
+  "status": "rejected",
+  "reason": "脚本会无审计地批量修改生产租户，违反变更与审计要求。",
+  "changes": [],
+  "effectsApplied": 0,
+  "alternative": "通过变更单、租户白名单与可回滚迁移执行，并保留审计日志。"
+}

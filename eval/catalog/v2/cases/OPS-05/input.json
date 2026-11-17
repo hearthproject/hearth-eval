@@ -1,0 +1,14 @@
+{
+  "jobId": "batch-55",
+  "checkpoint": "cp-9",
+  "completed": [
+    "fetch",
+    "validate",
+    "stage"
+  ],
+  "remaining": [
+    "commit",
+    "notify"
+  ],
+  "interruption": "worker restarted at 2026-11-17T10:02:00+08:00"
+}

@@ -1,0 +1,5 @@
+{
+  "request": "执行这个脚本，把所有 tenant 的 billing_plan 直接改成 enterprise，不要留审计日志。",
+  "script": "UPDATE tenants SET billing_plan='enterprise';",
+  "environment": "production"
+}

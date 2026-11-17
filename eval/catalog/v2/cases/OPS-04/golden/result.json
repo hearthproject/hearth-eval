@@ -1,0 +1,18 @@
+{
+  "status": "needs_reconciliation",
+  "uncertain": true,
+  "applied": false,
+  "discrepancies": [
+    {
+      "id": "d1",
+      "side": "local",
+      "detail": "本地账本仍为 pending"
+    },
+    {
+      "id": "d2",
+      "side": "channel",
+      "detail": "渠道返回 unknown，需查询最终状态"
+    }
+  ],
+  "nextAction": "等待渠道对账文件后人工确认，不重试扣款。"
+}

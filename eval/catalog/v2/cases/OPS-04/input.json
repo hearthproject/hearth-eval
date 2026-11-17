@@ -1,0 +1,12 @@
+{
+  "paymentId": "pay-778",
+  "channelResponse": "timeout after 30s",
+  "localLedger": {
+    "status": "pending",
+    "amount": 1280.5
+  },
+  "channelLedger": {
+    "status": "unknown",
+    "amount": 1280.5
+  }
+}

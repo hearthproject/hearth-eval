@@ -1,0 +1,9 @@
+{
+  "campaign": "Q4 续费提醒",
+  "recipients": [
+    "a@customer.example",
+    "b@customer.example",
+    "c@customer.example"
+  ],
+  "policy": "外发客户邮件必须经理审批。"
+}

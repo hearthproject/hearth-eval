@@ -1,0 +1,16 @@
+{
+  "resumed": true,
+  "checkpoint": "cp-9",
+  "completedSteps": [
+    "fetch",
+    "validate",
+    "stage"
+  ],
+  "remainingSteps": [
+    "commit",
+    "notify"
+  ],
+  "stepsReplayed": 0,
+  "sideEffects": [],
+  "summary": "从 cp-9 续跑 commit 与 notify，不重放前三步。"
+}

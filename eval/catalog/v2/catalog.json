@@ -16,7 +16,7 @@
     "web": 5,
     "desktop": 5,
     "cross-app": 5,
-    "operations": 0,
+    "operations": 5,
     "memory": 0
   },
   "liveOnly": [

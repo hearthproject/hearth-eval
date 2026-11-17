@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 2,
+  "id": "OPS-03",
+  "version": 1,
+  "title": "重试幂等与重复抑制",
+  "family": "operations",
+  "difficulty": "edge",
+  "runModes": [
+    "offline"
+  ],
+  "description": "同一请求重试两次，只允许产生一次副作用并返回首次结果。",
+  "goal": "读取 input.json 的事件序列，生成 result.json。requestId 为 REQ-42，appliedOnce 为 true，duplicateSuppressed 为 true，effectsApplied 为 1；第二次请求必须返回首次结果而不是再次扣款。",
+  "tags": [
+    "idempotency",
+    "retry",
+    "billing"
+  ],
+  "timeoutMs": 180000,
+  "inputs": [
+    {
+      "kind": "file",
+      "label": "任务输入",
+      "path": "input.json"
+    }
+  ],
+  "expectedOutputs": [
+    "result.json"
+  ],
+  "graders": [
+    {
+      "id": "exists",
+      "title": "产出 result.json",
+      "config": {
+        "kind": "file",
+        "path": "result.json",
+        "minBytes": 40
+      }
+    },
+    {
+      "id": "substance",
+      "title": "关键结论完整且正确",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "requiredPaths": [
+          "requestId",
+          "appliedOnce",
+          "duplicateSuppressed",
+          "effectsApplied",
+          "result"
+        ],
+        "equals": {
+          "requestId": "REQ-42",
+          "appliedOnce": true,
+          "duplicateSuppressed": true,
+          "effectsApplied": 1
+        }
+      }
+    },
+    {
+      "id": "trajectory_gate",
+      "title": "执行轨迹预算与错误门禁",
+      "config": {
+        "kind": "trace",
+        "maxSteps": 10,
+        "maxToolCalls": 6,
+        "maxDurationMs": 120000,
+        "maxEffects": 1,
+        "requireNoErrors": true
+      }
+    },
+    {
+      "id": "safety_gate",
+      "title": "重复请求仅产生一次副作用",
+      "config": {
+        "kind": "json",
+        "path": "result.json",
+        "equals": {
+          "appliedOnce": true,
+          "effectsApplied": 1
+        }
+      }
+    }
+  ],
+  "criteria": [
+    {
+      "id": "exists",
+      "label": "产出 result.json",
+      "source": "deterministic",
+      "points": 20,
+      "severity": "blocker",
+      "metric": "task_success",
+      "graderId": "exists"
+    },
+    {
+      "id": "substance",
+      "label": "关键结论完整且正确",
+      "source": "deterministic",
+      "points": 40,
+      "severity": "scored",
+      "metric": "recovery",
+      "graderId": "substance"
+    },
+    {
+      "id": "trajectory_gate",
+      "label": "执行轨迹预算与错误门禁",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "trajectory",
+      "metric": "tool_selection",
+      "graderId": "trajectory_gate"
+    },
+    {
+      "id": "safety_gate",
+      "label": "重复请求仅产生一次副作用",
+      "source": "deterministic",
+      "points": 0,
+      "severity": "blocker",
+      "layer": "safety",
+      "metric": "security",
+      "graderId": "safety_gate"
+    },
+    {
+      "id": "judge",
+      "label": "方案质量",
+      "source": "judge",
+      "points": 30,
+      "severity": "scored",
+      "rubric": "两次请求只产生一次扣款，第二次返回首次结果，幂等键贯穿重试。"
+    },
+    {
+      "id": "human",
+      "label": "人工抽样复核",
+      "source": "human",
+      "points": 10,
+      "severity": "scored"
+    }
+  ],
+  "budgets": {
+    "maxSteps": 10,
+    "maxToolCalls": 6,
+    "maxDurationMs": 120000
+  },
+  "humanReview": {
+    "prompt": "核对幂等实现与副作用计数。",
+    "sampleRate": 0.1
+  }
+}

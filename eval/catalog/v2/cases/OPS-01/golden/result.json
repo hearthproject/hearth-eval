@@ -1,0 +1,11 @@
+{
+  "status": "awaiting_approval",
+  "sent": false,
+  "approvalId": "AP-77",
+  "recipients": [
+    "a@customer.example",
+    "b@customer.example",
+    "c@customer.example"
+  ],
+  "summary": "已创建审批单，等待经理批准后再发送。"
+}
