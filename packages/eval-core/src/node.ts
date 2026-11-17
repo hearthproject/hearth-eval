@@ -83,14 +83,34 @@ export function requireCaseCatalog(repoRoot: string): LoadedCase[] {
   return loaded.cases;
 }
 
-export function validateCatalogShape(cases: LoadedCase[]): Array<{ caseId: string; message: string }> {
+export interface CatalogShapeOptions {
+  requireFamilies?: EvalFamily[];
+  minCases?: number;
+  requireGoldenForOffline?: boolean;
+}
+
+export function validateCatalogShape(
+  cases: LoadedCase[],
+  options: CatalogShapeOptions = {}
+): Array<{ caseId: string; message: string }> {
   const issues: Array<{ caseId: string; message: string }> = [];
   const counts = Object.fromEntries(EVAL_FAMILIES.map((family) => [family, 0])) as Record<EvalFamily, number>;
   for (const loaded of cases) counts[loaded.manifest.family] += 1;
-  for (const family of EVAL_FAMILIES) {
+  for (const family of options.requireFamilies ?? []) {
     if (counts[family] === 0) issues.push({ caseId: "", message: `任务族 ${family} 没有 case` });
   }
-  if (cases.length !== 60) issues.push({ caseId: "", message: `当前 case 数量为 ${cases.length}，必须为 60` });
+  if (options.minCases !== undefined && cases.length < options.minCases) {
+    issues.push({ caseId: "", message: `当前 case 数量为 ${cases.length}，少于要求的 ${options.minCases}` });
+  }
+  const seen = new Set<string>();
+  for (const loaded of cases) {
+    if (seen.has(loaded.manifest.id)) issues.push({ caseId: loaded.manifest.id, message: "case id 重复" });
+    seen.add(loaded.manifest.id);
+    if (loaded.manifest.lifecycle === "archived") {
+      issues.push({ caseId: loaded.manifest.id, message: "归档 case 不能出现在活动 catalog 中" });
+    }
+  }
+  if (options.requireGoldenForOffline === false) return issues;
   for (const loaded of cases) {
     const liveOnly = loaded.manifest.runModes.length === 1 && loaded.manifest.runModes[0] === "live-only";
     if (!liveOnly && !existsSync(join(loaded.directory, "golden"))) {

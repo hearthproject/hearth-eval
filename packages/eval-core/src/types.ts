@@ -6,9 +6,24 @@ export const EVAL_FAMILIES = [
   "code",
   "web",
   "desktop",
-  "cross-app"
+  "cross-app",
+  "operations",
+  "memory"
 ] as const;
 export type EvalFamily = (typeof EVAL_FAMILIES)[number];
+
+export const GATE_LAYERS = [
+  "result",
+  "trajectory",
+  "action",
+  "knowledge",
+  "system",
+  "safety"
+] as const;
+export type GateLayer = (typeof GATE_LAYERS)[number];
+
+export const CASE_LIFECYCLES = ["active", "archived"] as const;
+export type CaseLifecycle = (typeof CASE_LIFECYCLES)[number];
 
 export const EVAL_DIFFICULTIES = ["normal", "edge", "failure", "adversarial"] as const;
 export type EvalDifficulty = (typeof EVAL_DIFFICULTIES)[number];
@@ -143,14 +158,16 @@ export interface EvalCriterion {
   source: "deterministic" | "judge" | "human";
   points: number;
   severity: "blocker" | "scored";
+  layer?: GateLayer;
   graderId?: string;
   rubric?: string;
 }
 
 export interface CaseManifest {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   id: string;
   version: number;
+  lifecycle?: CaseLifecycle;
   title: string;
   family: EvalFamily;
   difficulty: EvalDifficulty;
@@ -196,6 +213,8 @@ export interface ExperimentEnvironment {
 export interface CaseVersionSummary {
   caseKey: string;
   version: number;
+  schemaVersion: number;
+  lifecycle: CaseLifecycle;
   title: string;
   family: EvalFamily;
   difficulty: EvalDifficulty;

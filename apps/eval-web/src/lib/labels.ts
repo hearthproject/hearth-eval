@@ -14,7 +14,9 @@ export const FAMILY_LABELS: Record<EvalFamily, string> = {
   code: "代码",
   web: "网页",
   desktop: "桌面",
-  "cross-app": "跨应用"
+  "cross-app": "跨应用",
+  operations: "运维闭环",
+  memory: "记忆与技能"
 };
 
 export const FAMILY_COLORS: Record<EvalFamily, string> = {
@@ -25,7 +27,9 @@ export const FAMILY_COLORS: Record<EvalFamily, string> = {
   code: "#7762a8",
   web: "#357d85",
   desktop: "#8a6252",
-  "cross-app": "#9a4f67"
+  "cross-app": "#9a4f67",
+  operations: "#4b6b4f",
+  memory: "#6a5a8c"
 };
 
 export const DIFFICULTY_LABELS: Record<EvalDifficulty, string> = {

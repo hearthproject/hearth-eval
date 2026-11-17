@@ -1,8 +1,10 @@
 import { z } from "zod";
 import {
+  CASE_LIFECYCLES,
   EVAL_DIFFICULTIES,
   EVAL_FAMILIES,
   EVAL_RUN_MODES,
+  GATE_LAYERS,
   GRADER_KINDS
 } from "./types.ts";
 import type { CaseManifest } from "./types.ts";
@@ -89,14 +91,16 @@ export const criterionSchema = z.object({
   source: z.enum(["deterministic", "judge", "human"]),
   points: z.number().int().nonnegative().max(100),
   severity: z.enum(["blocker", "scored"]),
+  layer: z.enum(GATE_LAYERS).optional(),
   graderId: z.string().trim().min(1).optional(),
   rubric: z.string().trim().min(1).max(4000).optional()
 }).strict();
 
 export const caseManifestSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.union([z.literal(1), z.literal(2)]),
   id: z.string().trim().regex(/^[A-Z][A-Z0-9-]{1,30}$/),
   version: z.number().int().positive(),
+  lifecycle: z.enum(CASE_LIFECYCLES).optional(),
   title: z.string().trim().min(1).max(200),
   family: z.enum(EVAL_FAMILIES),
   difficulty: z.enum(EVAL_DIFFICULTIES),
@@ -165,15 +169,21 @@ export function validateCaseManifest(input: unknown): CaseManifestValidation {
       issues.push({ code: "custom", path: ["criteria"], message: `重复评分项：${criterion.id}` });
     }
     criterionIds.add(criterion.id);
-    totals[criterion.source] += criterion.points;
+    const layer = criterion.layer ?? "result";
+    if (layer === "result") {
+      totals[criterion.source] += criterion.points;
+    } else if (criterion.points !== 0) {
+      issues.push({
+        code: "custom",
+        path: ["criteria"],
+        message: `${layer} 层评分项 ${criterion.id} 是独立门禁，points 必须为 0`
+      });
+    }
     if (criterion.source === "deterministic" && (!criterion.graderId || !graderIds.has(criterion.graderId))) {
       issues.push({ code: "custom", path: ["criteria"], message: `确定性评分项 ${criterion.id} 缺少有效 graderId` });
     }
     if (criterion.source === "judge" && !criterion.rubric) {
       issues.push({ code: "custom", path: ["criteria"], message: `模型评分项 ${criterion.id} 缺少 rubric` });
-    }
-    if (criterion.severity === "blocker" && criterion.source !== "deterministic") {
-      issues.push({ code: "custom", path: ["criteria"], message: `blocker ${criterion.id} 必须由确定性 grader 判定` });
     }
   }
   if (totals.deterministic !== 60 || totals.judge !== 30 || totals.human !== 10) {

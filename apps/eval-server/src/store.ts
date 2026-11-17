@@ -436,17 +436,20 @@ export class EvalStore {
 }
 
 function rowToCase(row: DbRow): StoredCase {
+  const manifest = JSON.parse(String(row.manifest_json)) as CaseManifest;
   return {
     summary: {
       caseKey: String(row.case_key),
       version: Number(row.version),
+      schemaVersion: manifest.schemaVersion ?? 1,
+      lifecycle: manifest.lifecycle ?? "active",
       title: String(row.title),
       family: String(row.family) as CaseVersionSummary["family"],
       difficulty: String(row.difficulty) as CaseVersionSummary["difficulty"],
       runModes: JSON.parse(String(row.run_modes_json)) as CaseVersionSummary["runModes"],
       contentHash: String(row.content_hash)
     },
-    manifest: JSON.parse(String(row.manifest_json)) as CaseManifest,
+    manifest,
     updatedAt: String(row.updated_at)
   };
 }

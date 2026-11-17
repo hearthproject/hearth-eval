@@ -186,7 +186,7 @@ describe("eval control plane", () => {
       aligned: true,
       familyDeltas: expect.any(Array)
     });
-    expect(compare.json().familyDeltas).toHaveLength(8);
+    expect(compare.json().familyDeltas).toHaveLength(10);
     expect((await harness.app.inject({ method: "GET", url: "/api/compare?left=" })).statusCode).toBe(400);
 
     const events = await harness.app.inject({ method: "GET", url: `/api/events?experimentId=${harness.experiment.id}&limit=10` });

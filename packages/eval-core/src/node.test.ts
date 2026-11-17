@@ -9,7 +9,7 @@ import { EVAL_FAMILIES, type ArtifactMap } from "./types.ts";
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
 describe("case catalog", () => {
-  it("loads exactly 60 valid cases across eight families", () => {
+  it("loads the 60-case baseline catalog across eight families", () => {
     const loaded = loadCaseCatalog(repoRoot);
     expect(loaded.issues).toEqual([]);
     expect(loaded.cases).toHaveLength(60);
@@ -27,7 +27,9 @@ describe("case catalog", () => {
       code: 8,
       web: 8,
       desktop: 5,
-      "cross-app": 7
+      "cross-app": 7,
+      operations: 0,
+      memory: 0
     });
   });
 

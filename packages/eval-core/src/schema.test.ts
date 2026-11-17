@@ -39,11 +39,35 @@ describe("validateCaseManifest", () => {
     if (!result.success) expect(result.issues.some((issue) => issue.message.includes("60"))).toBe(true);
   });
 
-  it("requires blocker criteria to be deterministic", () => {
+  it("allows blockers on independent gate layers", () => {
     const result = validateCaseManifest({
       ...valid,
-      criteria: valid.criteria.map((criterion) => criterion.id === "quality" ? { ...criterion, severity: "blocker" as const } : criterion)
+      schemaVersion: 2,
+      criteria: [
+        ...valid.criteria,
+        {
+          id: "trace.tool-selection",
+          label: "工具选择",
+          source: "deterministic",
+          points: 0,
+          severity: "blocker",
+          layer: "trajectory",
+          graderId: "file"
+        }
+      ]
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects scored points on gate layers", () => {
+    const result = validateCaseManifest({
+      ...valid,
+      schemaVersion: 2,
+      criteria: valid.criteria.map((criterion) => criterion.id === "file"
+        ? { ...criterion, layer: "safety" as const, points: 10 }
+        : criterion)
     });
     expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues.some((issue) => issue.message.includes("points 必须为 0"))).toBe(true);
   });
 });
