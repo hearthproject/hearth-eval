@@ -91,4 +91,4 @@ npm run build
 npm start
 ```
 
-构建后的控制台位于 `apps/eval-web/dist`，由评测服务在 `4318` 端口直接托管。控制台共有 11 个页面、7 个主导航入口；最新 native 30 题结果和复现检查见[评测结果](/reference/results)。
+构建后的控制台位于 `apps/eval-web/dist`，由评测服务在 `4318` 端口直接托管。控制台共有 12 个页面、8 个主导航入口；最新 native 30 题结果和复现检查见[评测结果](/reference/results)。
