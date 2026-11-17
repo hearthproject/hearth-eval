@@ -69,17 +69,43 @@ describe("EvalStore", () => {
     }
   });
 
-  it("marks interrupted work for review after restart", () => {
+  it("classifies interrupted work into requeue, resume and review after restart", () => {
     const store = new EvalStore(":memory:");
     try {
       const experiment = makeExperiment("E01");
       store.createExperiment(experiment);
-      const run = makeRun(experiment.id, "E01", "running");
-      store.createRuns([run]);
-      expect(store.recoverInterrupted()).toBe(1);
-      expect(store.getRun(run.id)?.status).toBe("error");
-      expect(store.getExperiment(experiment.id)?.status).toBe("needs_review");
-      expect(store.listEvents().at(-1)?.type).toBe("system.recovered");
+      const created = {
+        ...makeRun(experiment.id, "E01", "created"),
+        id: "created-run",
+        externalRef: "created-run"
+      };
+      const running = {
+        ...makeRun(experiment.id, "E01", "running"),
+        id: "running-run",
+        externalRef: "running-run",
+        hearthTaskId: "task-live"
+      };
+      const stale = {
+        ...makeRun(experiment.id, "E01", "grading"),
+        id: "stale-run",
+        externalRef: "stale-run",
+        hearthTaskId: "task-stale",
+        updatedAt: "2020-01-01T00:00:00.000Z"
+      };
+      store.createRuns([created, running, stale]);
+      const summary = store.recoverInterrupted();
+      expect(summary).toEqual({ requeued: 1, resumed: 1, needsReview: 1, interrupted: 3 });
+      expect(store.getRun(created.id)?.status).toBe("queued");
+      expect(store.getRun(running.id)?.status).toBe("running");
+      expect(store.getRun(stale.id)).toMatchObject({
+        status: "needs_review",
+        reviewReasons: ["failed_sample"]
+      });
+      expect(store.getRun(stale.id)?.error).toContain("恢复窗口");
+      expect(store.getExperiment(experiment.id)?.status).toBe("running");
+      const recoveredEvent = store.listEvents().find((event) => event.type === "system.recovered");
+      expect(recoveredEvent?.payload).toMatchObject({ requeued: 1, resumed: 1, needsReview: 1 });
+      expect(store.listEvents().some((event) => event.type === "run.recovery-timeout")).toBe(true);
     } finally {
       store.close();
     }

@@ -326,6 +326,14 @@ export class EvalStore {
     ).all(experimentId) as DbRow[]).map(rowToRun);
   }
 
+  listRecoverableRuns(): ExperimentRunRecord[] {
+    return (this.db.prepare(
+      `SELECT * FROM experiment_runs
+       WHERE status IN ('queued', 'created', 'running', 'waiting', 'grading')
+       ORDER BY rowid ASC`
+    ).all() as DbRow[]).map(rowToRun);
+  }
+
   replaceGraderResults(runId: string, results: GraderResultRecord[]): void {
     this.transaction(() => {
       this.db.prepare("DELETE FROM grader_results WHERE run_id = ?").run(runId);
@@ -437,20 +445,57 @@ export class EvalStore {
     ).all(...params) as DbRow[]).map(rowToEvent);
   }
 
-  recoverInterrupted(): number {
-    const now = new Date().toISOString();
-    const error = "评测服务重启，运行被中断";
-    const result = this.db.prepare(
-      `UPDATE experiment_runs SET status = 'error', error = ?, finished_at = ?, updated_at = ?
-       WHERE status IN ('queued', 'created', 'running', 'waiting', 'grading')`
-    ).run(error, now, now);
-    this.db.prepare(
-      `UPDATE experiments SET status = 'needs_review', finished_at = ?
-       WHERE status IN ('queued', 'running', 'grading')`
-    ).run(now);
-    const count = Number(result.changes);
-    if (count > 0) this.appendEvent("system.recovered", { payload: { interruptedRuns: count } });
-    return count;
+  recoverInterrupted(options: { staleAfterMs?: number; now?: Date } = {}): RecoverySummary {
+    const staleAfterMs = Math.max(0, options.staleAfterMs ?? 30 * 60_000);
+    const nowMs = (options.now ?? new Date()).getTime();
+    const now = new Date(nowMs).toISOString();
+    const cutoff = new Date(nowMs - staleAfterMs).toISOString();
+    const summary: RecoverySummary = { requeued: 0, resumed: 0, needsReview: 0, interrupted: 0 };
+    this.transaction(() => {
+      const runs = this.listRecoverableRuns();
+      summary.interrupted = runs.length;
+      for (const run of runs) {
+        if (run.status === "queued" || run.status === "created" || !run.hearthTaskId) {
+          this.db.prepare(
+            "UPDATE experiment_runs SET status = 'queued', error = NULL, finished_at = NULL, updated_at = ? WHERE id = ?"
+          ).run(now, run.id);
+          summary.requeued += 1;
+          continue;
+        }
+        if (run.updatedAt < cutoff) {
+          this.db.prepare(
+            "UPDATE experiment_runs SET status = 'needs_review', error = ?, review_reasons_json = ?, finished_at = ?, updated_at = ? WHERE id = ?"
+          ).run("评测服务重启且超过恢复窗口，任务需要人工复核", JSON.stringify(["failed_sample"]), now, now, run.id);
+          this.appendEvent("run.recovery-timeout", {
+            experimentId: run.experimentId,
+            runId: run.id,
+            payload: { hearthTaskId: run.hearthTaskId, updatedAt: run.updatedAt }
+          });
+          summary.needsReview += 1;
+          continue;
+        }
+        this.db.prepare(
+          "UPDATE experiment_runs SET status = 'running', error = NULL, updated_at = ? WHERE id = ?"
+        ).run(now, run.id);
+        summary.resumed += 1;
+      }
+      const active = this.listRecoverableRuns().length;
+      this.db.prepare(
+        `UPDATE experiments SET status = 'running', finished_at = NULL
+         WHERE status <> 'cancelled' AND id IN (
+           SELECT DISTINCT experiment_id FROM experiment_runs
+           WHERE status IN ('queued', 'created', 'running', 'waiting', 'grading')
+         )`
+      ).run();
+      if (active === 0) {
+        this.db.prepare(
+          `UPDATE experiments SET status = 'needs_review', finished_at = COALESCE(finished_at, ?)
+           WHERE status IN ('queued', 'running', 'grading')`
+        ).run(now);
+      }
+      if (summary.interrupted > 0) this.appendEvent("system.recovered", { payload: { ...summary } });
+    });
+    return summary;
   }
 
   private transaction<T>(work: () => T): T {
@@ -464,6 +509,13 @@ export class EvalStore {
       throw error;
     }
   }
+}
+
+export interface RecoverySummary {
+  requeued: number;
+  resumed: number;
+  needsReview: number;
+  interrupted: number;
 }
 
 function rowToCase(row: DbRow): StoredCase {

@@ -112,6 +112,66 @@ describe("EvalRunner", () => {
     expect(store.getHumanReview(run?.id ?? "")?.decision).toBe("pass");
   });
 
+  it("resumes an in-flight run by polling its existing task", async () => {
+    const root = mkdtempSync(join(tmpdir(), "hearth-eval-resume-"));
+    const client = fakeAgent(root);
+    const judge = fakeJudge();
+    const store = new EvalStore(":memory:");
+    cleanup.push(() => store.close());
+    const loaded = loadCaseCatalog(root);
+    store.syncCases(loaded.cases);
+    const runner = new EvalRunner({
+      store, client, judge, repoRoot: root,
+      catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
+      evalVersion: "test", pollIntervalMs: 5
+    });
+    const experiment = runner.createExperiment({
+      caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1, runMode: "offline",
+      autoJudge: true, autoRetry: false, maxConcurrency: 1
+    }, await runner.collectEnvironment("judge-model"));
+    const run = store.listRuns(experiment.id)[0];
+    const now = new Date().toISOString();
+    store.updateRun(run?.id ?? "", { status: "running", hearthTaskId: "existing-task", startedAt: now, updatedAt: now });
+
+    const summary = await runner.resumeInterruptedRuns();
+
+    expect(summary).toMatchObject({ resumed: 1, requeued: 0, needsReview: 0 });
+    expect(client.createTask).not.toHaveBeenCalled();
+    expect(client.getTask).toHaveBeenCalledWith("existing-task");
+    expect(store.getRun(run?.id ?? "")?.status).toBe("passed");
+    const events = store.listEvents({ experimentId: experiment.id }).map((event) => event.type);
+    expect(events).toContain("run.recovered");
+    expect(events).toContain("experiment.resumed");
+  });
+
+  it("does not resume a stale in-flight run", async () => {
+    const root = mkdtempSync(join(tmpdir(), "hearth-eval-stale-"));
+    const client = fakeAgent(root);
+    const store = new EvalStore(":memory:");
+    cleanup.push(() => store.close());
+    const loaded = loadCaseCatalog(root);
+    store.syncCases(loaded.cases);
+    const runner = new EvalRunner({
+      store, client, judge: fakeJudge(), repoRoot: root,
+      catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
+      evalVersion: "test", pollIntervalMs: 5
+    });
+    const experiment = runner.createExperiment({
+      caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1, runMode: "offline",
+      autoJudge: false, autoRetry: false, maxConcurrency: 1
+    }, await runner.collectEnvironment(null));
+    const run = store.listRuns(experiment.id)[0];
+    store.updateRun(run?.id ?? "", {
+      status: "grading", hearthTaskId: "stale-task", updatedAt: "2020-01-01T00:00:00.000Z"
+    });
+
+    const summary = await runner.resumeInterruptedRuns();
+
+    expect(summary).toMatchObject({ needsReview: 1, resumed: 0 });
+    expect(client.getTask).not.toHaveBeenCalled();
+    expect(store.getRun(run?.id ?? "")?.status).toBe("needs_review");
+  });
+
   it.each(["missing", "unavailable"] as const)("records %s adapter artifacts without passing the run", async (failure) => {
     const root = mkdtempSync(join(tmpdir(), "hearth-eval-artifact-failure-"));
     const client = fakeAgent(root);

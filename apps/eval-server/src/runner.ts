@@ -33,7 +33,7 @@ import {
 } from "@hearth/eval-core";
 import { resolveCaseInput, type LoadedCase } from "@hearth/eval-core/node";
 import { isTerminalTaskStatus, type AgentAdapter, type AgentTaskView } from "./agent-adapter.ts";
-import type { EvalStore, RunMetrics } from "./store.ts";
+import type { EvalStore, RecoverySummary, RunMetrics } from "./store.ts";
 import type { JudgeAdapter } from "./judge-adapter.ts";
 
 export class EvalRunnerError extends Error {
@@ -58,6 +58,7 @@ interface RunnerOptions {
   sleep?: (ms: number) => Promise<void>;
   now?: () => Date;
   pollIntervalMs?: number;
+  recoveryStaleMs?: number;
 }
 
 interface TaskWaitResult {
@@ -85,6 +86,7 @@ export class EvalRunner {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly now: () => Date;
   private readonly pollIntervalMs: number;
+  private readonly recoveryStaleMs: number;
   private readonly active = new Set<string>();
 
   constructor(options: RunnerOptions) {
@@ -97,6 +99,7 @@ export class EvalRunner {
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.now = options.now ?? (() => new Date());
     this.pollIntervalMs = options.pollIntervalMs ?? 1_000;
+    this.recoveryStaleMs = options.recoveryStaleMs ?? 30 * 60_000;
   }
 
   async collectEnvironment(judgeModel: string | null): Promise<ExperimentEnvironment> {
@@ -365,6 +368,46 @@ export class EvalRunner {
     });
   }
 
+  async resumeInterruptedRuns(): Promise<RecoverySummary> {
+    const summary = this.store.recoverInterrupted({ staleAfterMs: this.recoveryStaleMs });
+    const grouped = new Map<string, ExperimentRunRecord[]>();
+    for (const run of this.store.listRecoverableRuns()) {
+      grouped.set(run.experimentId, [...(grouped.get(run.experimentId) ?? []), run]);
+    }
+    await Promise.all([...grouped].map(([experimentId, runs]) => this.resumeExperiment(experimentId, runs)));
+    return summary;
+  }
+
+  private async resumeExperiment(experimentId: string, runs: ExperimentRunRecord[]): Promise<void> {
+    if (this.active.has(experimentId)) return;
+    this.active.add(experimentId);
+    try {
+      const experiment = this.store.getExperiment(experimentId);
+      if (!experiment || experiment.status === "cancelled") return;
+      this.store.updateExperiment(experimentId, {
+        status: "running",
+        startedAt: experiment.startedAt ?? this.now().toISOString(),
+        finishedAt: null
+      });
+      this.store.appendEvent("experiment.resumed", { experimentId, payload: { runCount: runs.length } });
+      let cursor = 0;
+      const workers = Array.from({ length: Math.min(experiment.config.maxConcurrency, Math.max(1, runs.length)) }, async () => {
+        while (cursor < runs.length) {
+          const run = runs[cursor];
+          cursor += 1;
+          if (!run) break;
+          if (this.store.getExperiment(experimentId)?.status === "cancelled") return;
+          await this.executeRun(run);
+          this.refreshExperiment(experimentId);
+        }
+      });
+      await Promise.all(workers);
+      this.refreshExperiment(experimentId);
+    } finally {
+      this.active.delete(experimentId);
+    }
+  }
+
   private async runExperiment(experimentId: string): Promise<void> {
     let experiment = this.store.getExperiment(experimentId);
     if (!experiment) throw new EvalRunnerError("EXPERIMENT_NOT_FOUND", "实验不存在", 404);
@@ -399,13 +442,28 @@ export class EvalRunner {
     }
     const manifest = loaded.manifest;
     const startedAt = this.now().toISOString();
-    this.store.updateRun(run.id, { status: "created", startedAt, updatedAt: startedAt });
-    this.store.appendEvent("run.created", {
-      experimentId: run.experimentId,
-      runId: run.id,
-      payload: { caseKey: run.caseKey, executorId: run.executorId, repetition: run.repetition }
-    });
     try {
+      if (run.hearthTaskId && ["running", "waiting", "grading"].includes(run.status)) {
+        this.store.updateRun(run.id, {
+          status: "running",
+          startedAt: run.startedAt ?? startedAt,
+          error: null,
+          updatedAt: startedAt
+        });
+        this.store.appendEvent("run.recovered", {
+          experimentId: run.experimentId,
+          runId: run.id,
+          payload: { hearthTaskId: run.hearthTaskId, previousStatus: run.status }
+        });
+        await this.finishTask(run, manifest, run.hearthTaskId);
+        return;
+      }
+      this.store.updateRun(run.id, { status: "created", startedAt, updatedAt: startedAt });
+      this.store.appendEvent("run.created", {
+        experimentId: run.experimentId,
+        runId: run.id,
+        payload: { caseKey: run.caseKey, executorId: run.executorId, repetition: run.repetition }
+      });
       const created = await this.client.createTask(this.buildTaskRequest(run, loaded));
       run.hearthTaskId = created.task.id;
       this.store.updateRun(run.id, { status: "running", hearthTaskId: created.task.id, updatedAt: this.now().toISOString() });
@@ -414,43 +472,47 @@ export class EvalRunner {
         runId: run.id,
         payload: { hearthTaskId: created.task.id, created: created.created }
       });
-      const wait = await this.waitForTask({ ...run, hearthTaskId: created.task.id }, manifest);
-      const trace = await this.captureTrace(run, created.task.id, wait).catch(() => null);
-      this.store.updateRun(run.id, { status: "grading", updatedAt: this.now().toISOString() });
-      this.store.appendEvent("run.grading", {
-        experimentId: run.experimentId,
-        runId: run.id,
-        payload: { taskStatus: wait.status }
-      });
-      const artifacts = await this.client.getArtifacts({ taskId: created.task.id, outputDir: run.outputDir });
-      const graded = await this.gradeRun(run, manifest, artifacts, wait, trace);
-      this.store.setRunMetrics(run.id, metricsFromView(wait.view));
-      const finishedAt = this.now().toISOString();
-      const runFailed = wait.status !== "completed";
-      const status = runStatusFor(wait, graded, runFailed);
-      this.store.updateRun(run.id, {
-        status,
-        score: graded.outcome.score,
-        primaryCause: trace?.primaryCause ?? null,
-        reviewReasons: graded.outcome.reviewReasons,
-        error: runError(wait, graded),
-        finishedAt,
-        updatedAt: finishedAt
-      });
-      this.store.appendEvent("run.finished", {
-        experimentId: run.experimentId,
-        runId: run.id,
-        payload: {
-          status,
-          score: graded.outcome.score,
-          verdict: graded.outcome.verdict,
-          reviewReasons: graded.outcome.reviewReasons,
-          taskStatus: wait.status
-        }
-      });
+      await this.finishTask(run, manifest, created.task.id);
     } catch (error) {
       this.finishRunError(run, "RUN_FAILED", error instanceof Error ? error.message : String(error));
     }
+  }
+
+  private async finishTask(run: ExperimentRunRecord, manifest: CaseManifest, taskId: string): Promise<void> {
+    const wait = await this.waitForTask({ ...run, hearthTaskId: taskId }, manifest);
+    const trace = await this.captureTrace(run, taskId, wait).catch(() => null);
+    this.store.updateRun(run.id, { status: "grading", updatedAt: this.now().toISOString() });
+    this.store.appendEvent("run.grading", {
+      experimentId: run.experimentId,
+      runId: run.id,
+      payload: { taskStatus: wait.status }
+    });
+    const artifacts = await this.client.getArtifacts({ taskId, outputDir: run.outputDir });
+    const graded = await this.gradeRun(run, manifest, artifacts, wait, trace);
+    this.store.setRunMetrics(run.id, metricsFromView(wait.view));
+    const finishedAt = this.now().toISOString();
+    const runFailed = wait.status !== "completed";
+    const status = runStatusFor(wait, graded, runFailed);
+    this.store.updateRun(run.id, {
+      status,
+      score: graded.outcome.score,
+      primaryCause: trace?.primaryCause ?? null,
+      reviewReasons: graded.outcome.reviewReasons,
+      error: runError(wait, graded),
+      finishedAt,
+      updatedAt: finishedAt
+    });
+    this.store.appendEvent("run.finished", {
+      experimentId: run.experimentId,
+      runId: run.id,
+      payload: {
+        status,
+        score: graded.outcome.score,
+        verdict: graded.outcome.verdict,
+        reviewReasons: graded.outcome.reviewReasons,
+        taskStatus: wait.status
+      }
+    });
   }
 
   private buildTaskRequest(run: ExperimentRunRecord, loaded: LoadedCase) {

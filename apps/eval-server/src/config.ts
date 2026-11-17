@@ -12,3 +12,4 @@ export const ARTIFACT_ROOT = resolve(process.env.HEARTH_EVAL_ARTIFACT_ROOT ?? jo
 export const CASES_DIR = resolve(process.env.HEARTH_EVAL_CASES_DIR ?? join(REPO_ROOT, "eval", "cases"));
 export const WEB_DIST = join(REPO_ROOT, "apps", "eval-web", "dist");
 export const EVAL_VERSION = "0.1.0";
+export const RECOVERY_STALE_MS = Math.max(0, Number(process.env.HEARTH_EVAL_RECOVERY_STALE_MS ?? 30 * 60_000));

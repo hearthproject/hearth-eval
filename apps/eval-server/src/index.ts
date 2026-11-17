@@ -10,6 +10,7 @@ import {
   HEARTH_TIMEOUT_MS,
   HOST,
   PORT,
+  RECOVERY_STALE_MS,
   REPO_ROOT,
   WEB_DIST
 } from "./config.ts";
@@ -30,7 +31,7 @@ async function main(): Promise<void> {
 
   const store = new EvalStore(DB_PATH);
   store.syncCases(loaded.cases);
-  const recovered = store.recoverInterrupted();
+  const recovered = store.recoverInterrupted({ staleAfterMs: RECOVERY_STALE_MS });
 
   const catalog = new Map(loaded.cases.map((loadedCase) => [loadedCase.manifest.id, loadedCase]));
   const client = new HearthClient({
@@ -44,7 +45,8 @@ async function main(): Promise<void> {
     judge: new HearthJudgeAdapter(client),
     catalog,
     repoRoot: REPO_ROOT,
-    evalVersion: EVAL_VERSION
+    evalVersion: EVAL_VERSION,
+    recoveryStaleMs: RECOVERY_STALE_MS
   });
 
   const app = await buildEvalApp({
@@ -73,11 +75,14 @@ async function main(): Promise<void> {
   process.once("SIGTERM", () => void shutdown("SIGTERM"));
 
   await app.listen({ host: HOST, port: PORT });
+  void runner.resumeInterruptedRuns().catch((error) => {
+    app.log.error({ error }, "failed to resume interrupted eval runs");
+  });
   app.log.info({
     url: `http://${HOST}:${PORT}`,
     hearthUrl: HEARTH_URL,
     cases: loaded.cases.length,
-    recoveredRuns: recovered,
+    recoveredRuns: recovered.interrupted,
     dataDir: DATA_DIR,
     artifactRoot: ARTIFACT_ROOT,
     web: WEB_DIST
