@@ -18,10 +18,11 @@ description: 评测 Agent 的控制面接口与 Hearth 运行桥接契约。
 | `POST` | `/api/experiments` | 创建并启动实验 |
 | `GET` | `/api/experiments/:id` | 实验、运行、summary 与事件 |
 | `POST` | `/api/experiments/:id/cancel` | 取消实验 |
-| `GET` | `/api/runs/:id` | 运行轨迹、grader、复核、产物与 Hearth 任务 |
+| `GET` | `/api/runs/:id` | 运行事件、grader、复核、产物、trace、八项指标与 Hearth 任务 |
 | `GET` | `/api/reviews` | 待复核队列 |
 | `POST` | `/api/runs/:id/review` | 提交人工复核 |
 | `GET` | `/api/compare` | 实验对比 |
+| `GET` | `/api/experiments/:id/regression` | 固定证据回放与回归门禁 |
 | `GET` | `/api/events` | 增量事件流 |
 | `GET` | `/api/runs/:id/artifacts/*` | 产物预览 |
 
