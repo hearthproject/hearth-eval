@@ -18,6 +18,7 @@ import type {
   ReviewsResponse,
   RunArtifactView,
   RunDetailResponse,
+  RegressionReport,
   SubmitReviewRequest
 } from "@hearth/eval-core";
 import { EVAL_FAMILIES } from "@hearth/eval-core";
@@ -375,6 +376,20 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
       right: rightSummary,
       familyDeltas
     };
+  });
+
+  app.get<{ Params: { id: string } }>("/api/experiments/:id/regression", async (request, reply): Promise<RegressionReport | FastifyReply> => {
+    const experiment = store.getExperiment(request.params.id);
+    if (!experiment) return reply.code(404).send({ error: "EXPERIMENT_NOT_FOUND", message: "实验不存在" });
+    const baselineExperimentId = experiment.config.baselineExperimentId;
+    if (!baselineExperimentId) {
+      return reply.code(400).send({ error: "BASELINE_REQUIRED", message: "该实验未指定基线，无法执行回归门禁" });
+    }
+    try {
+      return runner.regressionReport(experiment.id, baselineExperimentId);
+    } catch (error) {
+      return sendRunnerError(reply, error);
+    }
   });
 
   app.get<{ Querystring: { after?: string; limit?: string; experimentId?: string; runId?: string } }>("/api/events", async (request, reply) => {

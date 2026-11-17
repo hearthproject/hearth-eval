@@ -533,6 +533,13 @@ code { font-size: .82em; }
 .evidence-metric-card .metric-bad { color: var(--danger); }
 .evidence-metric-card .metric-empty { color: var(--ink-faint); }
 .calibration-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.regression-verdict { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.regression-verdict span { padding: 4px 9px; font-size: 10px; font-weight: 700; border-radius: 999px; }
+.regression-verdict .regression-blocked { color: var(--danger); background: var(--danger-wash); }
+.regression-verdict .regression-clear { color: var(--success); background: var(--success-wash); }
+.regression-verdict strong { font-size: 13px; }
+.regression-verdict small { color: var(--ink-faint); font-size: 10px; }
+.regression-reasons { margin: 0 0 12px; padding-left: 18px; color: var(--danger); font-size: 11px; line-height: 1.65; }
 .run-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 13px; margin-bottom: 12px; }
 .status-filter-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
 .status-filter-tabs button { min-height: 28px; padding: 0 9px; color: var(--ink-faint); background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 9px; font-weight: 650; }

@@ -180,6 +180,82 @@ describe("EvalRunner", () => {
     expect(store.getRun(run?.id ?? "")?.status).toBe("needs_review");
   });
 
+  it("replays fixed evidence and blocks regressions against a baseline", async () => {
+    const root = mkdtempSync(join(tmpdir(), "hearth-eval-replay-"));
+    const client = fakeAgent(root);
+    const store = new EvalStore(":memory:");
+    cleanup.push(() => store.close());
+    const loaded = loadCaseCatalog(root);
+    store.syncCases(loaded.cases);
+    const runner = new EvalRunner({
+      store, client, judge: fakeJudge(), repoRoot: root,
+      catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
+      evalVersion: "test", pollIntervalMs: 5
+    });
+    const baseline = runner.createExperiment({
+      caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1, runMode: "offline",
+      autoJudge: true, autoRetry: false, maxConcurrency: 1
+    }, await runner.collectEnvironment("judge-model"));
+    runner.start(baseline.id);
+    await waitFor(() => store.getExperiment(baseline.id)?.status === "completed");
+    const baselineRun = store.listRuns(baseline.id)[0];
+    expect(baselineRun?.status).toBe("passed");
+
+    const target = runner.createExperiment({
+      caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1, runMode: "offline",
+      autoJudge: true, autoRetry: false, maxConcurrency: 1, baselineExperimentId: baseline.id
+    }, await runner.collectEnvironment("judge-model"));
+    const targetRun = store.listRuns(target.id)[0];
+    if (!targetRun || !baselineRun) throw new Error("missing run");
+    store.replaceGraderResults(targetRun.id, store.listGraderResults(baselineRun.id).map((record) => ({
+      ...record, id: `copy-${record.id}`, runId: targetRun.id
+    })));
+    const trace = store.getTrace(baselineRun.id);
+    if (trace) store.saveTrace(targetRun.id, trace);
+    const artifactDir = join(root, targetRun.outputDir);
+    mkdirSync(artifactDir, { recursive: true });
+    writeFileSync(join(artifactDir, "result.md"), "wrong", "utf8");
+
+    const report = runner.regressionReport(target.id, baseline.id);
+
+    expect(report.regressionBlocked).toBe(true);
+    expect(report.regressions).toBe(1);
+    expect(report.cases[0]).toMatchObject({
+      caseKey: "TEST01", baselineStatus: "passed", verdict: "failed", regression: true
+    });
+    expect(report.cases[0]?.deterministicChanged).toBe(true);
+  });
+
+  it("treats missing replay evidence as a blocking gap for a passed baseline", async () => {
+    const root = mkdtempSync(join(tmpdir(), "hearth-eval-replay-missing-"));
+    const client = fakeAgent(root);
+    const store = new EvalStore(":memory:");
+    cleanup.push(() => store.close());
+    const loaded = loadCaseCatalog(root);
+    store.syncCases(loaded.cases);
+    const runner = new EvalRunner({
+      store, client, judge: fakeJudge(), repoRoot: root,
+      catalog: new Map(loaded.cases.map((item) => [item.manifest.id, item])),
+      evalVersion: "test", pollIntervalMs: 5
+    });
+    const baseline = runner.createExperiment({
+      caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1, runMode: "offline",
+      autoJudge: false, autoRetry: false, maxConcurrency: 1
+    }, await runner.collectEnvironment(null));
+    runner.start(baseline.id);
+    await waitFor(() => store.getExperiment(baseline.id)?.status === "completed");
+    const target = runner.createExperiment({
+      caseIds: ["TEST01"], executorIds: ["custom"], repetitions: 1, runMode: "offline",
+      autoJudge: false, autoRetry: false, maxConcurrency: 1, baselineExperimentId: baseline.id
+    }, await runner.collectEnvironment(null));
+
+    const report = runner.regressionReport(target.id, baseline.id);
+
+    expect(report.regressionBlocked).toBe(true);
+    expect(report.missingEvidence).toBe(1);
+    expect(report.blockingMissingEvidence).toBe(1);
+  });
+
   it.each(["missing", "unavailable"] as const)("records %s adapter artifacts without passing the run", async (failure) => {
     const root = mkdtempSync(join(tmpdir(), "hearth-eval-artifact-failure-"));
     const client = fakeAgent(root);

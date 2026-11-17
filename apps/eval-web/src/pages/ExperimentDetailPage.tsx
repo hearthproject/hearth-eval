@@ -62,6 +62,12 @@ export function ExperimentDetailPage() {
     || experimentQuery.data.runs.some((run) => isActiveRun(run.status))));
   const now = useLiveClock(active);
   const casesQuery = useQuery({ queryKey: ["cases", "all"], queryFn: () => api.cases() });
+  const regressionQuery = useQuery({
+    queryKey: ["regression", id, experimentQuery.data?.experiment.config.baselineExperimentId],
+    queryFn: () => api.regression(id),
+    enabled: Boolean(id && experimentQuery.data?.experiment.config.baselineExperimentId),
+    staleTime: 5_000
+  });
   const cancelMutation = useMutation({
     mutationFn: () => api.cancelExperiment(id),
     onSuccess: () => {
@@ -176,6 +182,50 @@ export function ExperimentDetailPage() {
             </div>
           </section>
         </div>
+      )}
+
+      {experiment.config.baselineExperimentId && (
+        <section className="panel">
+          <SectionHeader
+            title="回归门禁"
+            detail={regressionQuery.data ? `${regressionQuery.data.replayable} 条可回放 · ${regressionQuery.data.skipped} 条跳过` : "使用固定证据对比基线"}
+            action={<Link className="text-link" to={`/experiments/${experiment.config.baselineExperimentId}`}>查看基线 <ArrowRight size={14} /></Link>}
+          />
+          {regressionQuery.isLoading ? <LoadingState text="正在回放固定证据" /> : regressionQuery.error ? (
+            <EmptyState title="暂时无法回放" description={regressionQuery.error instanceof Error ? regressionQuery.error.message : "请稍后重试"} />
+          ) : regressionQuery.data ? (
+            <>
+              <div className="regression-verdict">
+                <span className={regressionQuery.data.regressionBlocked ? "regression-blocked" : "regression-clear"}>
+                  {regressionQuery.data.regressionBlocked ? "阻断" : "通过"}
+                </span>
+                <strong>{regressionQuery.data.regressionBlocked ? "发现回归，禁止发布" : "固定证据回放未发现回归"}</strong>
+                <small>{regressionQuery.data.regressions} 回归 · {regressionQuery.data.fixes} 修复 · {regressionQuery.data.blockingMissingEvidence} 证据缺口阻断</small>
+              </div>
+              {regressionQuery.data.reasons.length > 0 && (
+                <ul className="regression-reasons">
+                  {regressionQuery.data.reasons.map((reason) => <li key={reason}>{reason}</li>)}
+                </ul>
+              )}
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead><tr><th>Case</th><th>基线</th><th>回放</th><th>分数变化</th><th>结论</th></tr></thead>
+                  <tbody>
+                    {regressionQuery.data.cases.slice(0, 30).map((item) => (
+                      <tr key={item.runId}>
+                        <td><Link className="table-primary" to={`/runs/${item.runId}`}>{item.caseKey}<small>{item.executorId} · r{item.repetition}</small></Link></td>
+                        <td>{item.baselineStatus ?? "—"}<small>{item.baselineScore === null ? "" : ` · ${item.baselineScore.toFixed(1)}`}</small></td>
+                        <td>{item.verdict ?? "跳过"}{item.score === null ? "" : ` · ${item.score.toFixed(1)}`}</td>
+                        <td>{item.delta === null ? "—" : `${item.delta > 0 ? "+" : ""}${item.delta}`}</td>
+                        <td>{item.regression ? "回归" : item.reason ?? (item.deterministicChanged ? "确定性结论变化" : "稳定")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : <EmptyState title="尚无回放结果" description="运行结束后可对比基线固定证据。" />}
+        </section>
       )}
 
       {summary && summary.failureDiagnostics.length > 0 && (

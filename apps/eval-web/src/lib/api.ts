@@ -12,6 +12,7 @@ import type {
   ExperimentsResponse,
   HumanReviewRecord,
   ReviewQueueItem,
+  RegressionReport,
   ReviewsResponse,
   RunArtifactView,
   RunDetailResponse,
@@ -117,6 +118,7 @@ export const api = {
     const query = new URLSearchParams({ left, right });
     return request<CompareResponse>(`/api/compare?${query.toString()}`);
   },
+  regression: (id: string) => request<RegressionReport>(`/api/experiments/${encodeURIComponent(id)}/regression`),
   events: (input: { after?: number; limit?: number; experimentId?: string; runId?: string } = {}) => {
     const query = new URLSearchParams();
     if (input.after !== undefined) query.set("after", String(input.after));

@@ -92,6 +92,38 @@ export interface CompareResponse extends ExperimentComparison {
   rightName: string | null;
 }
 
+export interface ReplayCaseResult {
+  runId: string;
+  caseKey: string;
+  executorId: string;
+  repetition: number;
+  baselineRunId: string | null;
+  baselineStatus: string | null;
+  baselineScore: number | null;
+  verdict: "passed" | "failed" | "needs_review" | null;
+  score: number | null;
+  delta: number | null;
+  deterministicChanged: boolean;
+  changedCriteria: string[];
+  regression: boolean;
+  reason: string | null;
+}
+
+export interface RegressionReport {
+  experimentId: string;
+  baselineExperimentId: string;
+  replayable: number;
+  skipped: number;
+  regressions: number;
+  fixes: number;
+  missingEvidence: number;
+  blockingMissingEvidence: number;
+  regressionBlocked: boolean;
+  reasons: string[];
+  cases: ReplayCaseResult[];
+  generatedAt: string;
+}
+
 export interface EvalExecutorOption {
   id: string;
   name: string;

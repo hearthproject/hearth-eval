@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import type {
   ArtifactMap,
   CaseManifest,
@@ -32,6 +34,8 @@ import {
   type RawTraceEvent,
   type MetricSummary,
   type JudgeCalibrationSummary,
+  type RegressionReport,
+  type ReplayCaseResult,
   aggregateMetrics,
   emptyMetrics,
   metricSummaries
@@ -40,6 +44,7 @@ import { resolveCaseInput, type LoadedCase } from "@hearth/eval-core/node";
 import { isTerminalTaskStatus, type AgentAdapter, type AgentTaskView } from "./agent-adapter.ts";
 import type { EvalStore, RecoverySummary, RunMetrics } from "./store.ts";
 import type { JudgeAdapter } from "./judge-adapter.ts";
+import { resolveRunOutputDir } from "./artifact-path.ts";
 
 export class EvalRunnerError extends Error {
   readonly code: string;
@@ -64,6 +69,7 @@ interface RunnerOptions {
   now?: () => Date;
   pollIntervalMs?: number;
   recoveryStaleMs?: number;
+  artifactRoot?: string;
 }
 
 interface TaskWaitResult {
@@ -92,6 +98,7 @@ export class EvalRunner {
   private readonly now: () => Date;
   private readonly pollIntervalMs: number;
   private readonly recoveryStaleMs: number;
+  private readonly artifactRoot: string;
   private readonly active = new Set<string>();
 
   constructor(options: RunnerOptions) {
@@ -105,6 +112,7 @@ export class EvalRunner {
     this.now = options.now ?? (() => new Date());
     this.pollIntervalMs = options.pollIntervalMs ?? 1_000;
     this.recoveryStaleMs = options.recoveryStaleMs ?? 30 * 60_000;
+    this.artifactRoot = options.artifactRoot ?? resolve(options.repoRoot, ".hearth", "eval-artifacts");
   }
 
   async collectEnvironment(judgeModel: string | null): Promise<ExperimentEnvironment> {
@@ -361,6 +369,185 @@ export class EvalRunner {
       lowConfidenceRuns,
       lowConfidenceRate: judgedRuns === 0 ? null : round(lowConfidenceRuns / judgedRuns * 100)
     };
+  }
+
+  regressionReport(experimentId: string, baselineExperimentId: string): RegressionReport {
+    const experiment = this.store.getExperiment(experimentId);
+    const baseline = this.store.getExperiment(baselineExperimentId);
+    if (!experiment) throw new EvalRunnerError("EXPERIMENT_NOT_FOUND", "实验不存在", 404);
+    if (!baseline) throw new EvalRunnerError("BASELINE_NOT_FOUND", "基线实验不存在", 404);
+    const baselineByKey = new Map(this.store.listRuns(baseline.id).map((run) => [runKey(run), run]));
+    const cases: ReplayCaseResult[] = [];
+    let replayable = 0;
+    let skipped = 0;
+    let regressions = 0;
+    let fixes = 0;
+    let missingEvidence = 0;
+    let blockingMissingEvidence = 0;
+    const reasons: string[] = [];
+    for (const run of this.store.listRuns(experiment.id)) {
+      const baselineRun = baselineByKey.get(runKey(run)) ?? null;
+      const loaded = this.catalog.get(run.caseKey);
+      const baseResult: ReplayCaseResult = {
+        runId: run.id,
+        caseKey: run.caseKey,
+        executorId: run.executorId,
+        repetition: run.repetition,
+        baselineRunId: baselineRun?.id ?? null,
+        baselineStatus: baselineRun?.status ?? null,
+        baselineScore: baselineRun?.score ?? null,
+        verdict: null,
+        score: null,
+        delta: null,
+        deterministicChanged: false,
+        changedCriteria: [],
+        regression: false,
+        reason: null
+      };
+      if (!loaded || !baselineRun) {
+        skipped += 1;
+        cases.push({ ...baseResult, reason: loaded ? "基线中没有对齐的 case" : "catalog 中缺少 case" });
+        continue;
+      }
+      const replay = this.replayRun(run, loaded);
+      if (!replay) {
+        skipped += 1;
+        missingEvidence += 1;
+        if (baselineRun.status === "passed") {
+          blockingMissingEvidence += 1;
+          reasons.push(`${run.caseKey} 缺少固定证据，无法证明基线通过仍然成立`);
+        }
+        cases.push({ ...baseResult, reason: "缺少可回放证据（产物、trace 或 Judge 结果）" });
+        continue;
+      }
+      replayable += 1;
+      const score = replay.outcome.score;
+      const delta = score !== null && baselineRun.score !== null ? round(score - baselineRun.score) : null;
+      const decided = ["passed", "failed"].includes(baselineRun.status);
+      const regressed = decided && (
+        (baselineRun.status === "passed" && replay.outcome.verdict !== "passed")
+        || (delta !== null && delta <= -5)
+      );
+      const fixed = decided && baselineRun.status !== "passed" && replay.outcome.verdict === "passed";
+      if (regressed) {
+        regressions += 1;
+        reasons.push(`${run.caseKey} 回归：${baselineRun.status} → ${replay.outcome.verdict}（${delta === null ? "分数不可比" : `${delta > 0 ? "+" : ""}${delta}`}）`);
+      }
+      if (fixed) fixes += 1;
+      cases.push({
+        ...baseResult,
+        verdict: replay.outcome.verdict,
+        score,
+        delta,
+        deterministicChanged: replay.deterministicChanged,
+        changedCriteria: replay.changedCriteria,
+        regression: regressed,
+        reason: decided ? null : "基线尚未形成可比较结论"
+      });
+    }
+    cases.sort((left, right) => left.caseKey.localeCompare(right.caseKey) || left.executorId.localeCompare(right.executorId) || left.repetition - right.repetition);
+    return {
+      experimentId,
+      baselineExperimentId,
+      replayable,
+      skipped,
+      regressions,
+      fixes,
+      missingEvidence,
+      blockingMissingEvidence,
+      regressionBlocked: regressions > 0 || blockingMissingEvidence > 0,
+      reasons,
+      cases,
+      generatedAt: this.now().toISOString()
+    };
+  }
+
+  private replayRun(
+    run: ExperimentRunRecord,
+    loaded: LoadedCase
+  ): { outcome: ReturnType<typeof scoreRun>; deterministicChanged: boolean; changedCriteria: string[] } | null {
+    const manifest = loaded.manifest;
+    const records = this.store.listGraderResults(run.id);
+    if (records.length === 0) return null;
+    const stored = deterministicFromRecords(records);
+    const artifacts = this.readArtifacts(run.outputDir);
+    if (Object.keys(artifacts).length === 0 && manifest.expectedOutputs.length > 0) return null;
+    const trace = this.store.getTrace(run.id);
+    const traceCriteria = manifest.criteria.filter((criterion) => {
+      const grader = manifest.graders.find((item) => item.id === criterion.graderId);
+      return criterion.source === "deterministic" && grader?.config.kind === "trace";
+    });
+    if (traceCriteria.length > 0 && !trace) return null;
+    const experiment = this.store.getExperiment(run.experimentId);
+    const judgeCriteria = manifest.criteria.filter((criterion) => criterion.source === "judge");
+    const judgeExpected = Boolean(experiment?.config.autoJudge && judgeCriteria.length > 0);
+    const judge = judgeFromRecords(records);
+    if (judgeExpected && !judge) return null;
+    const deterministic: Record<string, GraderOutcome> = {};
+    for (const criterion of manifest.criteria.filter((item) => item.source === "deterministic")) {
+      const grader = manifest.graders.find((item) => item.id === criterion.graderId);
+      if (!grader) {
+        deterministic[criterion.id] = { passed: false, reason: `缺少 grader：${criterion.graderId}`, evidence: [] };
+        continue;
+      }
+      if (grader.config.kind === "trace") {
+        if (!trace) continue;
+        deterministic[criterion.id] = runTraceGrader(
+          grader,
+          trace,
+          observationForRun(trace, run, this.store.getRunMetrics(run.id), this.now()) ?? undefined
+        );
+        continue;
+      }
+      try {
+        deterministic[criterion.id] = runGrader(grader, artifacts);
+      } catch (error) {
+        deterministic[criterion.id] = { passed: false, reason: error instanceof Error ? error.message : String(error), evidence: [] };
+      }
+    }
+    const changedCriteria = Object.entries(stored)
+      .filter(([id, outcome]) => deterministic[id] && deterministic[id].passed !== outcome.passed)
+      .map(([id]) => id);
+    const observation = observationForRun(trace, run, this.store.getRunMetrics(run.id), this.now());
+    const outcome = scoreRun({
+      manifest,
+      deterministic,
+      judge,
+      judgeExpected,
+      humanDecision: this.store.getHumanReview(run.id)?.decision ?? null,
+      reviewReasonSeed: run.id,
+      runFailed: false,
+      sampleRate: 0,
+      gates: gateOutcomes(manifest, deterministic, judge),
+      budgetViolations: budgetViolations(manifest, observation)
+    });
+    return { outcome, deterministicChanged: changedCriteria.length > 0, changedCriteria };
+  }
+
+  private readArtifacts(outputDir: string): ArtifactMap {
+    const root = resolveRunOutputDir(this.repoRoot, this.artifactRoot, outputDir);
+    if (!isPathInside(this.artifactRoot, root) || !existsSync(root)) return {};
+    const artifacts: ArtifactMap = {};
+    const visit = (directory: string, depth: number) => {
+      if (depth > 12 || Object.keys(artifacts).length >= 500) return;
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        if (entry.isSymbolicLink() || Object.keys(artifacts).length >= 500) continue;
+        const absolute = join(directory, entry.name);
+        if (entry.isDirectory()) {
+          visit(absolute, depth + 1);
+          continue;
+        }
+        if (!entry.isFile()) continue;
+        const stats = statSync(absolute);
+        if (stats.size > 20 * 1024 * 1024) continue;
+        artifacts[absolute.slice(root.length + 1).replace(/\\/g, "/")] = {
+          text: stats.size <= 1_000_000 ? readFileSync(absolute, "utf8") : "",
+          bytes: stats.size
+        };
+      }
+    };
+    visit(root, 0);
+    return artifacts;
   }
 
   review(runId: string, decision: "pass" | "fail" | "unknown", reviewer = "local", note = ""): HumanReviewRecord {
@@ -999,4 +1186,35 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function round(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function runKey(run: ExperimentRunRecord): string {
+  return `${run.caseKey}\u0000${run.executorId}\u0000${run.repetition}`;
+}
+
+function observationForRun(
+  trace: EvalTrace | null,
+  run: ExperimentRunRecord,
+  metrics: RunMetrics | null,
+  now: Date
+): TraceObservation | null {
+  const durationMs = run.startedAt
+    ? Math.max(0, Date.parse(run.finishedAt ?? now.toISOString()) - Date.parse(run.startedAt))
+    : null;
+  const tokens = metrics ? metrics.inputTokens + metrics.outputTokens : null;
+  if (!trace && durationMs === null && tokens === null) return null;
+  return {
+    steps: trace?.steps ?? 0,
+    toolCalls: trace?.toolCalls ?? 0,
+    approvals: trace?.approvals ?? 0,
+    effects: trace?.effects ?? 0,
+    errors: trace?.errors.length ?? 0,
+    durationMs,
+    tokens
+  };
+}
+
+function isPathInside(root: string, candidate: string): boolean {
+  const value = relative(resolve(root), resolve(candidate));
+  return value === "" || (!value.startsWith("..") && !isAbsolute(value));
 }

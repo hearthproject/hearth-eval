@@ -46,7 +46,8 @@ async function main(): Promise<void> {
     catalog,
     repoRoot: REPO_ROOT,
     evalVersion: EVAL_VERSION,
-    recoveryStaleMs: RECOVERY_STALE_MS
+    recoveryStaleMs: RECOVERY_STALE_MS,
+    artifactRoot: ARTIFACT_ROOT
   });
 
   const app = await buildEvalApp({
