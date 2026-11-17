@@ -897,7 +897,23 @@ export class EvalRunner {
       if (!grader) {
         result = { passed: false, reason: `缺少 grader：${criterion.graderId}`, evidence: [] };
       } else if (grader.config.kind === "trace") {
-        if (!trace || !observed) continue;
+        if (!trace || !observed) {
+          graderRecords.push({
+            id: randomUUID(),
+            runId: run.id,
+            criterionId: criterion.id,
+            source: "deterministic",
+            passed: null,
+            score: null,
+            confidence: null,
+            reason: "轨迹不可用，无法执行门禁",
+            evidence: [],
+            model: null,
+            promptHash: null,
+            createdAt
+          });
+          continue;
+        }
         result = runTraceGrader(grader, trace, observed);
       } else {
         try {
