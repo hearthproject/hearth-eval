@@ -215,54 +215,20 @@ flowchart TD
 
 ## 架构
 
-```mermaid
-flowchart LR
-  subgraph UI["控制台 · apps/eval-web · :5175"]
-    Web["React 18 + Vite 7<br/>App.tsx / pages / lib/api.ts"]
-  end
+下图是控制面、被测 Agent 与数据资产的完整关系（深色/浅色主题自动切换，点击查看原图）：
 
-  subgraph CP["评测控制面 · apps/eval-server · :4318"]
-    App["Fastify app.ts<br/>REST /api/* · SPA 托管"]
-    Runner["EvalRunner runner.ts<br/>编排 / 并发 / 轮询 / 续跑"]
-    Store["EvalStore store.ts<br/>node:sqlite · WAL"]
-    Core["packages/eval-core<br/>schema · scoring · graders<br/>metrics · trace · scenarios"]
-    SelfCheck["scenario-self-check.ts<br/>子进程执行器"]
-  end
+<p align="center">
+  <a href="docs/public/diagrams/eval-architecture-light.svg" title="查看原图">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/public/diagrams/eval-architecture-dark.svg">
+      <img src="docs/public/diagrams/eval-architecture-light.svg" width="1400" alt="Hearth Eval 架构图：控制台 :5175 经 /api 调用评测服务 :4318；EvalRunner 使用 eval-core 完成 60/30/10 评分与五类门禁，并通过 HearthClient 调用 hearth-os :4317 的受控任务、trace 分页、Judge 与 operator 接口；EvalStore 写入 SQLite 的 7 张表；数据资产包括 catalog v2、运行产物与 30 个白盒场景。">
+    </picture>
+  </a>
+</p>
 
-  subgraph EXT["被测对象 · hearth-os · :4317"]
-    Tasks["POST /api/eval/tasks<br/>GET /api/tasks/:id"]
-    Trace["GET /api/eval/tasks/:id/trace<br/>分页 afterSeq / limit"]
-    Judge["POST /api/eval/judge<br/>LLM-as-a-Judge"]
-    Operator["POST /api/eval/tasks/:id/operator<br/>17 种操作 · operationId 幂等"]
-    OS["Agent / 审批 / 效果对账<br/>调度 / 记忆 / Skill / 执行器"]
-  end
+<p align="center"><sub>源文件：<code>docs/public/diagrams/eval-architecture-light.svg</code> · <code>eval-architecture-dark.svg</code></sub></p>
 
-  subgraph DATA["持久化与资产"]
-    DB[".hearth/eval/eval.sqlite<br/>7 张表 + WAL"]
-    Art[".hearth/eval-artifacts/<br/>实验 / 题目 / 执行器 / r1-r5"]
-    Cat["eval/catalog/v2<br/>50 offline + 5 live"]
-    SR["eval/scenario-runs/<br/>白盒场景证据"]
-  end
-
-  Web -->|"/api 代理"| App
-  App --> Runner
-  Runner --> Core
-  Runner --> Store
-  Store --> DB
-  Runner -->|"HearthClient"| Tasks
-  Runner --> Trace
-  Runner --> Judge
-  App --> SelfCheck
-  SelfCheck -->|"进程内 import hearth-os 源码"| OS
-  Tasks --> OS
-  Judge --> OS
-  Operator --> OS
-  Runner --> Art
-  App -.->|"加载 catalog / 校验 golden"| Cat
-  SelfCheck --> SR
-```
-
-图中每个方框都对应真实文件：`app.ts` 注册全部 REST 路由与 SPA fallback；`runner.ts` 负责实验编排、worker pool、Judge 重试与续跑；`store.ts` 用 Node 内置 `node:sqlite` 维护 7 张表；`scoring.ts` 承载 60/30/10 与 blocker 判定；`trace.ts` 负责轨迹规范化与 `primaryCause` 归因；`scenario-runner/` 直接 import 同级的 `hearth-os` 源码做白盒回归。`docs/` 是 VitePress 文档站，与评测链路没有运行时依赖。
+图中每个区块都对应真实文件：`app.ts` 注册全部 REST 路由与 SPA fallback；`runner.ts` 负责实验编排、worker pool、Judge 重试与续跑；`store.ts` 用 Node 内置 `node:sqlite` 维护 7 张表；`scoring.ts` 承载 60/30/10 与 blocker 判定；`trace.ts` 负责轨迹规范化与 `primaryCause` 归因；`scenario-runner/` 直接 import 同级的 `hearth-os` 源码做白盒回归。`docs/` 是 VitePress 文档站，与评测链路没有运行时依赖。
 
 `EvalRunner` 只依赖两个窄接口：`AgentAdapter`（任务创建、任务视图、产物、取消、健康检查）与 `JudgeAdapter`（按 runner 已取得的产物评分）。默认实现分别是 `HearthClient` 与 `HearthJudgeAdapter`；前者按 `HEARTH_EVAL_ARTIFACT_ROOT` 解析产物，后者转调 `/api/eval/judge`。新增 Agent 后端只需实现 adapter，不复制实验编排、SQLite、复核或控制台。
 
