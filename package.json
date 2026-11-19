@@ -9,6 +9,7 @@
     "packages/*"
   ],
   "scripts": {
+    "eval:calibrate": "tsx apps/eval-server/src/calibration-cli.ts",
     "dev": "concurrently -k -n eval-server,eval-web -c magenta,cyan \"npm run dev -w @hearth/eval-server\" \"npm run dev -w @hearth/eval-web\"",
     "dev:server": "npm run dev -w @hearth/eval-server",
     "dev:web": "npm run dev -w @hearth/eval-web",

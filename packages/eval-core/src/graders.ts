@@ -15,6 +15,7 @@ export interface GraderOutcome {
   passed: boolean;
   reason: string;
   evidence: string[];
+  error?: boolean;
 }
 
 export function runGrader(spec: GraderSpec, artifacts: ArtifactMap): GraderOutcome {
@@ -23,6 +24,7 @@ export function runGrader(spec: GraderSpec, artifacts: ArtifactMap): GraderOutco
   } catch (error) {
     return {
       passed: false,
+      error: !(error instanceof SyntaxError && ["json", "state", "mail_draft"].includes(spec.config.kind)) && !(error instanceof Error && error.message.startsWith("缺少产物")),
       reason: error instanceof Error ? error.message : String(error),
       evidence: []
     };

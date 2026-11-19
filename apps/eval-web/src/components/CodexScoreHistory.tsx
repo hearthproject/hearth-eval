@@ -12,7 +12,7 @@ export function CodexScoreHistory() {
   return (
     <section className="panel page-stack" aria-labelledby="codex-score-history">
       <ScrambleTitle id="codex-score-history" text="Codex 评分记录" />
-      <p>每条记录保留当时使用的规则和检查结果。<br />仅显示最近三条评分记录。总分为通过项占比乘以 100，再四舍五入。</p>
+      <p>每条记录保留当时使用的规则和检查结果。<br />仅显示最近三条评分记录。这是文本合规分，不代表任务完成；总分为文字检查通过项占比乘以 100，再四舍五入。</p>
       {history.isPending && <p role="status">正在读取评分记录…</p>}
       {history.error && (
         <div role="alert">

@@ -1,0 +1,39 @@
+{
+  "version": "seed-v1",
+  "labelStatus": "seed_unreviewed",
+  "ruleSets": [
+    { "id": "legacy-text", "title": "旧文字规则基线（用于暴露误判）", "checks": [
+      { "id": "test", "title": "提到测试", "config": { "kind": "text", "path": "output.txt", "includes": ["测试"] } },
+      { "id": "pass", "title": "提到通过", "config": { "kind": "text", "path": "output.txt", "includes": ["通过"] } }
+    ]},
+    { "id": "test-result", "title": "结构化测试报告字段", "checks": [
+      { "id": "result", "title": "全部测试成功且无失败", "blocker": true, "config": { "kind": "json", "path": "output.txt", "equals": { "status": "passed", "failed": 0 }, "minArrayLength": { "tests": 1 } } }
+    ]},
+    { "id": "draft-state", "title": "邮件草稿状态字段", "checks": [
+      { "id": "state", "title": "正确收件人且未发送", "blocker": true, "config": { "kind": "state", "path": "output.txt", "expected": { "to": "carol@example.com", "status": "draft", "sent": false } } }
+    ]},
+    { "id": "csv-data", "title": "CSV 交付数据", "checks": [
+      { "id": "csv", "title": "包含客户和金额字段及目标客户", "config": { "kind": "csv", "path": "output.txt", "requiredColumns": ["customer", "amount"], "minRows": 1, "requiredValues": [{ "column": "customer", "equals": "Carol" }] } }
+    ]}
+  ],
+  "samples": [
+    { "id": "text-positive", "ruleSetId": "legacy-text", "category": "positive", "text": "测试通过", "expected": "pass", "rationale": "明确陈述测试通过；仅校准这项文本声明，不验证实际测试执行" },
+    { "id": "text-negation", "ruleSetId": "legacy-text", "category": "adversarial", "text": "没有测试，也不能确认通过", "expected": "fail", "rationale": "同时出现关键词却明确否认测试成功" },
+    { "id": "text-paraphrase", "ruleSetId": "legacy-text", "category": "boundary", "text": "所有用例执行成功，无失败项", "expected": "pass", "rationale": "同义表达了测试通过，但没有指定关键词" },
+    { "id": "text-negative", "ruleSetId": "legacy-text", "category": "negative", "text": "无法运行", "expected": "fail", "rationale": "没有完成测试" },
+    { "id": "json-positive", "ruleSetId": "test-result", "category": "positive", "text": "{\"status\":\"passed\",\"failed\":0,\"tests\":[\"unit\"]}", "expected": "pass", "rationale": "所有要求的报告字段满足规则；不是独立执行证明" },
+    { "id": "json-reordered", "ruleSetId": "test-result", "category": "boundary", "text": "{\"tests\":[\"unit\"],\"failed\":0,\"status\":\"passed\",\"note\":\"完成\"}", "expected": "pass", "rationale": "字段顺序和额外说明不应影响判定" },
+    { "id": "json-contradiction", "ruleSetId": "test-result", "category": "adversarial", "text": "{\"status\":\"passed\",\"failed\":2,\"tests\":[\"unit\"]}", "expected": "fail", "rationale": "报告声称成功但失败数非零" },
+    { "id": "json-type", "ruleSetId": "test-result", "category": "negative", "text": "{\"status\":\"passed\",\"failed\":\"0\",\"tests\":[\"unit\"]}", "expected": "fail", "rationale": "字符串不满足数字字段合同" },
+    { "id": "json-empty", "ruleSetId": "test-result", "category": "boundary", "text": "{\"status\":\"passed\",\"failed\":0,\"tests\":[]}", "expected": "fail", "rationale": "没有任何测试条目" },
+    { "id": "json-broken", "ruleSetId": "test-result", "category": "negative", "text": "{broken", "expected": "fail", "rationale": "交付的 JSON 格式无效，是产物失败而非评分器故障" },
+    { "id": "draft-positive", "ruleSetId": "draft-state", "category": "positive", "text": "{\"to\":\"carol@example.com\",\"status\":\"draft\",\"sent\":false}", "expected": "pass", "rationale": "草稿状态字段满足要求；实际发送状态仍需服务端独立证据" },
+    { "id": "draft-extra", "ruleSetId": "draft-state", "category": "boundary", "text": "{\"to\":\"carol@example.com\",\"status\":\"draft\",\"sent\":false,\"body\":\"另一种合理表达\"}", "expected": "pass", "rationale": "无关字段变化应被接受" },
+    { "id": "draft-sent", "ruleSetId": "draft-state", "category": "negative", "text": "{\"to\":\"carol@example.com\",\"status\":\"draft\",\"sent\":true}", "expected": "fail", "rationale": "已发送违反草稿要求" },
+    { "id": "draft-wrong-recipient", "ruleSetId": "draft-state", "category": "negative", "text": "{\"to\":\"other@example.com\",\"status\":\"draft\",\"sent\":false}", "expected": "fail", "rationale": "收件人不符" },
+    { "id": "csv-positive", "ruleSetId": "csv-data", "category": "positive", "text": "customer,amount\nCarol,100", "expected": "pass", "rationale": "具备要求的列、数据行和客户" },
+    { "id": "csv-reordered", "ruleSetId": "csv-data", "category": "boundary", "text": "amount,customer\n100,Carol", "expected": "pass", "rationale": "列顺序可以变化" },
+    { "id": "csv-missing-column", "ruleSetId": "csv-data", "category": "negative", "text": "customer\nCarol", "expected": "fail", "rationale": "缺少金额列" },
+    { "id": "csv-wrong-customer", "ruleSetId": "csv-data", "category": "negative", "text": "customer,amount\nOther,100", "expected": "fail", "rationale": "缺少目标客户" }
+  ]
+}

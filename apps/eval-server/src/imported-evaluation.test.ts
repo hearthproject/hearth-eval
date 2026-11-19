@@ -12,6 +12,31 @@ const cli = fileURLToPath(new URL("../../../scripts/hearth-eval.mjs", import.met
 const codexHook = fileURLToPath(new URL("../../../integrations/codex/stop.mjs", import.meta.url));
 const codexPlugin = fileURLToPath(new URL("../../../integrations/codex/plugin/server.mjs", import.meta.url));
 
+it("scores structured uploads and authenticated batches with identical frozen rules", async () => {
+  const store = new EvalStore(":memory:");
+  const app = Fastify();
+  registerImportedEvaluationRoutes(app, store);
+  const checks = [{ id: "draft", title: "未发送", blocker: true, config: { kind: "json", path: "output.txt", equals: { sent: false } } }];
+  const task = { title: "草稿", prompt: "保存草稿", input: "", expectedOutput: "JSON", checks };
+  const agents = [{ agent: "A", version: "1" }, { agent: "B", version: "1" }];
+  try {
+    const upload = await app.inject({ method: "POST", url: "/api/imported-evaluations", payload: { ...task,
+      submissions: agents.map((agent, i) => ({ ...agent, fileName: "draft.json", text: JSON.stringify({ sent: i === 1 }) })) } });
+    expect(upload.statusCode).toBe(201);
+    expect(upload.json().results).toMatchObject([{ score: 100, verdict: "pass", mode: "artifact_checks" }, { score: 0, verdict: "fail" }]);
+    expect(upload.json().checks[0].weight).toBe(1);
+    const batch = await app.inject({ method: "POST", url: "/api/imported-evaluations/batches", payload: { ...task, agents } });
+    expect(batch.statusCode).toBe(201);
+    const { evaluation, token } = batch.json();
+    const submission = await app.inject({ method: "POST", url: `/api/imported-evaluations/${evaluation.id}/submissions`,
+      headers: { authorization: `Bearer ${token}` }, payload: { slot: 1, runId: "test", fileName: "a.json", text: '{"sent":false}' } });
+    expect(submission.statusCode).toBe(201);
+    expect(submission.json().result).toEqual(upload.json().results[0]);
+    expect((await app.inject({ method: "POST", url: "/api/imported-evaluations/batches", payload: { ...task, requiredText: ["sent"], agents } })).statusCode).toBe(400);
+    expect((await app.inject("/api/evaluation/calibration")).json().summary.total).toBe(18);
+  } finally { await app.close(); store.close(); }
+});
+
 it("rejects empty rule-generation input and requests from another origin before invoking Codex", async () => {
   const store = new EvalStore(":memory:");
   const app = Fastify();

@@ -1,9 +1,12 @@
+import type { EvaluationCheck, CheckStatus } from "./evaluation.ts";
+
 export interface ImportedTask {
   title: string;
   prompt: string;
   input: string;
   expectedOutput: string;
   requiredText: string[];
+  checks?: EvaluationCheck[] | undefined;
 }
 
 export interface ImportedSubmission {
@@ -46,7 +49,10 @@ export interface ImportedEvaluation extends ImportedEvaluationInput {
   createdAt: string;
   agents?: ImportedBatchInput["agents"];
   results: Array<{
-    score: number;
-    checks: Array<{ passed: boolean; reason: string; evidence: string[] }>;
+    score: number | null;
+    verdict?: CheckStatus;
+    scoringVersion?: string;
+    mode?: "text_compliance" | "artifact_checks";
+    checks: Array<{ passed: boolean | null; status?: CheckStatus; reason: string; evidence: string[] }>;
   }>;
 }

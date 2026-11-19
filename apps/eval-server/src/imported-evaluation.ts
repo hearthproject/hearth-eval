@@ -1,9 +1,10 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { runGrader, type ImportedEvaluation } from "@hearth/eval-core";
+import { evaluateSubmission, evaluationChecksSchema, textChecks, type ImportedEvaluation, type EvaluationCheck } from "@hearth/eval-core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { EvalStore } from "./store.ts";
 import { generateCodexRules } from "./codex-rule-generator.ts";
+import { calibrationReport } from "./calibration.ts";
 
 const agentSchema = z.object({
   agent: z.string().trim().min(1).max(100),
@@ -28,11 +29,13 @@ const taskSchema = z.object({
   prompt: z.string().trim().min(1).max(8_000),
   input: z.string().max(40_000),
   expectedOutput: z.string().trim().min(1).max(2_000),
-  requiredText: requiredTextSchema
+  requiredText: textRulesSchema.default([]),
+  checks: evaluationChecksSchema.optional()
 }).strict();
 const codexTurnSchema = z.object({ text: artifactSchema.shape.text, requiredText: requiredTextSchema }).strict();
-const evaluationSchema = taskSchema.extend({ submissions: z.array(agentSchema.merge(artifactSchema)).length(2) });
-const batchSchema = taskSchema.extend({ agents: z.array(agentSchema).length(2) });
+const hasRules = (task: { requiredText: string[]; checks?: unknown }) => task.checks ? task.requiredText.length === 0 : task.requiredText.length > 0;
+const evaluationSchema = taskSchema.extend({ submissions: z.array(agentSchema.merge(artifactSchema)).length(2) }).refine(hasRules, "文字检查与结构化检查必须且只能选择一种");
+const batchSchema = taskSchema.extend({ agents: z.array(agentSchema).length(2) }).refine(hasRules, "文字检查与结构化检查必须且只能选择一种");
 const hookSubmissionSchema = artifactSchema.extend({
   slot: z.number().int().min(1).max(2),
   runId: z.string().trim().min(1).max(200),
@@ -44,14 +47,8 @@ const hookSubmissionSchema = artifactSchema.extend({
   }).strict().optional()
 });
 
-function scoreSubmission(text: string, requiredText: string[]): ImportedEvaluation["results"][number] {
-  const artifacts = { "output.txt": { text, bytes: Buffer.byteLength(text) } };
-  const checks = requiredText.map((required, index) => runGrader({
-    id: String(index + 1),
-    title: required,
-    config: { kind: "text", path: "output.txt", includes: [required] }
-  }, artifacts));
-  return { checks, score: Math.round(100 * checks.filter((check) => check.passed).length / checks.length) };
+function scoreSubmission(text: string, requiredText: string[], checks?: EvaluationCheck[]): ImportedEvaluation["results"][number] {
+  return { ...evaluateSubmission(text, checks ?? textChecks(requiredText)), mode: checks ? "artifact_checks" : "text_compliance" };
 }
 
 function hashToken(token: string): Buffer {
@@ -59,6 +56,7 @@ function hashToken(token: string): Buffer {
 }
 
 export function registerImportedEvaluationRoutes(app: FastifyInstance, store: EvalStore): void {
+  app.get("/api/evaluation/calibration", async () => calibrationReport());
   let generatingRules = false;
   app.post("/api/codex/generate-rules", async (request, reply) => {
     const origin = URL.parse(request.headers.origin ?? "");
@@ -94,12 +92,13 @@ export function registerImportedEvaluationRoutes(app: FastifyInstance, store: Ev
     if (!parsed.success) return reply.code(400).send({ message: "Codex 回复或文本检查项无效。" });
     const { text, requiredText } = parsed.data;
     const { score, checks } = scoreSubmission(text, requiredText);
+    if (score === null) return reply.code(500).send({ message: "文本检查器未能完成评分" });
     store.saveCodexScore({
       createdAt: new Date().toISOString(),
       score,
       checks: checks.map((check, index) => ({
         requiredText: requiredText[index]!,
-        passed: check.passed,
+        passed: check.passed === true,
         reason: check.reason
       }))
     });
@@ -115,12 +114,12 @@ export function registerImportedEvaluationRoutes(app: FastifyInstance, store: Ev
     if (!parsed.success) {
       return reply.code(400).send({
         error: "INVALID_IMPORTED_EVALUATION",
-        message: "请填写任务信息、1–20 条不同的检查项和两份有效的文本交付物。",
+        message: "请填写任务信息、两份有效交付物，以及 1–20 条文字检查或结构化规则（二选一）。",
         issues: parsed.error.issues
       });
     }
 
-    const results = parsed.data.submissions.map(({ text }) => scoreSubmission(text, parsed.data.requiredText));
+    const results = parsed.data.submissions.map(({ text }) => scoreSubmission(text, parsed.data.requiredText, parsed.data.checks));
     const evaluation: ImportedEvaluation = {
       ...parsed.data,
       id: randomUUID(),
@@ -132,7 +131,7 @@ export function registerImportedEvaluationRoutes(app: FastifyInstance, store: Ev
   });
   app.post("/api/imported-evaluations/batches", async (request, reply) => {
     const parsed = batchSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ message: "请填写任务、文本检查项和两组 Agent 信息。" });
+    if (!parsed.success) return reply.code(400).send({ message: "请填写任务、两组 Agent 信息，以及文字检查或结构化规则（二选一）。", issues: parsed.error.issues });
     const token = randomBytes(32).toString("base64url");
     const evaluation: ImportedEvaluation = {
       ...parsed.data,
@@ -168,7 +167,7 @@ export function registerImportedEvaluationRoutes(app: FastifyInstance, store: Ev
       }
       const agent = evaluation.agents?.[slot - 1];
       if (!agent) return reply.code(400).send({ message: "Agent 槽位不存在。" });
-      const result = scoreSubmission(text, evaluation.requiredText);
+      const result = scoreSubmission(text, evaluation.requiredText, evaluation.checks);
       evaluation.submissions.push({ ...agent, slot, runId, fileName, text, ...(metadata ? { metadata } : {}) });
       evaluation.results.push(result);
       if (store.updateImportedBatch(evaluation, stored.payload)) return reply.code(201).send({ duplicate: false, result });

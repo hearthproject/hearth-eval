@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ImportedEvaluation, ImportedEvaluationInput } from "@hearth/eval-core";
+import { evaluationChecksSchema } from "@hearth/eval-core";
+import { CalibrationPanel } from "../components/CalibrationPanel.tsx";
 import { api } from "../lib/api.ts";
 import { ScrambleTitle } from "../components/EvaluationMotion.tsx";
 import "./imported-evaluation.css";
@@ -9,6 +11,8 @@ import { CodexScoreHistory } from "../components/CodexScoreHistory.tsx";
 
 const historyKey = ["imported-evaluations"];
 const submissionSlots = ["A", "B"];
+const exampleChecks = JSON.stringify([{ id: "result", title: "测试报告成功且无失败", weight: 1, blocker: true,
+  config: { kind: "json", path: "output.txt", equals: { status: "passed", failed: 0 }, minArrayLength: { tests: 1 } } }], null, 2);
 
 async function readSubmission(form: FormData, slot: string): Promise<ImportedEvaluationInput["submissions"][number]> {
   const file = form.get(`file-${slot}`);
@@ -31,6 +35,7 @@ export function ImportedEvaluationPage() {
   const [selectedId, setSelectedId] = useState("");
   const [template, setTemplate] = useState<ImportedEvaluation>();
   const [formVersion, setFormVersion] = useState(0);
+  const [ruleMode, setRuleMode] = useState("text");
   const [credential, setCredential] = useState<{ id: string; token: string }>();
   const history = useQuery({ queryKey: historyKey, queryFn: api.importedEvaluations });
   const detail = useQuery({
@@ -44,12 +49,21 @@ export function ImportedEvaluationPage() {
   });
   const create = useMutation({
     mutationFn: async ({ form, automatic }: { form: FormData; automatic: boolean }) => {
+      let checks;
+      if (ruleMode === "structured") {
+        let input: unknown;
+        try { input = JSON.parse(String(form.get("checks"))); } catch { throw new Error("检查规则不是有效的 JSON 数组。"); }
+        const parsed = evaluationChecksSchema.safeParse(input);
+        if (!parsed.success) throw new Error(parsed.error.issues.map(issue => issue.message).join("；"));
+        checks = parsed.data;
+      }
       const task = {
         title: String(form.get("title")),
         prompt: String(form.get("prompt")),
         input: String(form.get("input")),
         expectedOutput: String(form.get("expectedOutput")),
-        requiredText: String(form.get("requiredText")).split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+        requiredText: ruleMode === "text" ? String(form.get("requiredText")).split(/\r?\n/).map((line) => line.trim()).filter(Boolean) : [],
+        ...(checks ? { checks } : {})
       };
       if (automatic) return api.createImportedBatch({
         ...task,
@@ -85,17 +99,27 @@ export function ImportedEvaluationPage() {
     <div className="page-stack imported-evaluation">
       <CodexScoreHistory />
       <CodexSetup />
+      <CalibrationPanel />
       <section className="panel page-stack">
         <ScrambleTitle as="h1" text="外部 Agent 评测" />
-        <p>创建自动评测批次，让两个 Agent 各自提交，或上传已经完成的交付物。每条文本检查等权计分。</p>
+        <p>文字模式仅检查文字合规；结构化模式复用实验评测的产物检查器。两种模式均不独立证明任务实际执行成功。</p>
         <form key={formVersion} className="form-grid" onSubmit={submit}>
           <label className="field-label full">任务名称<input name="title" required maxLength={120} defaultValue={template?.title} /></label>
           <label className="field-label full">原始指令<textarea name="prompt" required maxLength={8000} rows={3} defaultValue={template?.prompt} /></label>
           <label className="field-label full">任务输入（可选）<textarea name="input" maxLength={40000} rows={3} defaultValue={template?.input} /></label>
           <label className="field-label full">预期交付物<textarea name="expectedOutput" required maxLength={2000} rows={2} defaultValue={template?.expectedOutput} /></label>
-          <label className="field-label full">必须包含的文字（每行一条，最多 20 条）
-            <textarea name="requiredText" required maxLength={4020} rows={4} defaultValue={template?.requiredText.join("\n")} />
+          <label className="field-label full">评分模式
+            <select value={ruleMode} onChange={event => setRuleMode(event.target.value)}>
+              <option value="text">文本合规（关键词命中）</option>
+              <option value="structured">结构化产物检查</option>
+            </select>
           </label>
+          {ruleMode === "text" ? <label className="field-label full">必须包含的文字（每行一条，最多 20 条）
+            <textarea name="requiredText" required maxLength={4020} rows={4} defaultValue={template?.requiredText.join("\n")} />
+          </label> : <label className="field-label full">检查规则（JSON 数组）
+            <textarea name="checks" required maxLength={20000} rows={12} defaultValue={template?.checks ? JSON.stringify(template.checks, null, 2) : exampleChecks} spellCheck={false} />
+            <span>支持 file、text、json、csv、state、mail_draft；文件路径统一为 output.txt。每项可设置 weight 和 blocker。全部检查通过才判定通过；硬性项失败总分为 0。</span>
+          </label>}
           {submissionSlots.map((slot) => (
             <section className="panel page-stack" key={slot} aria-label={`Agent ${slot}`}>
               <label className="field-label">Agent {slot} 名称<input name={`agent-${slot}`} required maxLength={100} /></label>
@@ -128,6 +152,7 @@ export function ImportedEvaluationPage() {
         {result && (
           <>
             <ScrambleTitle text={result.title} />
+            <p>{result.checks ? "结构化产物检查" : "文本合规分（不代表任务完成）"} · {result.results[0]?.scoringVersion ?? "legacy-text-v1"}</p>
             {result.agents && <p role="status">已收到 {result.submissions.length} / {result.agents.length} 份交付物</p>}
             {credential?.id === result.id && (
               <details open>
@@ -149,6 +174,7 @@ export function ImportedEvaluationPage() {
             <div>
               <button type="button" className="button" onClick={() => {
                 setTemplate(result);
+                setRuleMode(result.checks ? "structured" : "text");
                 setFormVersion((value) => value + 1);
                 window.scrollTo({ top: 0 });
               }}>复用这道题</button>
@@ -159,17 +185,18 @@ export function ImportedEvaluationPage() {
                   <th scope="col">检查项</th>
                   {columns.map(({ agent, grade }, index) => (
                     <th key={submissionSlots[index]} scope="col">
-                      {agent.agent} {agent.version} · {grade ? `${grade.score}/100` : "待提交"}
+                      {agent.agent} {agent.version} · {grade ? grade.score === null ? "无法评分" : `${grade.score}/100` : "待提交"}
+                      {grade?.verdict && <small> · {({ pass: "通过", fail: "未通过", unknown: "证据不足", grader_error: "检查器错误" })[grade.verdict]}</small>}
                     </th>
                   ))}
                 </tr></thead>
-                <tbody>{result.requiredText.map((required, index) => (
-                  <tr key={required}>
+                <tbody>{(result.checks?.map(check => check.title) ?? result.requiredText).map((required, index) => (
+                  <tr key={result.checks?.[index]?.id ?? required}>
                     <th scope="row">{required}</th>
                     {columns.map(({ grade }, submissionIndex) => {
                       const check = grade?.checks[index];
                       return <td key={submissionSlots[submissionIndex]}>
-                        {check ? `${check.passed ? "通过" : "缺失"} · ${check.evidence.join("、") || check.reason}` : "待提交"}
+                        {check ? `${check.status === "grader_error" ? "检查器错误" : check.passed === null ? "证据不足" : check.passed ? "通过" : "未通过"} · ${check.evidence.join("、") || check.reason}` : "待提交"}
                       </td>;
                     })}
                   </tr>

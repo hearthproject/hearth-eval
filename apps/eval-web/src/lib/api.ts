@@ -81,6 +81,7 @@ export interface SubmitReviewResult {
 }
 
 export const api = {
+  calibration: () => request<import("@hearth/eval-core").CalibrationReport>("/api/evaluation/calibration"),
   codexSetup: () => request<{ hook: string; rules: string }>("/api/codex/setup"),
   generateCodexRules: (description: string) => request<{ requiredText: string[]; unsupported: string[] }>(
     "/api/codex/generate-rules", { method: "POST", body: JSON.stringify({ description }) }
