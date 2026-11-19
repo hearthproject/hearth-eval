@@ -13,6 +13,7 @@ import type {
   HumanReviewRecord
 } from "@hearth/eval-core";
 import type { CodexScoreHistory, CodexScoreRecord, ImportedEvaluation } from "@hearth/eval-core";
+import type { DiagnosisJob } from "@hearth/eval-core";
 
 type DbRow = Record<string, SQLInputValue>;
 
@@ -30,6 +31,11 @@ export interface RunMetrics {
 }
 
 const SCHEMA = `
+CREATE TABLE IF NOT EXISTS diagnosis_jobs (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  payload_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS codex_scores (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at TEXT NOT NULL,
@@ -135,6 +141,21 @@ CREATE INDEX IF NOT EXISTS eval_events_run_idx ON eval_events(run_id, seq);
 `;
 
 export class EvalStore {
+  saveDiagnosis(job: DiagnosisJob): void {
+    this.db.prepare("INSERT INTO diagnosis_jobs (id, created_at, payload_json) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload_json=excluded.payload_json")
+      .run(job.id, job.createdAt, JSON.stringify(job));
+  }
+
+  getDiagnosis(id: string): DiagnosisJob | null {
+    const row = this.db.prepare("SELECT payload_json FROM diagnosis_jobs WHERE id = ?").get(id);
+    return row ? JSON.parse(String(row.payload_json)) as DiagnosisJob : null;
+  }
+
+  listDiagnoses(): DiagnosisJob[] {
+    return this.db.prepare("SELECT payload_json FROM diagnosis_jobs ORDER BY created_at DESC, rowid DESC LIMIT 100").all()
+      .map(row => JSON.parse(String(row.payload_json)) as DiagnosisJob);
+  }
+
   private readonly db: DatabaseSync;
 
   constructor(path: string) {
@@ -560,14 +581,16 @@ export class EvalStore {
     return summary;
   }
 
-  private transaction<T>(work: () => T): T {
-    this.db.exec("BEGIN IMMEDIATE");
+  transaction<T>(work: () => T): T {
+    // SAVEPOINT permits a diagnosis checkpoint and the runner's nested writes to commit together.
+    this.db.exec("SAVEPOINT eval_transaction");
     try {
       const result = work();
-      this.db.exec("COMMIT");
+      this.db.exec("RELEASE SAVEPOINT eval_transaction");
       return result;
     } catch (error) {
-      this.db.exec("ROLLBACK");
+      this.db.exec("ROLLBACK TO SAVEPOINT eval_transaction");
+      this.db.exec("RELEASE SAVEPOINT eval_transaction");
       throw error;
     }
   }

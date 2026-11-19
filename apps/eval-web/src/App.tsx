@@ -13,6 +13,7 @@ import { ReviewsPage } from "./pages/ReviewsPage.tsx";
 import { RunDetailPage } from "./pages/RunDetailPage.tsx";
 import { SystemPage } from "./pages/SystemPage.tsx";
 import { ScenariosPage } from "./pages/ScenariosPage.tsx";
+import { DiagnosisPage } from "./pages/DiagnosisPage.tsx";
 
 export function App() {
   return (
@@ -31,6 +32,7 @@ export function App() {
         <Route path="activity" element={<ActivityPage />} />
         <Route path="system" element={<SystemPage />} />
         <Route path="scenarios" element={<ScenariosPage />} />
+        <Route path="diagnosis" element={<DiagnosisPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

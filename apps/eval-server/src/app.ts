@@ -34,6 +34,9 @@ import { resolveRunOutputDir } from "./artifact-path.ts";
 import { listScenarioBatches, readScenarioBatch, readScenarioEvidence } from "./scenario-reports.ts";
 import { ScenarioSelfCheckService } from "./scenario-self-check.ts";
 import { registerImportedEvaluationRoutes } from "./imported-evaluation.ts";
+import { DiagnosisAgent } from "./diagnosis-agent.ts";
+import { CodexDiagnosisModel, type DiagnosisModel } from "./diagnosis-model.ts";
+import { registerDiagnosisRoutes } from "./diagnosis-routes.ts";
 
 const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -61,6 +64,7 @@ const eventsQuerySchema = z.object({
 }).strict();
 
 export interface EvalAppOptions {
+  diagnosisModel?: DiagnosisModel;
   store: EvalStore;
   runner: EvalRunner;
   client: HearthClient;
@@ -83,6 +87,10 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
   const { store, runner, client, catalog, repoRoot, artifactRoot } = options;
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 1_000_000 });
   registerImportedEvaluationRoutes(app, store);
+  const diagnosis = new DiagnosisAgent({ store, runner, model: options.diagnosisModel ?? new CodexDiagnosisModel(),
+    health: () => client.health(), repoRoot, artifactRoot });
+  registerDiagnosisRoutes(app, diagnosis, store);
+  app.addHook("onClose", async () => diagnosis.close());
   app.get("/api/codex/setup", async () => {
     const directory = join(repoRoot, "integrations", "codex");
     const hook = JSON.parse(readFileSync(join(directory, "hooks.json"), "utf8")) as {

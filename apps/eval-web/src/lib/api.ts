@@ -81,6 +81,10 @@ export interface SubmitReviewResult {
 }
 
 export const api = {
+  diagnoses: () => request<Array<Omit<import("@hearth/eval-core").DiagnosisJob, "evidence">>>("/api/diagnoses"),
+  diagnosis: (id: string) => request<import("@hearth/eval-core").DiagnosisJob>(`/api/diagnoses/${encodeURIComponent(id)}`),
+  startDiagnosis: (experimentId: string, rerunBudget: number) => request<import("@hearth/eval-core").DiagnosisJob>("/api/diagnoses", { method: "POST", body: JSON.stringify({ experimentId, rerunBudget }) }),
+  controlDiagnosis: (id: string, action: "approve" | "resume" | "stop", approved?: boolean) => request<import("@hearth/eval-core").DiagnosisJob>(`/api/diagnoses/${encodeURIComponent(id)}/${action}`, { method: "POST", body: JSON.stringify(action === "approve" ? { approved } : {}) }),
   calibration: () => request<import("@hearth/eval-core").CalibrationReport>("/api/evaluation/calibration"),
   codexSetup: () => request<{ hook: string; rules: string }>("/api/codex/setup"),
   generateCodexRules: (description: string) => request<{ requiredText: string[]; unsupported: string[] }>(
