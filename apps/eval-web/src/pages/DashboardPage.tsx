@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import "./dashboard-glass.css";
 import {
   ArrowRight,
   CheckCircle2,
@@ -24,8 +25,8 @@ import {
 
 export function DashboardPage() {
   const dashboardQuery = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard, refetchInterval: 5_000 });
-  if (dashboardQuery.isLoading) return <LoadingState text="正在汇总评测数据" />;
-  if (dashboardQuery.error) return <ErrorState error={dashboardQuery.error} onRetry={() => void dashboardQuery.refetch()} />;
+  if (dashboardQuery.isLoading) return <div className="dashboard-page"><LoadingState text="正在汇总评测数据" /></div>;
+  if (dashboardQuery.error) return <div className="dashboard-page"><ErrorState error={dashboardQuery.error} onRetry={() => void dashboardQuery.refetch()} /></div>;
   const data = dashboardQuery.data!;
   const summary = data.latestSummary;
   const latest = data.recentExperiments[0] ?? null;

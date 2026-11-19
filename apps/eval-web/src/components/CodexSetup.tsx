@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { ScrambleTitle, StepCarousel } from "./EvaluationMotion.tsx";
 import { api } from "../lib/api.ts";
 
 function CopyConfig({ path, value }: { path: string; value: string }) {
@@ -35,10 +36,11 @@ export function CodexSetup() {
   const port = setup.data ? (JSON.parse(setup.data.rules) as { port?: number }).port : undefined;
 
   return (
-    <section className="panel page-stack" aria-labelledby="codex-setup-heading">
-      <h2 id="codex-setup-heading">在 Codex 对话里显示 Hearth 评分</h2>
+    <section className="panel page-stack setup-section" aria-labelledby="codex-setup-heading">
+      <ScrambleTitle id="codex-setup-heading" text="在 Codex 对话里显示 Hearth 评分" />
       <p>在运行 Eval 的同一台电脑上配置一次。之后每轮结束时，Codex 会显示最终回复的文本检查分数。</p>
-      <div className="page-stack">
+      <StepCarousel>
+        <article className="setup-step page-stack" tabIndex={0} aria-label="步骤 1：安装插件，可上下滚动">
         <h3>1. 安装 Hearth Eval 插件</h3>
         <p>如果 Plugins 中已有 Hearth Eval，直接配置评分规则。首次安装时，在 Hearth Eval 仓库根目录运行：</p>
         <pre>{"codex plugin marketplace add ./integrations/codex\ncodex plugin add hearth-eval@hearth-local"}</pre>
@@ -50,6 +52,8 @@ export function CodexSetup() {
             <button type="button" className="button" onClick={() => void setup.refetch()}>重试</button>
           </div>
         )}
+        </article>
+        <article className="setup-step page-stack" tabIndex={0} aria-label="步骤 2：评分规则，可上下滚动">
         <h3>2. 添加评分规则</h3>
         <p>在要评测的 Codex 项目根目录把配置保存为 <code>codex-eval.json</code>，使用 UTF-8 JSON。根目录没有该文件时，插件才读取旧位置 <code>.hearth/codex-eval.json</code>。</p>
         <ul>
@@ -96,6 +100,8 @@ export function CodexSetup() {
           </div>
         )}
         <p>示例中的两项是「测试」和「通过」。「测试通过」得 100 分，只包含其中一项得 50 分。可在上方「Codex 评分记录」查看逐条结果。</p>
+        </article>
+        <article className="setup-step page-stack" tabIndex={0} aria-label="步骤 3：信任并试跑，可上下滚动">
         <h3>3. 在 Codex 信任 Hook 并试跑</h3>
         <p>保持本机 Eval 服务运行，用 Codex 桌面端从该项目根目录开启对话。在输入框的 Review hooks 或 Settings → Hooks 审阅并信任 Hearth Eval 插件的 Stop Hook。先前添加过项目级 Hearth Stop Hook 时，可在此停用那一条。</p>
         <p>用示例规则时，发送「请只回复：测试通过」。本轮结束后，对话中应出现「Hearth 评分 100/100 · 文本检查通过 2/2」。</p>
@@ -106,7 +112,8 @@ export function CodexSetup() {
             <CopyConfig path=".codex/hooks.json" value={setup.data.hook} />
           </details>
         )}
-      </div>
+        </article>
+      </StepCarousel>
     </section>
   );
 }

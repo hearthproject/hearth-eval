@@ -1,0 +1,61 @@
+.imported-evaluation {
+  position: relative;
+  isolation: isolate;
+  gap: 24px;
+}
+.imported-evaluation::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 25% 12%, #f3d6c766, transparent 48%), radial-gradient(ellipse at 94% 36%, #cddfef77, transparent 50%), radial-gradient(ellipse at 30% 85%, #d8e6d766, transparent 48%);
+}
+.imported-evaluation .panel, .imported-evaluation .setup-step {
+  background: rgb(255 255 255 / 48%);
+  border: 1px solid rgb(255 255 255 / 80%);
+  box-shadow: inset 0 1px 0 #fff9, 0 12px 36px rgb(38 49 65 / 5%);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  border-radius: 24px;
+}
+.imported-evaluation > .panel { padding: clamp(18px, 3vw, 32px); }
+.imported-evaluation p { margin: 0; line-height: 1.75; color: var(--ink-soft); font-size: 13px; }
+.imported-evaluation h1, .imported-evaluation h2, .imported-evaluation h3 { margin: 0; }
+.imported-evaluation h2 { font-size: clamp(18px, 2vw, 23px); letter-spacing: -.025em; }
+.imported-evaluation .field-label :is(input, textarea, select) { background: #ffffff80; border-color: #c6cdd6a0; border-radius: 12px; }
+.scramble-title { position: relative; }
+.scramble-measure { visibility: hidden; }
+.scramble-display { position: absolute; inset: 0; overflow-wrap: anywhere; }
+.score-trigger { width: 100%; display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: transparent; text-align: left; color: var(--ink); font-size: 13px; line-height: 1.7; }
+.score-trigger svg { flex-shrink: 0; color: var(--accent); transition: transform 420ms cubic-bezier(.22, 1, .36, 1); }
+.is-open > .score-trigger svg { transform: rotate(90deg); }
+.score-collapse { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 460ms cubic-bezier(.22, 1, .36, 1), opacity 300ms ease; }
+.is-open > .score-collapse { grid-template-rows: 1fr; opacity: 1; }
+.score-collapse-inner { min-height: 0; overflow: hidden; }
+.score-content { padding-top: 20px; }
+.setup-carousel { min-width: 0; }
+.setup-slider { display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; align-items: center; gap: 12px; }
+.setup-arrow.button { padding: 0; width: 36px; height: 36px; border-radius: 50%; border-color: transparent; background: transparent; box-shadow: none; }
+.setup-dots { display: flex; justify-content: center; align-items: center; margin-top: 12px; }
+.setup-dots button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; }
+.setup-dots span { width: 9px; height: 9px; border: 1px solid #92979e; border-radius: 50%; background: transparent; transition: background 250ms ease, border-color 250ms ease; }
+.setup-dots button[aria-current] span { background: #858a91; border-color: #858a91; }
+.setup-track { position: relative; display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; overscroll-behavior-x: contain; scrollbar-width: none; padding: 4px 0 16px; align-items: flex-start; }
+.setup-track::-webkit-scrollbar { display: none; }
+.imported-evaluation .setup-step { flex: 0 0 100%; min-width: 0; height: 440px; padding: 28px clamp(24px, 3vw, 40px); border-radius: 24px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; scrollbar-color: #a5aab480 transparent; scroll-snap-align: start; scroll-snap-stop: always; gap: 16px; }
+.setup-step > * { flex-shrink: 0; }
+.setup-step h3 { font-size: 17px; }
+.setup-step pre { max-width: 100%; overflow-x: auto; padding: 16px; border: 1px solid #fff; border-radius: 16px; background: #ffffff70; font-size: 12px; line-height: 1.7; }
+.setup-step ul { padding-left: 20px; font-size: 13px; line-height: 1.8; color: var(--ink-soft); }
+.setup-step details { font-size: 13px; line-height: 1.8; }
+.setup-step summary { cursor: pointer; margin-bottom: 12px; }
+.setup-progress { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 640px) {
+  .setup-slider { grid-template-columns: 28px minmax(0, 1fr) 28px; gap: 4px; }
+  .setup-arrow.button { width: 28px; min-height: 36px; }
+  .imported-evaluation .setup-step { padding: 24px 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .imported-evaluation *, .imported-evaluation *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}

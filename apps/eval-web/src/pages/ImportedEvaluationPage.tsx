@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ImportedEvaluation, ImportedEvaluationInput } from "@hearth/eval-core";
 import { api } from "../lib/api.ts";
+import { ScrambleTitle } from "../components/EvaluationMotion.tsx";
+import "./imported-evaluation.css";
 import { CodexSetup } from "../components/CodexSetup.tsx";
 import { CodexScoreHistory } from "../components/CodexScoreHistory.tsx";
 
@@ -80,11 +82,11 @@ export function ImportedEvaluationPage() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack imported-evaluation">
       <CodexScoreHistory />
       <CodexSetup />
       <section className="panel page-stack">
-        <h1>外部 Agent 评测</h1>
+        <ScrambleTitle as="h1" text="外部 Agent 评测" />
         <p>创建自动评测批次，让两个 Agent 各自提交，或上传已经完成的交付物。每条文本检查等权计分。</p>
         <form key={formVersion} className="form-grid" onSubmit={submit}>
           <label className="field-label full">任务名称<input name="title" required maxLength={120} defaultValue={template?.title} /></label>
@@ -125,7 +127,7 @@ export function ImportedEvaluationPage() {
         {detail.error && <p role="alert">{detail.error.message}</p>}
         {result && (
           <>
-            <h2>{result.title}</h2>
+            <ScrambleTitle text={result.title} />
             {result.agents && <p role="status">已收到 {result.submissions.length} / {result.agents.length} 份交付物</p>}
             {credential?.id === result.id && (
               <details open>
