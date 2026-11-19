@@ -9,4 +9,5 @@ export * from "./scenarios.ts";
 export type * from "./imported-evaluation.ts";
 export * from "./evaluation.ts";
 export * from "./calibration.ts";
-export type * from "./diagnosis.ts";
+export * from "./diagnosis.ts";
+export * from "./native-agent.ts";

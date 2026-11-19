@@ -55,6 +55,8 @@ export interface AgentAdapter {
   getTrace?(taskId: string): Promise<EvalTrace>;
   cancelTask(taskId: string): Promise<Record<string, unknown>>;
   health(): Promise<Record<string, unknown>>;
+  /** Optional executor catalogue; adapters that expose one feed the experiment picker. */
+  executors?(): Promise<Record<string, unknown>>;
 }
 
 export function isTerminalTaskStatus(status: string): boolean {

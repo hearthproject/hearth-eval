@@ -30,6 +30,7 @@ import { z } from "zod";
 import { EvalRunnerError, type EvalRunner } from "./runner.ts";
 import type { EvalStore, StoredCase } from "./store.ts";
 import type { HearthClient } from "./hearth-client.ts";
+import type { AgentAdapter } from "./agent-adapter.ts";
 import { resolveRunOutputDir } from "./artifact-path.ts";
 import { listScenarioBatches, readScenarioBatch, readScenarioEvidence } from "./scenario-reports.ts";
 import { ScenarioSelfCheckService } from "./scenario-self-check.ts";
@@ -37,6 +38,10 @@ import { registerImportedEvaluationRoutes } from "./imported-evaluation.ts";
 import { DiagnosisAgent } from "./diagnosis-agent.ts";
 import { CodexDiagnosisModel, type DiagnosisModel } from "./diagnosis-model.ts";
 import { registerDiagnosisRoutes } from "./diagnosis-routes.ts";
+import type { NativeAgentClient } from "./native-client.ts";
+import type { ProviderStore } from "./provider-store.ts";
+import { registerNativeRoutes } from "./native-routes.ts";
+import { registerProviderRoutes } from "./provider-routes.ts";
 
 const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -67,7 +72,10 @@ export interface EvalAppOptions {
   diagnosisModel?: DiagnosisModel;
   store: EvalStore;
   runner: EvalRunner;
-  client: HearthClient;
+  client: HearthClient | AgentAdapter;
+  /** Native engine extras; when present, native console and provider routes are registered. */
+  providers?: ProviderStore;
+  nativeClient?: NativeAgentClient;
   catalog: Map<string, LoadedCase>;
   catalogIssues: number;
   repoRoot: string;
@@ -91,6 +99,17 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
     health: () => client.health(), repoRoot, artifactRoot });
   registerDiagnosisRoutes(app, diagnosis, store);
   app.addHook("onClose", async () => diagnosis.close());
+  if (options.providers && options.nativeClient) {
+    registerProviderRoutes(app, options.providers);
+    registerNativeRoutes(app, {
+      store,
+      runner,
+      client: options.nativeClient,
+      providers: options.providers,
+      catalog,
+      artifactRoot
+    });
+  }
   app.get("/api/codex/setup", async () => {
     const directory = join(repoRoot, "integrations", "codex");
     const hook = JSON.parse(readFileSync(join(directory, "hooks.json"), "utf8")) as {
@@ -171,7 +190,7 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
       reachable = true;
       hearthStatus = typeof health.status === "string" ? health.status : "online";
       try {
-        executors = executorOptions(await client.executors());
+        executors = client.executors ? executorOptions(await client.executors()) : [];
       } catch {
         executors = [];
       }

@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { loadCaseCatalog } from "@hearth/eval-core/node";
 import { buildEvalApp } from "./app.ts";
 import {
@@ -18,6 +19,9 @@ import { HearthClient } from "./hearth-client.ts";
 import { HearthJudgeAdapter } from "./judge-adapter.ts";
 import { EvalRunner } from "./runner.ts";
 import { EvalStore } from "./store.ts";
+import { NativeAgentClient } from "./native-client.ts";
+import { ProviderStore } from "./provider-store.ts";
+import { CompositeAgentAdapter } from "./composite-adapter.ts";
 
 async function main(): Promise<void> {
   const loaded = loadCaseCatalog(REPO_ROOT, CASES_DIR);
@@ -34,15 +38,23 @@ async function main(): Promise<void> {
   const recovered = store.recoverInterrupted({ staleAfterMs: RECOVERY_STALE_MS });
 
   const catalog = new Map(loaded.cases.map((loadedCase) => [loadedCase.manifest.id, loadedCase]));
-  const client = new HearthClient({
+
+  // Native engine: user-supplied LLM API keys + the in-repo agent loop.
+  const providers = new ProviderStore({ file: join(DATA_DIR, "providers.json") });
+  const nativeClient = new NativeAgentClient({ repoRoot: REPO_ROOT, artifactRoot: ARTIFACT_ROOT, providers });
+
+  const hearthClient = new HearthClient({
     baseUrl: HEARTH_URL,
     timeoutMs: HEARTH_TIMEOUT_MS,
     artifactStorage: { repoRoot: REPO_ROOT, artifactRoot: ARTIFACT_ROOT }
   });
+  // Hearth stays the default engine; provider-backed executors are routed to the native loop.
+  const client = new CompositeAgentAdapter({ primary: hearthClient, native: nativeClient });
+
   const runner = new EvalRunner({
     store,
     client,
-    judge: new HearthJudgeAdapter(client),
+    judge: new HearthJudgeAdapter(hearthClient),
     catalog,
     repoRoot: REPO_ROOT,
     evalVersion: EVAL_VERSION,
@@ -54,6 +66,8 @@ async function main(): Promise<void> {
     store,
     runner,
     client,
+    providers,
+    nativeClient,
     catalog,
     catalogIssues: loaded.issues.length,
     repoRoot: REPO_ROOT,
@@ -69,6 +83,7 @@ async function main(): Promise<void> {
     if (closing) return;
     closing = true;
     app.log.info({ signal }, "shutting down hearth eval");
+    await nativeClient.idle().catch(() => undefined);
     await app.close();
     store.close();
   };
@@ -80,9 +95,11 @@ async function main(): Promise<void> {
     app.log.error({ error }, "failed to resume interrupted eval runs");
   });
   app.log.info({
-    url: `http://${HOST}:${PORT}`,
+    url: `http://${HOST}:${PORT}/`,
+    nativeConsole: `http://${HOST}:${PORT}/native.html`,
     hearthUrl: HEARTH_URL,
     cases: loaded.cases.length,
+    providers: providers.list().length,
     recoveredRuns: recovered.interrupted,
     dataDir: DATA_DIR,
     artifactRoot: ARTIFACT_ROOT,
