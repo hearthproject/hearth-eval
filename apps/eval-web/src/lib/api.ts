@@ -1,5 +1,6 @@
 import type {
   CaseCatalogResponse,
+  CodexScoreHistory,
   CaseDetailResponse,
   CompareResponse,
   CreateExperimentRequest,
@@ -11,6 +12,9 @@ import type {
   ExperimentRecord,
   ExperimentsResponse,
   HumanReviewRecord,
+  ImportedEvaluation,
+  ImportedEvaluationInput,
+  ImportedBatchInput,
   ReviewQueueItem,
   RegressionReport,
   ReviewsResponse,
@@ -77,6 +81,21 @@ export interface SubmitReviewResult {
 }
 
 export const api = {
+  codexSetup: () => request<{ hook: string; rules: string }>("/api/codex/setup"),
+  generateCodexRules: (description: string) => request<{ requiredText: string[]; unsupported: string[] }>(
+    "/api/codex/generate-rules", { method: "POST", body: JSON.stringify({ description }) }
+  ),
+  codexScores: (before: number | null) => request<CodexScoreHistory>(
+    before === null ? "/api/codex/scores" : `/api/codex/scores?before=${before}`
+  ),
+  importedEvaluations: () => request<Array<Pick<ImportedEvaluation, "id" | "title" | "createdAt">>>("/api/imported-evaluations"),
+  importedEvaluation: (id: string) => request<ImportedEvaluation>(`/api/imported-evaluations/${encodeURIComponent(id)}`),
+  createImportedEvaluation: (input: ImportedEvaluationInput) => request<ImportedEvaluation>("/api/imported-evaluations", {
+    method: "POST", body: JSON.stringify(input)
+  }),
+  createImportedBatch: (input: ImportedBatchInput) => request<{ evaluation: ImportedEvaluation; token: string }>(
+    "/api/imported-evaluations/batches", { method: "POST", body: JSON.stringify(input) }
+  ),
   scenarioCatalog: () => request<Array<{ id: string; title: string }>>("/api/scenarios/catalog"),
   scenarioSelfCheck: () => request<ScenarioSelfCheck>("/api/scenarios/self-check"),
   startScenarioSelfCheck: (scenarioId?: string) => request<ScenarioSelfCheck>("/api/scenarios/self-check", {

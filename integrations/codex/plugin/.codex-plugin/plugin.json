@@ -1,0 +1,11 @@
+{
+  "name": "hearth-eval",
+  "version": "0.1.3",
+  "description": "Show local Hearth Eval scores when a Codex turn finishes.",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Hearth Eval",
+    "shortDescription": "See Hearth scores in Codex after each turn.",
+    "developerName": "Hearth"
+  }
+}

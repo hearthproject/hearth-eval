@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "hearth-eval": {
+      "command": "node",
+      "args": ["server.mjs"],
+      "cwd": "."
+    }
+  }
+}

@@ -19,6 +19,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:scenarios": "tsc -p scenario-runner/tsconfig.json --noEmit",
     "eval:scenarios": "tsx --tsconfig scenario-runner/tsconfig.json scenario-runner/run-scenarios.ts",
+    "eval:submit": "node scripts/hearth-eval.mjs submit",
     "check": "npm run typecheck && npm test && npm run build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",

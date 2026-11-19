@@ -26,6 +26,21 @@ afterEach(async () => {
 });
 
 describe("eval control plane", () => {
+  it("provides copyable Codex hook and scoring rules for the local checkout", async () => {
+    const { app, root } = await createHarness();
+    const relative = "integrations/codex";
+    mkdirSync(join(root, relative), { recursive: true });
+    for (const file of ["hooks.json", "codex-eval.example.json"]) {
+      writeFileSync(join(root, relative, file), readFileSync(join(repoRoot, relative, file)));
+    }
+    const response = await app.inject("/api/codex/setup");
+    expect(response.statusCode).toBe(200);
+    const { hook, rules } = response.json<{ hook: string; rules: string }>();
+    const command = JSON.parse(hook).hooks.Stop[0].hooks[0].command;
+    expect(command).toContain(join(root, relative, "stop.mjs").replace(/\\/g, "/"));
+    expect(JSON.parse(rules)).toEqual({ requiredText: ["测试", "通过"] });
+  });
+
   it("returns local run progress without waiting for Hearth and exposes task details separately", async () => {
     const { app, client, passedRun } = await createHarness();
     const getTask = vi.spyOn(client, "getTask").mockRejectedValue(new Error("Hearth unavailable"));

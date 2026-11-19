@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "Stop": [{
+      "hooks": [{
+        "type": "mcp_tool",
+        "server": "hearth-eval",
+        "tool": "score_turn",
+        "statusMessage": "正在计算 Hearth 评分",
+        "timeout": 8,
+        "input": {
+          "cwd": "${cwd}",
+          "continued": "${stop_hook_active}",
+          "publish": true,
+          "text": "${last_assistant_message}"
+        }
+      }]
+    }]
+  }
+}

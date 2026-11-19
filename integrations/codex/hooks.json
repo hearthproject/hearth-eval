@@ -1,0 +1,17 @@
+{
+  "description": "Show the Hearth Eval score when a Codex turn finishes",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/absolute/path/to/hearth-eval/integrations/codex/stop.mjs\"",
+            "statusMessage": "正在计算 Hearth 评分",
+            "timeout": 8
+          }
+        ]
+      }
+    ]
+  }
+}

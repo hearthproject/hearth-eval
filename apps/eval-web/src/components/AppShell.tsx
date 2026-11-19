@@ -18,6 +18,7 @@ import { api } from "../lib/api.ts";
 const NAV_ITEMS = [
   { to: "/", label: "总览", icon: LayoutDashboard, end: true },
   { to: "/cases", label: "任务目录", icon: LibraryBig },
+  { to: "/imported-evaluations", label: "外部 Agent 评测", icon: GitCompareArrows },
   { to: "/experiments", label: "实验", icon: FlaskConical },
   { to: "/scenarios", label: "场景测试", icon: TestTube2 },
   { to: "/reviews", label: "复核队列", icon: ClipboardCheck, badge: "reviews" as const },
@@ -30,6 +31,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/$/, "总览"],
   [/^\/cases\/[^/]+$/, "任务详情"],
   [/^\/cases$/, "任务目录"],
+  [/^\/imported-evaluations$/, "外部 Agent 评测"],
   [/^\/experiments\/new$/, "新建实验"],
   [/^\/experiments\/[^/]+$/, "实验详情"],
   [/^\/experiments$/, "实验"],

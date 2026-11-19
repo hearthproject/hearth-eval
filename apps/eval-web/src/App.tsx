@@ -3,6 +3,7 @@ import { AppShell } from "./components/AppShell.tsx";
 import { ActivityPage } from "./pages/ActivityPage.tsx";
 import { CaseDetailPage } from "./pages/CaseDetailPage.tsx";
 import { CasesPage } from "./pages/CasesPage.tsx";
+import { ImportedEvaluationPage } from "./pages/ImportedEvaluationPage.tsx";
 import { ComparePage } from "./pages/ComparePage.tsx";
 import { DashboardPage } from "./pages/DashboardPage.tsx";
 import { ExperimentDetailPage } from "./pages/ExperimentDetailPage.tsx";
@@ -19,6 +20,7 @@ export function App() {
       <Route element={<AppShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="cases" element={<CasesPage />} />
+        <Route path="imported-evaluations" element={<ImportedEvaluationPage />} />
         <Route path="cases/:caseKey" element={<CaseDetailPage />} />
         <Route path="experiments" element={<ExperimentsPage />} />
         <Route path="experiments/new" element={<NewExperimentPage />} />

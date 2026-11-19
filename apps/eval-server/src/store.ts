@@ -12,6 +12,7 @@ import type {
   GraderResultRecord,
   HumanReviewRecord
 } from "@hearth/eval-core";
+import type { CodexScoreHistory, CodexScoreRecord, ImportedEvaluation } from "@hearth/eval-core";
 
 type DbRow = Record<string, SQLInputValue>;
 
@@ -29,6 +30,18 @@ export interface RunMetrics {
 }
 
 const SCHEMA = `
+CREATE TABLE IF NOT EXISTS codex_scores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT NOT NULL,
+  score INTEGER NOT NULL,
+  checks_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS imported_evaluations (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  token_hash TEXT
+);
 CREATE TABLE IF NOT EXISTS case_versions (
   case_key TEXT PRIMARY KEY,
   version INTEGER NOT NULL,
@@ -135,6 +148,10 @@ export class EvalStore {
   }
 
   private migrate(): void {
+    const importedColumns = this.db.prepare("PRAGMA table_info(imported_evaluations)").all();
+    if (!importedColumns.some((column) => column.name === "token_hash")) {
+      this.db.exec("ALTER TABLE imported_evaluations ADD COLUMN token_hash TEXT");
+    }
     const columns = this.db.prepare("PRAGMA table_info(experiment_runs)").all() as DbRow[];
     if (!columns.some((column) => column.name === "primary_cause")) {
       this.db.exec("ALTER TABLE experiment_runs ADD COLUMN primary_cause TEXT");
@@ -143,6 +160,51 @@ export class EvalStore {
 
   close(): void {
     this.db.close();
+  }
+
+  saveImportedEvaluation(evaluation: ImportedEvaluation, tokenHash: string | null = null): void {
+    this.db.prepare("INSERT INTO imported_evaluations (id, created_at, payload_json, token_hash) VALUES (?, ?, ?, ?)")
+      .run(evaluation.id, evaluation.createdAt, JSON.stringify(evaluation), tokenHash);
+  }
+
+  saveCodexScore(record: Omit<CodexScoreRecord, "id">): void {
+    this.db.prepare("INSERT INTO codex_scores (created_at, score, checks_json) VALUES (?, ?, ?)")
+      .run(record.createdAt, record.score, JSON.stringify(record.checks));
+  }
+
+  listCodexScores(before: number): CodexScoreHistory {
+    const rows = this.db.prepare(
+      "SELECT id, created_at, score, checks_json FROM codex_scores WHERE id < ? ORDER BY id DESC LIMIT 21"
+    ).all(before);
+    const records = rows.slice(0, 20).map((row) => ({
+      id: Number(row.id),
+      createdAt: String(row.created_at),
+      score: Number(row.score),
+      checks: JSON.parse(String(row.checks_json)) as CodexScoreRecord["checks"]
+    }));
+    return { records, nextBefore: rows.length > 20 ? records.at(-1)?.id ?? null : null };
+  }
+
+  getImportedBatch(id: string): { payload: string; tokenHash: string } | undefined {
+    const row = this.db.prepare("SELECT payload_json AS payload, token_hash AS tokenHash FROM imported_evaluations WHERE id = ? AND token_hash IS NOT NULL").get(id);
+    return row as { payload: string; tokenHash: string } | undefined;
+  }
+
+  updateImportedBatch(evaluation: ImportedEvaluation, previousPayload: string): boolean {
+    return this.db.prepare("UPDATE imported_evaluations SET payload_json = ? WHERE id = ? AND payload_json = ?")
+      .run(JSON.stringify(evaluation), evaluation.id, previousPayload).changes === 1;
+  }
+
+  listImportedEvaluations(): Array<Pick<ImportedEvaluation, "id" | "title" | "createdAt">> {
+    return this.db.prepare(`
+      SELECT id, json_extract(payload_json, '$.title') AS title, created_at AS createdAt
+      FROM imported_evaluations ORDER BY created_at DESC, rowid DESC LIMIT 100
+    `).all() as Array<Pick<ImportedEvaluation, "id" | "title" | "createdAt">>;
+  }
+
+  getImportedEvaluation(id: string): ImportedEvaluation | undefined {
+    const row = this.db.prepare("SELECT payload_json FROM imported_evaluations WHERE id = ?").get(id);
+    return row ? JSON.parse(String(row.payload_json)) as ImportedEvaluation : undefined;
   }
 
   syncCases(cases: LoadedCase[]): void {

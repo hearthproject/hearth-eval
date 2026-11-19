@@ -6,3 +6,4 @@ export * from "./trace.ts";
 export * from "./metrics.ts";
 export * from "./api.ts";
 export * from "./scenarios.ts";
+export type * from "./imported-evaluation.ts";

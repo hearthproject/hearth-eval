@@ -33,6 +33,7 @@ import type { HearthClient } from "./hearth-client.ts";
 import { resolveRunOutputDir } from "./artifact-path.ts";
 import { listScenarioBatches, readScenarioBatch, readScenarioEvidence } from "./scenario-reports.ts";
 import { ScenarioSelfCheckService } from "./scenario-self-check.ts";
+import { registerImportedEvaluationRoutes } from "./imported-evaluation.ts";
 
 const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -81,6 +82,25 @@ interface JudgeInfo {
 export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInstance> {
   const { store, runner, client, catalog, repoRoot, artifactRoot } = options;
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 1_000_000 });
+  registerImportedEvaluationRoutes(app, store);
+  app.get("/api/codex/setup", async () => {
+    const directory = join(repoRoot, "integrations", "codex");
+    const hook = JSON.parse(readFileSync(join(directory, "hooks.json"), "utf8")) as {
+      hooks: { Stop: [{ hooks: [{ command: string }] }] };
+    };
+    const script = join(directory, "stop.mjs");
+    const handler = hook.hooks.Stop[0].hooks[0];
+    handler.command = process.platform === "win32"
+      ? `node "${script.replace(/\\/g, "/")}"`
+      : `node '${script.replace(/'/g, "'\\''")}'`;
+    const rules = JSON.parse(readFileSync(join(directory, "codex-eval.example.json"), "utf8")) as {
+      requiredText: string[];
+      port?: number;
+    };
+    const address = app.server.address();
+    if (address && typeof address !== "string" && address.port !== 4318) rules.port = address.port;
+    return { hook: JSON.stringify(hook, null, 2), rules: JSON.stringify(rules, null, 2) };
+  });
   const scenarioRoot = join(repoRoot, "eval", "scenario-runs");
   const selfCheck = new ScenarioSelfCheckService(repoRoot);
   app.addHook("onClose", async () => selfCheck.close());

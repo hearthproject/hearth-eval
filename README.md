@@ -311,6 +311,55 @@ flowchart TD
 
 控制台地址 `http://127.0.0.1:5175`，页面路由包括：总览（`/`）、任务目录（`/cases`）、任务详情、实验（`/experiments`）、新建实验、实验详情、运行详情（`/runs/:id`）、复核队列（`/reviews`）、对比（`/compare`）、活动流（`/activity`）、系统（`/system`）、场景测试（`/scenarios`）。侧栏每 10 秒轮询 `/api/system`，显示 Hearth 连通性、评委状态、运行中实验数和待复核角标。
 
+### 在 Codex 对话里显示 Hearth 评分
+
+推荐安装 **Hearth Eval** 本地插件。在本仓库根目录执行：
+
+```powershell
+codex plugin marketplace add ./integrations/codex
+codex plugin add hearth-eval@hearth-local
+```
+
+重新打开 Codex，在 Plugins 中确认 Hearth Eval 已启用，在 Settings → Hooks 审阅插件的 Stop Hook。把下方的 `codex-eval.json` 保存到要评测的项目根目录。已安装项目级 Hearth Stop Hook 的用户可以在 Settings → Hooks 停用该条旧 Hook，以免一轮显示两次评分。
+
+也可用项目级 Hook 接入：
+
+启动本机 Eval 服务（`npm run dev:server`）。把 [Codex Hook 配置](integrations/codex/hooks.json) 合并到任务项目的 `.codex/hooks.json`，把命令里的脚本路径换成 Hearth Eval checkout 中的绝对路径。在 Codex 桌面端打开并信任该项目，然后在输入框的「Review hooks」或「Settings → Hooks」审阅并信任 Stop Hook。 [Codex Hook 文档](https://learn.chatgpt.com/docs/hooks)
+
+把 [规则示例](integrations/codex/codex-eval.example.json) 复制到任务项目根目录的 `codex-eval.json`，把 `requiredText` 改为回复中必须出现的文本。从项目根目录启动 Codex 会话。每轮结束时，Hook 从该会话的工作目录加载规则，只在根目录没有配置时兼容旧位置 `.hearth/codex-eval.json`。如果 Eval 使用自定义端口，可在规则文件中加 `port`。
+
+在 Eval 网页的「外部 Agent 评测 → Codex 评分记录」可以查看每次评分的时间、总分、规则和判定依据。历史保留评分时的规则，原始回复不写入评测数据库。配置文件使用 UTF-8 JSON，`requiredText` 为 1–20 条不同的字符串，每条最多 200 字符。每条等权，以最终回复是否包含该字符串判定。
+
+在「添加评分规则」也可以先用自然语言描述目标，再点「用 Codex 生成 JSON」。Eval 调用本机已登录的 Codex CLI 生成配置预览，并列出无法用文本匹配验证的目标。确认后复制到项目配置文件。
+
+### 外部 Agent 自动提交
+
+在「外部 Agent 评测」填写同一份任务和文本检查项，指定两个 Agent，再点「创建自动评测批次」。复制批次 ID 和提交凭证。每个 Agent 用独立槽位提交一份 UTF-8 文本交付物。页面自动刷新等待中的批次，每收到一份交付物就显示其分数。
+
+在要执行任务的终端配置以下环境变量。每次评测为每个 Agent 选择一个新的交付物路径，并在任务指令中让 Agent 把最终交付物写到该路径。PowerShell 示例：
+
+```powershell
+$evalRepo = 'E:\codex-eval-agent\hearth-eval'
+$env:HEARTH_EVAL_ID = '<评测 ID>'
+$env:HEARTH_EVAL_TOKEN = '<提交凭证>'
+$env:HEARTH_EVAL_SLOT = '1'
+$env:HEARTH_EVAL_FILE = 'agent-a-report.md'
+$env:HEARTH_EVAL_CLI = Join-Path $evalRepo 'scripts/hearth-eval.mjs'
+claude --settings (Join-Path $evalRepo 'integrations/claude-code/settings.json')
+```
+
+Claude Code 的 [Stop Hook](https://code.claude.com/docs/en/hooks#stop) 在一轮回复完成时触发。使用这份设置启动专用评测会话。Hook 找到指定文件时自动提交，以会话 ID 作为运行 ID。同一槽位的相同提交可以安全重试，改动后的交付物请在新批次中评测。Windows 上此示例的 Hook 使用 Git Bash。
+
+其他 Agent 可以在自己的完成事件或运行脚本中调用通用 CLI。为第二个 Agent 设置槽位 `2`，再传入它实际写出的文件和稳定的运行 ID：
+
+```powershell
+node (Join-Path $evalRepo 'scripts/hearth-eval.mjs') submit --slot 2 --file agent-b-report.md --run-id agent-b-run-001
+```
+
+CLI 默认提交到本机 `http://127.0.0.1:4318`，可通过 `HEARTH_EVAL_URL` 指向 HTTPS 部署。批次凭证授权向该批次提交，由创建响应一次性返回。
+
+如需附带运行数据，可通过 `--metadata-file` 或 `HEARTH_EVAL_METADATA_FILE` 指定 JSON 文件，字段为可选的 `durationMs`、`inputTokens`、`outputTokens` 和 `log`。这些字段用于查看运行记录，评分仍按批次的文本检查项计算。提交错误会显示在 CLI 或 Hook 输出里。
+
 主要接口（完整路由见 `apps/eval-server/src/app.ts`）：
 
 | 分组 | 端点 |
