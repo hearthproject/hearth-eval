@@ -52,7 +52,8 @@ export default withMermaid(defineConfig({
           items: [
             { text: "任务集", link: "/guide/task-catalog" },
             { text: "评分与复核", link: "/guide/scoring" },
-            { text: "live-only 冒烟", link: "/guide/live-smoke" }
+            { text: "live-only 冒烟", link: "/guide/live-smoke" },
+            { text: "Terminal-Bench 2.1", link: "/guide/terminal-bench-2-1" }
           ]
         }
       ],
