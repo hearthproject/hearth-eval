@@ -12,3 +12,4 @@ export * from "./calibration.ts";
 export * from "./diagnosis.ts";
 export * from "./acceptance.ts";
 export * from "./native-agent.ts";
+export * from "./benchmark.ts";
