@@ -20,6 +20,8 @@ __pycache__/
 *.sqlite-wal
 eval/scenario-runs/
 scenario-runs/
+harbor-jobs/
+/jobs/
 
 # OS files
 .DS_Store

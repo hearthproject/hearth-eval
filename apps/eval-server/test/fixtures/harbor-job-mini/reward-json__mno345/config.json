@@ -1,0 +1,8 @@
+{
+  "task_name": "reward-json",
+  "task": {
+    "name": "reward-json",
+    "timeout_sec": 600
+  },
+  "started_at": "2026-11-20T00:05:00.000Z"
+}

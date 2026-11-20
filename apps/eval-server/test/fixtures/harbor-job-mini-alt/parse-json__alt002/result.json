@@ -1,0 +1,14 @@
+{
+  "task_name": "parse-json",
+  "started_at": "2026-11-21T00:02:00.000Z",
+  "completed_at": "2026-11-21T00:02:05.000Z",
+  "verifier_result": {
+    "rewards": {
+      "reward": 1.0
+    }
+  },
+  "agent_result": {
+    "n_input_tokens": 900,
+    "n_output_tokens": 140
+  }
+}

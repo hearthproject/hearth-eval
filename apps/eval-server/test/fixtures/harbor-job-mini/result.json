@@ -1,0 +1,12 @@
+{
+  "status": "completed",
+  "started_at": "2026-11-20T00:00:00.000Z",
+  "completed_at": "2026-11-20T00:20:00.000Z",
+  "stats": {
+    "evals": {
+      "reward": {
+        "n_errors": 1
+      }
+    }
+  }
+}

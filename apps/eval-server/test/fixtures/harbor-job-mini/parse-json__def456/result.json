@@ -1,0 +1,11 @@
+{
+  "task_name": "parse-json",
+  "started_at": "2026-11-20T00:02:00.000Z",
+  "completed_at": "2026-11-20T00:02:05.000Z",
+  "agent_result": {
+    "n_input_tokens": 800,
+    "n_output_tokens": 120,
+    "n_cached_tokens": 0,
+    "duration_ms": 5000
+  }
+}

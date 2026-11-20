@@ -1,0 +1,9 @@
+{
+  "task_name": "fix-permissions",
+  "task": {
+    "name": "fix-permissions",
+    "timeout_sec": 3600
+  },
+  "attempt": 1,
+  "started_at": "2026-11-21T00:01:00.000Z"
+}

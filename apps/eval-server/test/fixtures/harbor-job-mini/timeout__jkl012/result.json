@@ -1,0 +1,9 @@
+{
+  "task_name": "timeout",
+  "started_at": "2026-11-20T00:04:00.000Z",
+  "completed_at": "2026-11-20T00:06:00.000Z",
+  "exception_info": {
+    "type": "AgentTimeoutError",
+    "message": "Agent timed out after 120 seconds"
+  }
+}

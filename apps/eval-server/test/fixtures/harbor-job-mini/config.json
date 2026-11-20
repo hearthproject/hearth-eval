@@ -1,0 +1,16 @@
+{
+  "job_name": "harbor-job-mini",
+  "dataset": {
+    "name": "terminal-bench/terminal-bench-2-1",
+    "version": "2.1",
+    "commit_sha": "7131e4375048a0e408a8fb404b5f499d726b695b",
+    "task_count": 5
+  },
+  "agent": {
+    "name": "hearth-native",
+    "version": "0.1.0"
+  },
+  "model": "test-model",
+  "started_at": "2026-11-20T00:00:00.000Z",
+  "completed_at": "2026-11-20T00:20:00.000Z"
+}

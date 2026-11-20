@@ -1,0 +1,13 @@
+{
+  "task_name": "fix-permissions",
+  "task": {
+    "name": "fix-permissions",
+    "timeout_sec": 3600,
+    "instruction_path": "fix-permissions/instruction.md",
+    "environment": {
+      "image": "terminal-bench/fix-permissions:2.1"
+    }
+  },
+  "attempt": 1,
+  "started_at": "2026-11-20T00:01:00.000Z"
+}

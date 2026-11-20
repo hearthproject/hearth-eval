@@ -1,0 +1,1 @@
+Verifier did not write a reward file.
