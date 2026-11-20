@@ -45,6 +45,9 @@ import { registerProviderRoutes } from "./provider-routes.ts";
 import { registerSystemSettingsRoutes } from "./system-settings-routes.ts";
 import { LocalJudge } from "./local-judge.ts";
 import { ProviderStore as JudgeProviderStore } from "./provider-store.ts";
+import { AcceptanceAgent, desktopDirectory } from "./acceptance-agent.ts";
+import { HearthAcceptanceExecutor } from "./acceptance-executor.ts";
+import { registerAcceptanceRoutes } from "./acceptance-routes.ts";
 
 const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -99,6 +102,9 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
   const { store, runner, client, catalog, repoRoot, artifactRoot } = options;
   const localJudge = options.localJudge ?? new LocalJudge(new JudgeProviderStore({ file: join(repoRoot, ".hearth", "judge-providers.json") }));
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 1_000_000 });
+  const acceptance = new AcceptanceAgent({ store, executor: new HearthAcceptanceExecutor(client.baseUrl), desktopRoot: desktopDirectory, judge: localJudge });
+  await registerAcceptanceRoutes(app, acceptance, client.baseUrl);
+  app.addHook("onClose", async () => acceptance.close());
   registerImportedEvaluationRoutes(app, store);
   const diagnosis = new DiagnosisAgent({ store, runner, model: options.diagnosisModel ?? new CodexDiagnosisModel(),
     health: () => client.health(), repoRoot, artifactRoot });

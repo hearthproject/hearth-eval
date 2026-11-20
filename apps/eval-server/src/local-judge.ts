@@ -6,7 +6,10 @@ import { ProviderStore } from "./provider-store.ts";
 
 const resultSchema = z.object({
   criteria: z.array(z.object({ id: z.string(), passed: z.boolean(), confidence: z.number().min(0).max(1),
-    reason: z.string().max(8000), evidence: z.array(z.string().max(4000)).max(50) }).strict()),
+    reason: z.string().max(8000), evidence: z.array(z.string().max(4000)).max(50),
+    // Some compatible models echo the criterion's descriptive input metadata.
+    label: z.string().optional(), points: z.number().optional()
+  }).strict().transform(({ label: _label, points: _points, ...criterion }) => criterion)),
   overallConfidence: z.number().min(0).max(1)
 }).strict();
 
