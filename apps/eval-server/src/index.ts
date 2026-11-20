@@ -7,6 +7,7 @@ import {
   DATA_DIR,
   DB_PATH,
   EVAL_VERSION,
+  HARBOR_JOBS_ROOT,
   HEARTH_URL,
   HEARTH_TIMEOUT_MS,
   HOST,
@@ -77,6 +78,7 @@ async function main(): Promise<void> {
     dataDir: DATA_DIR,
     evalVersion: EVAL_VERSION,
     webDist: WEB_DIST,
+    harborJobsRoot: HARBOR_JOBS_ROOT,
     logger: true
   });
 

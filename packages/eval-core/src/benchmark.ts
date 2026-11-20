@@ -25,7 +25,7 @@ export type BenchmarkTaskStatus = (typeof BENCHMARK_TASK_STATUSES)[number];
 export interface BenchmarkPricing {
   inputPerMillionUsd: number;
   outputPerMillionUsd: number;
-  cachedPerMillionUsd?: number;
+  cachedPerMillionUsd?: number | undefined;
 }
 
 export interface BenchmarkDataset {

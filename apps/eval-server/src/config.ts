@@ -13,5 +13,6 @@ export const DB_PATH = join(DATA_DIR, "eval.sqlite");
 export const ARTIFACT_ROOT = storage.artifactRoot;
 export const CASES_DIR = resolve(process.env.HEARTH_EVAL_CASES_DIR ?? join(REPO_ROOT, "eval", "catalog", "v2", "cases"));
 export const WEB_DIST = join(REPO_ROOT, "apps", "eval-web", "dist");
+export const HARBOR_JOBS_ROOT = resolve(process.env.HEARTH_EVAL_HARBOR_JOBS_ROOT ?? join(REPO_ROOT, "harbor-jobs"));
 export const EVAL_VERSION = "0.1.0";
 export const RECOVERY_STALE_MS = Math.max(0, Number(process.env.HEARTH_EVAL_RECOVERY_STALE_MS ?? 30 * 60_000));

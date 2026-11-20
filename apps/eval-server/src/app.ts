@@ -35,6 +35,7 @@ import { resolveRunOutputDir } from "./artifact-path.ts";
 import { listScenarioBatches, readScenarioBatch, readScenarioEvidence } from "./scenario-reports.ts";
 import { ScenarioSelfCheckService } from "./scenario-self-check.ts";
 import { registerImportedEvaluationRoutes } from "./imported-evaluation.ts";
+import { registerBenchmarkRoutes } from "./benchmark-routes.ts";
 import { DiagnosisAgent } from "./diagnosis-agent.ts";
 import { CodexDiagnosisModel, type DiagnosisModel } from "./diagnosis-model.ts";
 import { registerDiagnosisRoutes } from "./diagnosis-routes.ts";
@@ -90,6 +91,7 @@ export interface EvalAppOptions {
   dataDir: string;
   evalVersion: string;
   webDist?: string;
+  harborJobsRoot?: string;
   logger?: boolean;
 }
 
@@ -106,6 +108,10 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
   await registerAcceptanceRoutes(app, acceptance, client.baseUrl);
   app.addHook("onClose", async () => acceptance.close());
   registerImportedEvaluationRoutes(app, store);
+  await registerBenchmarkRoutes(app, {
+    store,
+    jobsRoot: options.harborJobsRoot ?? join(repoRoot, "harbor-jobs")
+  });
   const diagnosis = new DiagnosisAgent({ store, runner, model: options.diagnosisModel ?? new CodexDiagnosisModel(),
     health: () => client.health(), repoRoot, artifactRoot });
   registerDiagnosisRoutes(app, diagnosis, store);
