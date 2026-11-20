@@ -16,6 +16,7 @@ import type {
 import type { CodexScoreHistory, CodexScoreRecord, ImportedEvaluation } from "@hearth/eval-core";
 import type { DiagnosisJob } from "@hearth/eval-core";
 import type { AcceptanceJob, SharedMemory } from "@hearth/eval-core";
+import { BenchmarkStore } from "./benchmark-store.ts";
 
 type DbRow = Record<string, SQLInputValue>;
 
@@ -193,6 +194,7 @@ export class EvalStore {
   }
 
   private readonly db: DatabaseSync;
+  readonly benchmarks: BenchmarkStore;
 
   constructor(path: string) {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
@@ -202,6 +204,7 @@ export class EvalStore {
     this.db.exec("PRAGMA busy_timeout = 5000;");
     this.db.exec(SCHEMA);
     this.migrate();
+    this.benchmarks = new BenchmarkStore(this.db);
   }
 
   private migrate(): void {
