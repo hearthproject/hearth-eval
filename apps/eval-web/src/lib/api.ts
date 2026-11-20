@@ -1,4 +1,8 @@
 import type {
+  BenchmarkImportInput,
+  BenchmarkImportResult,
+  BenchmarkJobCandidate,
+  BenchmarkRun,
   CaseCatalogResponse,
   CodexScoreHistory,
   CaseDetailResponse,
@@ -78,6 +82,15 @@ export interface SubmitReviewResult {
   review: HumanReviewRecord;
   run: RunDetailResponse["run"] | null;
   experiment: ExperimentRecord | null;
+}
+
+export interface BenchmarkListResponse {
+  runs: BenchmarkRun[];
+}
+
+export interface BenchmarkJobsResponse {
+  root: string;
+  jobs: BenchmarkJobCandidate[];
 }
 
 export const api = {
@@ -167,7 +180,13 @@ export const api = {
   artifact: (runId: string, path: string) => {
     const encodedPath = path.split("/").map(encodeURIComponent).join("/");
     return request<RunArtifactView>(`/api/runs/${encodeURIComponent(runId)}/artifacts/${encodedPath}`);
-  }
+  },
+  benchmarks: () => request<BenchmarkListResponse>("/api/benchmarks"),
+  benchmarkJobs: () => request<BenchmarkJobsResponse>("/api/benchmarks/jobs"),
+  importBenchmark: (input: BenchmarkImportInput) => request<BenchmarkImportResult>("/api/benchmarks/import", {
+    method: "POST",
+    body: JSON.stringify(input)
+  })
 };
 
 export function latestEventSeq(events: EvalEventRecord[]): number {

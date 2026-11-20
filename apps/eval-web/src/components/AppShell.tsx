@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
+  BarChart3,
   ClipboardCheck,
   FlaskConical,
   GitCompareArrows,
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { to: "/cases", label: "任务目录", icon: LibraryBig },
   { to: "/imported-evaluations", label: "外部 Agent 评测", icon: GitCompareArrows },
   { to: "/experiments", label: "实验", icon: FlaskConical },
+  { to: "/benchmarks", label: "Benchmark", icon: BarChart3 },
   { to: "/scenarios", label: "场景测试", icon: TestTube2 },
   { to: "/diagnosis", label: "诊断 Agent", icon: Activity },
   { to: "/acceptance", label: "交付验收", icon: ClipboardCheck },
@@ -37,6 +39,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/experiments\/new$/, "新建实验"],
   [/^\/experiments\/[^/]+$/, "实验详情"],
   [/^\/experiments$/, "实验"],
+  [/^\/benchmarks$/, "公开 Benchmark"],
   [/^\/scenarios$/, "场景测试"],
   [/^\/diagnosis$/, "诊断 Agent"],
   [/^\/acceptance$/, "交付验收"],
