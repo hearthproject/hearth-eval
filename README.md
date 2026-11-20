@@ -319,6 +319,24 @@ flowchart TD
 
 每个离线 case 为 `schemaVersion: 2`，result 层固定 60/30/10，至少一个独立门禁与八项指标标注，并提供 `golden/`。旧 60 题归档在 `eval/catalog/v1/cases`，仅用于历史回归。
 
+## 公开 Benchmark（Terminal-Bench 2.1）
+
+`hearth-eval` 新增一个与自定义 case 平行的 benchmark 域，用来评测 native harness 的代码任务能力：
+
+- **Harbor 执行** `terminal-bench/terminal-bench-2-1` 的 89 道 Linux 容器任务。
+- **hearth-eval 只读导入** `jobs/<job>/`：dataset、run、task、trial、reward、token、耗时和成本落 SQLite。
+- 指标包括 mean reward、pass@5、95% Wilson CI、`$/solved`，并支持逐题 trial 抽屉和两次 run 对比。
+- 不重写 Docker/Harbor，不对 trial 调 LLM judge，不把 TB 塞进 60/30/10。
+- 本机可先跑 1 题冒烟；89 题 ×5 需要更大的 Linux 机器。
+
+```powershell
+npm run bench:import -- --job <job> --jobs-root .\harbor-jobs --dataset terminal-bench/terminal-bench-2-1 --version 2.1
+npm run dev
+# http://127.0.0.1:5175/benchmarks
+```
+
+完整链路、数据模型、Harbor 命令和 Hearth adapter 契约见 [Terminal-Bench 2.1 接入执行计划](docs/guide/terminal-bench-2-1.md)。
+
 ## 白盒场景回归
 
 `scenario-runner/` 不是黑盒 HTTP 压测：它通过 TS path 映射直接加载同级 `hearth-os` 源码，在内存 `HearthStore` + `HearthService` 上使用固定时钟、假用户/偏好/密钥执行场景，并用主服务的 `redactSecrets` 脱敏证据。
@@ -329,7 +347,7 @@ flowchart TD
 
 ## 控制台与 API
 
-控制台地址 `http://127.0.0.1:5175`，页面路由包括：总览（`/`）、任务目录（`/cases`）、任务详情、实验（`/experiments`）、新建实验、实验详情、运行详情（`/runs/:id`）、复核队列（`/reviews`）、对比（`/compare`）、活动流（`/activity`）、系统（`/system`）、场景测试（`/scenarios`）。侧栏每 10 秒轮询 `/api/system`，显示 Hearth 连通性、评委状态、运行中实验数和待复核角标。
+控制台地址 `http://127.0.0.1:5175`，页面路由包括：总览（`/`）、任务目录（`/cases`）、任务详情、实验（`/experiments`）、新建实验、实验详情、运行详情（`/runs/:id`）、公开 Benchmark（`/benchmarks`）、Benchmark 详情、Benchmark 对比、复核队列（`/reviews`）、对比（`/compare`）、活动流（`/activity`）、系统（`/system`）、场景测试（`/scenarios`）。侧栏每 10 秒轮询 `/api/system`，显示 Hearth 连通性、评委状态、运行中实验数和待复核角标。
 
 ### 在 Codex 对话里显示 Hearth 评分
 
