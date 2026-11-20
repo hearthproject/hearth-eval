@@ -5,6 +5,7 @@ import type {
   BenchmarkRun,
   BenchmarkTaskSummary,
   BenchmarkTrial,
+  BenchmarkCompareResult,
   CaseCatalogResponse,
   CodexScoreHistory,
   CaseDetailResponse,
@@ -109,6 +110,12 @@ export interface BenchmarkTrialsResponse {
 
 export interface BenchmarkTrialResponse {
   trial: BenchmarkTrial;
+}
+
+export interface BenchmarkCompareResponse {
+  baselineRun: BenchmarkRun;
+  candidateRun: BenchmarkRun;
+  comparison: BenchmarkCompareResult;
 }
 
 export const api = {
@@ -220,7 +227,11 @@ export const api = {
     `/api/benchmarks/${encodeURIComponent(id)}/reimport`,
     { method: "POST", body: JSON.stringify(jobDir ? { jobDir } : {}) }
   ),
-  benchmarkExportUrl: (id: string) => `/api/benchmarks/${encodeURIComponent(id)}/export?format=csv`
+  benchmarkExportUrl: (id: string) => `/api/benchmarks/${encodeURIComponent(id)}/export?format=csv`,
+  compareBenchmarks: (candidate: string, baseline: string) => {
+    const query = new URLSearchParams({ baseline });
+    return request<BenchmarkCompareResponse>(`/api/benchmarks/${encodeURIComponent(candidate)}/compare?${query.toString()}`);
+  }
 };
 
 export function latestEventSeq(events: EvalEventRecord[]): number {

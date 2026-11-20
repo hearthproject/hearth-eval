@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Download, RefreshCw, Search, X } from "lucide-react";
+import { ArrowLeft, Download, GitCompareArrows, RefreshCw, Search, X } from "lucide-react";
 import type { BenchmarkTaskSummary, BenchmarkTrial } from "@hearth/eval-core";
 import { formatBenchmarkTokens } from "@hearth/eval-core";
 import { Link, useParams } from "react-router-dom";
@@ -211,6 +211,7 @@ export function BenchmarkDetailPage() {
         description={<span>{run.datasetId} · {run.harnessName} {run.harnessVersion} · {run.model}</span>}
         actions={<>
           <Link className="button button-ghost" to="/benchmarks"><ArrowLeft size={14} /> 返回列表</Link>
+          <Link className="button button-ghost" to={`/benchmarks/compare?candidate=${id}`}><GitCompareArrows size={14} /> 对比</Link>
           <button className="button button-ghost" type="button" onClick={() => reimport.mutate()} disabled={reimport.isPending}>
             <RefreshCw size={14} /> {reimport.isPending ? "重导入中…" : "重导入"}
           </button>
