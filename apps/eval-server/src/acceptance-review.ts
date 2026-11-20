@@ -12,10 +12,10 @@ const responseSchema = z.object({
   criteria: z.array(z.object({ id: z.string(), passed: z.boolean(), confidence: z.number().min(0).max(1), reason: z.string().min(1).max(8000), evidence: z.array(z.string().min(1).max(4000)).max(50) })).length(3)
 });
 
-export async function reviewAcceptance(judge: JudgeAdapter, job: AcceptanceJob, text: string, artifactHash: string): Promise<AcceptanceSemanticReview> {
+export async function reviewAcceptance(judge: JudgeAdapter, job: Pick<AcceptanceJob, "contextSnapshot" | "sourceGoal"> & { input: Pick<AcceptanceJob["input"], "semanticRequirements"> }, text: string, artifactHash: string): Promise<AcceptanceSemanticReview> {
   if (!job.contextSnapshot || !job.input.semanticRequirements) throw new Error("语义评审缺少固定上下文或内容要求");
   const context = JSON.stringify(job.contextSnapshot);
-  const requirements = job.input.semanticRequirements;
+  const requirements = [job.sourceGoal, job.input.semanticRequirements].filter(Boolean).join("\n");
   const make = (value: string) => ({ text: value, bytes: Buffer.byteLength(value), mimeType: "text/plain" });
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {

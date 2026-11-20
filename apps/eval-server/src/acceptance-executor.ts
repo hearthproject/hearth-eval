@@ -33,6 +33,7 @@ export class HearthAcceptanceExecutor implements AcceptanceExecutor {
   async create(job: AcceptanceJob, feedback: string | null): Promise<{ id: string }> {
     const goal = [
       `交付验收任务 ${job.id}：${feedback ? "修复已有" : "创建"}桌面 Markdown 文件。`,
+      ...(job.sourceGoal ? [`原任务内容要求（桌面交付格式以本次验收为准）：${job.sourceGoal}`] : []),
       `期望产物：${job.input.fileName}。使用 write_file 在本任务指定的输出目录生成这个 UTF-8 Markdown 文件。`,
       "不要写桌面或其他任务外路径；交付适配器会将发布产物原样保存到用户指定的桌面文件。不要仅在回复中提供内容。",
       `首个非空行必须为：# ${job.input.title}`,
@@ -44,7 +45,7 @@ export class HearthAcceptanceExecutor implements AcceptanceExecutor {
     ].join("\n");
     if (goal.length > 4000) throw new Error("内容要求、共享上下文和修复反馈合计超过 Hearth 的 4000 字符限制，请缩短后新建任务");
     const result = await this.request("/api/tasks", {
-      title: `${feedback ? "修复" : "创建"}桌面 MD · ${job.id.slice(0, 8)}`,
+      title: `验收“${job.input.title}”${feedback ? "（修复）" : ""}`,
       goal, executorId: "native", taskKind: "general", expectedOutputs: [job.input.fileName],
       permissions: { readRoots: [], writeRoots: [], networkHosts: [],
         tools: ["read_file", "write_file", "edit_file", "ask_user", "finish_task"] }
@@ -57,6 +58,17 @@ export class HearthAcceptanceExecutor implements AcceptanceExecutor {
     const task = result.task as Record<string, unknown> | undefined;
     if (!task || typeof task.status !== "string") throw new Error("Hearth 返回的任务状态不完整");
     return { status: task.status, ...(typeof task.nextAction === "string" ? { nextAction: task.nextAction } : {}) };
+  }
+  async listTasks() {
+    const result = await this.request("/api/tasks");
+    const tasks = result.tasks as Array<{ id: string; title: string; status: string }>;
+    return tasks.map(({ id, title, status }) => ({ id, title, status }));
+  }
+  async taskOutputs(id: string) {
+    const result = await this.request(`/api/tasks/${encodeURIComponent(id)}`);
+    const task = result.task as { goal: string; currentRunId: string };
+    const artifacts = result.artifacts as Array<{ id: string; taskId: string; runId: string; relativePath: string }>;
+    return { goal: task.goal, artifacts: artifacts.filter(a => a.taskId === id && a.runId === task.currentRunId).map(a => ({ id: a.id, name: a.relativePath })) };
   }
   async cancel(taskId: string): Promise<void> { await this.request(`/api/tasks/${encodeURIComponent(taskId)}/cancel`, {}); }
   async artifact(taskId: string, fileName: string): Promise<ExecutorArtifact | null> {

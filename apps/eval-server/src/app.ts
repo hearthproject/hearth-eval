@@ -103,7 +103,7 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
   const localJudge = options.localJudge ?? new LocalJudge(new JudgeProviderStore({ file: join(repoRoot, ".hearth", "judge-providers.json") }));
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 1_000_000 });
   const acceptance = new AcceptanceAgent({ store, executor: new HearthAcceptanceExecutor(client.baseUrl), desktopRoot: desktopDirectory, judge: localJudge });
-  await registerAcceptanceRoutes(app, acceptance, client.baseUrl);
+  await registerAcceptanceRoutes(app, acceptance, client.baseUrl, localJudge);
   app.addHook("onClose", async () => acceptance.close());
   registerImportedEvaluationRoutes(app, store);
   const diagnosis = new DiagnosisAgent({ store, runner, model: options.diagnosisModel ?? new CodexDiagnosisModel(),

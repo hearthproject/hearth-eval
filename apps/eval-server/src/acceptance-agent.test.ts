@@ -279,3 +279,26 @@ it("exposes history and evidence, rejects remote callers and invalid inputs", as
   const result = await app.inject(`/api/acceptance/${h.input.requestId}`);
   expect(result.json().status).toBe("passed"); expect(result.headers["cache-control"]).toBe("no-store");
 });
+
+it("accepts an existing task artifact as the first attempt and dispatches only its repair", async () => {
+  const h = harness();
+  const first = artifact("# 错误"), repaired = artifact(good);
+  h.executor.artifact = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(repaired);
+  const job = h.agent.start({ ...h.input, requiredText: [], source: { taskId: "existing", artifactId: first.artifactId, name: "out.md" } }, "保留项目介绍");
+  await h.agent.idle(job.id);
+  const result = h.agent.get(job.id);
+  expect(result.status).toBe("passed");
+  expect(result.attempts.map(a => a.taskId)).toEqual(["existing", "task-1"]);
+  expect(h.executor.artifact).toHaveBeenNthCalledWith(1, "existing", "out.md");
+  expect(h.executor.create).toHaveBeenCalledTimes(1);
+});
+
+it("starts acceptance with a plain Chinese filename and canonicalizes repeat requests", async () => {
+  const h = harness({ contents: [good] });
+  const job = h.agent.start({ ...h.input, fileName: " 项目介绍 " });
+  await h.agent.idle(job.id);
+  expect(h.agent.get(job.id).status).toBe("passed");
+  expect(job.input.fileName).toBe("项目介绍.md");
+  expect(h.agent.start({ ...h.input, fileName: "项目介绍.md" }).id).toBe(job.id);
+  expect(h.executor.create).toHaveBeenCalledTimes(1);
+});
