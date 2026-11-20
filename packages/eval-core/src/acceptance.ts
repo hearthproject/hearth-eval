@@ -1,4 +1,5 @@
 export interface AcceptanceInput {
+  source?: { taskId: string; artifactId: string; name: string } | undefined;
   requestId: string;
   fileName: string;
   title: string;
@@ -39,9 +40,13 @@ export interface AcceptanceAttempt {
   feedback: string | null;
   delivery?: { artifactId: string; sha256: string; bytes: number; deliveredAt: string | null };
   evidence: AcceptanceEvidence | null;
+  fileChecks?: AcceptanceCheck[];
   semantic?: AcceptanceSemanticReview;
 }
+export interface CsvReportRow {id:string; title:string; state:"PENDING"|"PASS"|"FAIL"|"INCONCLUSIVE"; detail:string}
 export interface AcceptanceJob {
+  referenceVerdict?: "passed" | "failed";
+  csvReport?: {taskId:string; rows:CsvReportRow[]; directory?:string; sha256?:string; retained?:number; removed?:number};
   id: string;
   input: AcceptanceInput;
   targetPath: string;
@@ -53,6 +58,7 @@ export interface AcceptanceJob {
   updatedAt: string;
   attempts: AcceptanceAttempt[];
   error: string | null;
+  sourceGoal?: string;
   contextSnapshot?: ContextSnapshot;
 }
 export interface AcceptanceDefaults { desktopRoot: string; fileName: string; title: string; requiredText: string[]; hearthUrl: string }

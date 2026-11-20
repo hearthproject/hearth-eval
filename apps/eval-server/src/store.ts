@@ -154,6 +154,16 @@ CREATE INDEX IF NOT EXISTS eval_events_run_idx ON eval_events(run_id, seq);
 `;
 
 export class EvalStore {
+  saveAcceptanceBatch(jobs: AcceptanceJob[]) {
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      for (const job of jobs) this.saveAcceptance(job);
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+  }
   saveAcceptance(job: AcceptanceJob): void {
     this.db.prepare("INSERT INTO acceptance_jobs (id, created_at, payload_json) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload_json=excluded.payload_json")
       .run(job.id, job.createdAt, JSON.stringify(job));

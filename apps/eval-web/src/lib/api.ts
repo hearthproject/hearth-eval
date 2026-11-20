@@ -119,6 +119,14 @@ export interface BenchmarkCompareResponse {
 }
 
 export const api = {
+  csvLabels: (id:string, artifact:{id:string;name:string}) => request<{title:string;headers:string[];idLabel:string;amountLabel:string;idColumn:string;amountColumn:string;warning?:string}>(`/api/acceptance/hearth/tasks/${encodeURIComponent(id)}/csv-labels`,{method:"POST",body:JSON.stringify({name:artifact.name,artifactId:artifact.id})}),
+  cleanOrderCsv: (id:string, input:{name:string;artifactId:string;idColumn:string;amountColumn:string;repair:boolean;review?:{memoryKey:string;revision:number;requirements:string}}) => request<{repaired:boolean;review:string|null;retained:number;removed:Array<{record:number;id:string;reason:string}>;csv:string;sha256:string;directory:string}>(`/api/acceptance/hearth/tasks/${encodeURIComponent(id)}/orders`, { method:"POST",body:JSON.stringify(input) }),
+  submitAccuracy: (entries:{id:string;correct:boolean}[]) => request<{correct:number;total:number}>("/api/acceptance/metrics/accuracy",{method:"POST",body:JSON.stringify(entries)}),
+  verdictAccuracy: () => request<{correct:number;reviewed:number;total:number}>("/api/acceptance/metrics/accuracy"),
+  setReference: (id:string,verdict:"passed"|"failed") => request<import("@hearth/eval-core").AcceptanceJob>(`/api/acceptance/${encodeURIComponent(id)}/reference`,{method:"PUT",body:JSON.stringify({verdict})}),
+  hearthTasks: () => request<Array<{id:string; title:string; status:string}>>("/api/acceptance/hearth/tasks"),
+  hearthOutputs: (id:string) => request<{goal:string; artifacts:Array<{id:string;name:string}>}>(`/api/acceptance/hearth/tasks/${encodeURIComponent(id)}`),
+  checkHearthOutput: (id:string,input:{name:string;artifactId:string;required:string;memoryKey:string}) => request<{passed:boolean;missing:string[];sha256:string;semantic:import("@hearth/eval-core").AcceptanceSemanticReview|null;snapshot:import("@hearth/eval-core").ContextSnapshot|null}>(`/api/acceptance/hearth/tasks/${encodeURIComponent(id)}/check`, {method:"POST",body:JSON.stringify(input)}),
   acceptanceDefaults: () => request<import("@hearth/eval-core").AcceptanceDefaults>("/api/acceptance/defaults"),
   acceptanceMemory: (key: string) => request<import("@hearth/eval-core").AcceptanceMemoryView>(`/api/acceptance/memory/${encodeURIComponent(key)}`),
   saveAcceptanceMemory: (key: string, content: string, expectedRevision: number) => request<import("@hearth/eval-core").SharedMemory>(`/api/acceptance/memory/${encodeURIComponent(key)}`, { method: "PUT", body: JSON.stringify({ content, expectedRevision }) }),

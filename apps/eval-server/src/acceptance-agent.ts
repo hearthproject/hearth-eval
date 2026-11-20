@@ -15,11 +15,15 @@ import { reviewAcceptance } from "./acceptance-review.ts";
 export const memoryKeySchema = z.string().trim().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/);
 
 export const acceptanceInputSchema = z.object({
+  source: z.object({ taskId: z.string().min(1).max(200), artifactId: z.string().min(1).max(200), name: z.string().max(300).regex(/\.md$/i) }).strict().optional(),
   requestId: z.string().uuid(),
-  fileName: z.string().trim().min(4).max(120).regex(/^[^<>:"/\\|?*\x00-\x1f]+\.md$/i)
-    .refine(value => !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(value), "不支持的文件名"),
+  fileName: z.string().trim().min(1, "请输入桌面文件名，例如 项目介绍")
+    .transform(name => name.includes(".") ? name : name + ".md")
+    .pipe(z.string().max(120, "文件名含 .md 最多 120 个字符")
+      .regex(/^[^<>:"/\\|?*\x00-\x1f]+\.md$/i, "请填写文件名，例如 项目介绍 或 项目介绍.md，不要填写路径或其他扩展名")
+      .refine(value => !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(value), "此名称是系统保留名，请换一个文件名")),
   title: z.string().trim().min(1).max(120).refine(value => !/[\r\n]/.test(value), "标题必须为单行"),
-  requiredText: z.array(z.string().trim().min(1).max(200)).min(1).max(8),
+  requiredText: z.array(z.string().trim().min(1).max(200)).max(8),
   maxRepairs: z.number().int().min(0).max(1).default(1),
   memoryKey: memoryKeySchema.optional(),
   memoryRevision: z.number().int().positive().optional(),
@@ -82,7 +86,7 @@ export function verifyMarkdown(job: AcceptanceJob, onText?: (text: string) => vo
   return result;
 }
 
-type Storage = Pick<EvalStore, "getAcceptance" | "saveAcceptance" | "listAcceptances" | "getSharedMemory" | "saveSharedMemory">;
+type Storage = Pick<EvalStore, "saveAcceptanceBatch" | "getAcceptance" | "saveAcceptance" | "listAcceptances" | "getSharedMemory" | "saveSharedMemory">;
 const running = new Set(["running", "waiting_approval", "waiting_input"]);
 const terminalTask = new Set(["completed", "failed", "cancelled"]);
 
@@ -95,6 +99,30 @@ export class AcceptanceAgent {
   }
   private save(job: AcceptanceJob) { job.updatedAt = new Date().toISOString(); this.options.store.saveAcceptance(job); }
   get(id: string): AcceptanceJob { const job = this.options.store.getAcceptance(id); if (!job) throw new Error("验收记录不存在"); return job; }
+  submitAccuracy(entries: {id:string; correct:boolean}[]) {
+    const jobs = entries.map(entry => {
+      const job = this.get(entry.id);
+      if (job.status !== "passed" && job.status !== "failed") throw new Error("任务尚无最终判定");
+      job.referenceVerdict = entry.correct ? job.status : job.status === "passed" ? "failed" : "passed";
+      job.updatedAt = new Date().toISOString();
+      return job;
+    });
+    this.options.store.saveAcceptanceBatch(jobs);
+    return {correct:entries.filter(e=>e.correct).length,total:entries.length};
+  }
+  setReference(id: string, verdict: "passed" | "failed") {
+    const job = this.get(id);
+    if (!["passed","failed"].includes(job.status)) throw new Error("请等待最终验收判定");
+    job.referenceVerdict = verdict;
+    this.save(job);
+    return job;
+  }
+  accuracy() {
+    const cases = this.list().filter(job => job.status === "passed" || job.status === "failed");
+    const reviewed = cases.filter(job => job.referenceVerdict);
+    return { total: cases.length, reviewed: reviewed.length, correct: reviewed.filter(job => job.referenceVerdict === job.status).length };
+  }
+  saveCsvRecord(job: AcceptanceJob) { this.save(job); }
   list() { return this.options.store.listAcceptances(); }
   root() { return realpathSync(this.options.desktopRoot()); }
   memory(key: string): import("@hearth/eval-core").AcceptanceMemoryView {
@@ -115,7 +143,7 @@ export class AcceptanceAgent {
       throw new Error("请先在系统页配置独立模型评委，再开始共享记忆语义验收");
     }
   }
-  start(raw: AcceptanceInput): AcceptanceJob {
+  start(raw: AcceptanceInput, sourceGoal?: string): AcceptanceJob {
     const input = acceptanceInputSchema.parse(raw);
     const existing = this.options.store.getAcceptance(input.requestId);
     if (existing) {
@@ -136,6 +164,7 @@ export class AcceptanceAgent {
     const now = new Date().toISOString();
     const job: AcceptanceJob = { id: input.requestId, input, targetPath, desktopRoot, executor: "hearth",
       executorUrl: this.options.executor.baseUrl, status: "running", createdAt: now, updatedAt: now, attempts: [], error: null };
+    if (sourceGoal) job.sourceGoal = sourceGoal;
     if (memory) job.contextSnapshot = { ...memory, capturedAt: now };
     this.save(job); this.launch(job); return this.get(job.id);
   }
@@ -153,7 +182,7 @@ export class AcceptanceAgent {
     job.status = "stopped"; job.error = "用户停止；已生成的文件保留。";
     active?.abort.abort(); this.save(job);
     const taskId = job.attempts.at(-1)?.taskId;
-    if (taskId) {
+    if (taskId && taskId !== job.input.source?.taskId) {
       try { await this.options.executor.cancel(taskId); }
       catch (error) { job.error += ` 取消 Hearth 任务未确认：${error instanceof Error ? error.message : String(error)}`; this.save(job); }
     }
@@ -183,9 +212,10 @@ export class AcceptanceAgent {
           attempt = { number: job.attempts.length + 1, taskId: null, taskStatus: "submitting", startedAt: new Date().toISOString(), finishedAt: null, feedback, evidence: null };
           job.attempts.push(attempt); this.save(job);
           // The ordinary Hearth creation API is not idempotent. Persist intent first and never retry an uncertain POST.
-          const task = await this.options.executor.create(job, feedback);
+          const imported = attempt.number === 1 ? job.input.source : undefined;
+          const task = imported ? { id: imported.taskId } : await this.options.executor.create(job, feedback);
           attempt.taskId = task.id; attempt.taskStatus = "queued"; this.save(job);
-          if (signal.aborted) { if (job.status === "stopped") await this.options.executor.cancel(task.id); return; }
+          if (signal.aborted) { if (!imported && job.status === "stopped") await this.options.executor.cancel(task.id); return; }
         }
         if (!attempt.taskId) throw new Error("提交结果不确定，缺少任务 ID；请在 Hearth 检查，不能自动重发");
         const deadline = Date.parse(attempt.startedAt) + (this.options.timeoutMs ?? 10 * 60_000);
@@ -198,7 +228,9 @@ export class AcceptanceAgent {
           if (terminalTask.has(view.status)) {
             attempt.finishedAt = new Date().toISOString();
             if (view.status !== "cancelled" && this.options.executor.artifact) {
-              const artifact = await this.options.executor.artifact(attempt.taskId, job.input.fileName);
+              const source = attempt.number === 1 ? job.input.source : undefined;
+              const artifact = await this.options.executor.artifact(attempt.taskId, source?.name ?? job.input.fileName);
+              if (source && artifact?.artifactId !== source.artifactId) throw new Error("选定产物已变化，请重新选择");
               if (signal.aborted) return;
               if (artifact) {
                 const resumeHash = attempt.delivery?.sha256 ?? null;
@@ -212,6 +244,8 @@ export class AcceptanceAgent {
             let content = "";
             const evidence = verifyMarkdown(job, text => { content = text; });
             if (view.status !== "cancelled" && evidence.passed && job.input.semanticRequirements) {
+              attempt.fileChecks = evidence.checks.slice();
+              this.save(job);
               const semantic = await reviewAcceptance(this.options.judge!, job, content, evidence.sha256!);
               if (signal.aborted) return;
               const current = verifyMarkdown(job);
@@ -227,7 +261,7 @@ export class AcceptanceAgent {
           }
           if (Date.now() >= deadline) {
             job.status = "error"; job.error = "单轮超过 10 分钟，停止跟踪并尝试取消；请到 Hearth 检查任务状态。"; this.save(job);
-            try { await this.options.executor.cancel(attempt.taskId); } catch (error) { job.error += ` 取消未确认：${error instanceof Error ? error.message : String(error)}`; this.save(job); }
+            try { if (attempt.taskId !== job.input.source?.taskId) await this.options.executor.cancel(attempt.taskId); } catch (error) { job.error += ` 取消未确认：${error instanceof Error ? error.message : String(error)}`; this.save(job); }
             return;
           }
           await delay(this.options.pollMs ?? 1500, undefined, { signal });

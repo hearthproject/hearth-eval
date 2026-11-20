@@ -42,6 +42,16 @@ export function DashboardPage() {
         actions={<Link className="button button-primary" to="/experiments/new"><Play size={15} /> 新建实验</Link>}
       />
 
+      <section className="overview-card panel" aria-labelledby="dashboard-acceptance">
+        <div className="overview-main">
+          <h2 id="dashboard-acceptance" className="overview-name">交付验收</h2>
+          <p>选择 Hearth 任务，验收 Markdown 或 CSV 产物，查看验收报告和判断准确率。</p>
+        </div>
+        <div className="overview-actions">
+          <Link className="button button-primary" to="/acceptance">进入交付验收 <ArrowRight size={14} /></Link>
+        </div>
+      </section>
+
       {data.recentExperiments.length === 0 && (
         <section className="first-run-guide panel">
           <SectionHeader
