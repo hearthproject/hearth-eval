@@ -157,7 +157,7 @@ function AcceptanceForm({ defaults, onCreated }: { defaults: AcceptanceDefaults;
   const memoryPreview = useMemory && (savedMemory ? (
     <MemoryPreview memoryKey={memoryKey} memory={savedMemory}
       outcomes={memory.data?.outcomes ?? []}
-      linked={linkedKey !== memoryKey ? linkedMemory.data?.memory : null}
+      linked={linkedKey !== memoryKey ? linkedMemory.data?.memory ?? null : null}
       onSelect={key => { setMemoryKey(key); changed(); }} />
   ) : <small>本次记忆 · {memoryKey || "未选择"} · {memory.isLoading ? "读取中…" : memory.isError ? "读取失败" : "暂无已保存版本"}</small>);
   return <form className="settings-stack" onSubmit={event => { event.preventDefault(); if (!csvMode) start.mutate(); }}>
