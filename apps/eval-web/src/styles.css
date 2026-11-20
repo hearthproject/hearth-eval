@@ -1286,3 +1286,17 @@ a.overview-name:hover { color: var(--accent-deep); }
 .settings-path { overflow-wrap: anywhere; white-space: normal; }
 .directory-picker { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-muted); }
 .directory-list { display: flex; flex-wrap: wrap; gap: 8px; max-height: 240px; overflow: auto; }
+
+.acceptance-start-actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.acceptance-memory-preview { position: relative; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.acceptance-memory-preview .memory-content-card {
+  position: absolute; z-index: 10; bottom: 100%; left: 0;
+  width: min(22rem, 50vw); max-height: min(16rem, 40vh); overflow: auto;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface, white); backdrop-filter: blur(18px);
+  box-shadow: 0 6px 24px #17203326; white-space: pre-wrap; line-height: 1.6;
+}
+@media (max-width: 650px) {
+  .acceptance-memory-preview { flex-basis: 100%; }
+  .acceptance-memory-preview .memory-content-card { width: min(22rem, 100%); }
+}

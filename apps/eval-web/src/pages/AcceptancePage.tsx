@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AcceptanceDefaults, AcceptanceJob, SharedMemory } from "@hearth/eval-core";
 import { AcceptanceReport } from "./AcceptanceReport.tsx";
@@ -147,6 +147,19 @@ function AcceptanceForm({ defaults, onCreated }: { defaults: AcceptanceDefaults;
     ...(selected && taskId ? { source: { taskId, artifactId: selected.id, name: selected.name } } : {}),
     ...(useMemory ? { memoryKey, memoryRevision: memory.data?.memory?.revision ?? 0, semanticRequirements: requirements } : {}) }), onSuccess: job => { onCreated(job.id); setRequestId(crypto.randomUUID()); } });
   const changed = () => { setRequestId(crypto.randomUUID()); start.reset(); };
+  const savedMemory = memory.data?.memory;
+  const linkedKey = savedMemory?.content.trim() ?? "";
+  const linkedMemory = useQuery({
+    queryKey: ["acceptance-memory", linkedKey],
+    queryFn: () => api.acceptanceMemory(linkedKey),
+    enabled: useMemory && linkedKey !== memoryKey && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(linkedKey)
+  });
+  const memoryPreview = useMemory && (savedMemory ? (
+    <MemoryPreview memoryKey={memoryKey} memory={savedMemory}
+      outcomes={memory.data?.outcomes ?? []}
+      linked={linkedKey !== memoryKey ? linkedMemory.data?.memory : null}
+      onSelect={key => { setMemoryKey(key); changed(); }} />
+  ) : <small>本次记忆 · {memoryKey || "未选择"} · {memory.isLoading ? "读取中…" : memory.isError ? "读取失败" : "暂无已保存版本"}</small>);
   return <form className="settings-stack" onSubmit={event => { event.preventDefault(); if (!csvMode) start.mutate(); }}>
     <p>执行器：Hearth OS native · {defaults.hearthUrl}。请先启动 Hearth 并配置可用的聊天模型。</p>
     <label className="field-label">Hearth OS 任务<select value={taskId} disabled={start.isPending} onChange={e => {setTaskId(e.target.value); setArtifactId(""); setRequired(e.target.value ? "" : defaults.requiredText.join("\n")); changed();}}>
@@ -176,12 +189,42 @@ function AcceptanceForm({ defaults, onCreated }: { defaults: AcceptanceDefaults;
       {Boolean(memory.data?.outcomes.length) && <details><summary>共享验收记录（不自动改写事实记忆）</summary><ul>{memory.data?.outcomes.map(outcome => <li key={outcome.jobId}><button type="button" className="button" onClick={() => onCreated(outcome.jobId)}>{outcome.fileName} · {statusLabels[outcome.status]} · 记忆 v{outcome.revision}</button></li>)}</ul></details>}
     </div>}
     <label><input type="checkbox" checked={repair} disabled={start.isPending} onChange={event => { setRepair(event.target.checked); changed(); }} /> 首次验收不通过时，{csvMode ? "允许订单清洗工具按原要求修复并复验一次" : "允许 Hearth 按原要求自动修复一次"}</label>
-    {csvMode && selected ? <OrderCsv key={JSON.stringify([selected.id,repair,useMemory,memoryKey,memory.data?.memory?.revision,csvRequirements])} taskId={taskId} artifact={selected} repair={repair} review={useMemory ? {memoryKey,revision:memory.data?.memory?.revision ?? 0,requirements:csvRequirements} : undefined} /> : <>
+    {csvMode && selected ? <OrderCsv memoryPreview={memoryPreview} key={JSON.stringify([selected.id,repair,useMemory,memoryKey,memory.data?.memory?.revision,csvRequirements])} taskId={taskId} artifact={selected} repair={repair} review={useMemory ? {memoryKey,revision:memory.data?.memory?.revision ?? 0,requirements:csvRequirements} : undefined} /> : <>
     <p className="muted-copy">{taskId ? "首轮直接使用选定任务已发布的 Markdown，" : "开始后调用 Hearth 模型生成文件，"}交付步骤将发布产物原样保存到此桌面路径，再由检查器读取验收。已有同名文件不会覆盖；修复只替换本次交付且未被外部修改的文件。每轮最多等待 10 分钟，审批仍在 Hearth 处理。</p>
     {start.error && <p role="alert">{start.error.message}</p>}
-    <button className="button button-primary" type="submit" disabled={start.isPending || Boolean(taskId && !selected) || (useMemory && !memory.data?.memory)}>{start.isPending ? "正在提交…" : "开始执行与验收"}</button>
+    <div className="acceptance-start-actions">
+      <button className="button button-primary" type="submit" disabled={start.isPending || Boolean(taskId && !selected) || (useMemory && !memory.data?.memory)}>{start.isPending ? "正在提交…" : "开始执行与验收"}</button>
+      {memoryPreview}
+    </div>
     </>}
   </form>;
+}
+
+function MemoryPreview({ memoryKey, memory, outcomes, linked, onSelect }: {
+  memoryKey: string; memory: SharedMemory;
+  outcomes: import("@hearth/eval-core").AcceptanceMemoryView["outcomes"];
+  linked?: SharedMemory | null; onSelect: (key: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return <div className="acceptance-memory-preview"
+    onPointerEnter={event => { if (event.pointerType === "mouse") setOpen(true); }}
+    onPointerLeave={event => { if (event.pointerType === "mouse" && !event.currentTarget.contains(document.activeElement)) setOpen(false); }}
+    onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
+    onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.querySelector("button")?.focus(); setOpen(false); } }}>
+    <button type="button" className="button" aria-expanded={open}
+      onFocus={event => { if (event.currentTarget.matches(":focus-visible")) setOpen(true); }}
+      onClick={event => setOpen(event.detail === 0 ? true : event.nativeEvent instanceof PointerEvent && event.nativeEvent.pointerType === "mouse" ? true : !open)}>
+      本次记忆 · {memoryKey} · v{memory.revision}
+    </button>
+    {open && <div className="memory-content-card" tabIndex={0} aria-label="共享记忆预览">
+      <strong>本次使用的正文</strong><p>{memory.content}</p>
+      {linked && <section><strong>关联记忆 · {linked.key} · v{linked.revision}</strong>
+        <p>{linked.content}</p><button className="button" type="button" onClick={() => onSelect(linked.key)}>本次改用这份正文</button></section>}
+      <strong>此记忆下的验收活动</strong>
+      {outcomes.length ? <ul>{outcomes.map(item => <li key={item.jobId}>{new Date(item.updatedAt).toLocaleDateString()} 验收了 {item.fileName}，{statusLabels[item.status]}。</li>)}</ul>
+        : <p>暂无已完成的验收记录。</p>}
+    </div>}
+  </div>;
 }
 
 function MemoryEditor({ memoryKey, memory, onSaved }: { memoryKey: string; memory: SharedMemory | null; onSaved: () => void }) {
@@ -194,7 +237,7 @@ function MemoryEditor({ memoryKey, memory, onSaved }: { memoryKey: string; memor
   </div>;
 }
 
-function OrderCsv({taskId,artifact,repair,review}:{taskId:string;artifact:{id:string;name:string};repair:boolean;review:{memoryKey:string;revision:number;requirements:string}|undefined}) {
+function OrderCsv({taskId,artifact,repair,review,memoryPreview}:{memoryPreview:ReactNode;taskId:string;artifact:{id:string;name:string};repair:boolean;review:{memoryKey:string;revision:number;requirements:string}|undefined}) {
   const labels = useQuery({queryKey:["csv-labels",taskId,artifact.id],queryFn:()=>api.csvLabels(taskId,artifact),staleTime:Infinity,retry:false});
   const [idOverride,setId] = useState<string|null>(null), [amountOverride,setAmount] = useState<string|null>(null);
   const idColumn=idOverride ?? labels.data?.idColumn ?? "", amountColumn=amountOverride ?? labels.data?.amountColumn ?? "";
@@ -235,7 +278,10 @@ function OrderCsv({taskId,artifact,repair,review}:{taskId:string;artifact:{id:st
     {labels.error && <p role="alert">{labels.error.message} <button type="button" onClick={()=>void labels.refetch()}>重试</button></p>}
     {labels.data?.warning && <small>{labels.data.warning}</small>}
     {labels.data && [[labels.data.idLabel,idColumn,setId],[labels.data.amountLabel,amountColumn,setAmount]].map(([label,column,setter],index)=><label key={index}>{String(label)}<select value={String(column)} disabled={run.isPending} onChange={e=>{(setter as typeof setId)(e.target.value);run.reset();setSteps([]);}}><option value="">选择列</option>{labels.data!.headers.map((h,i)=><option key={i} value={h}>{h}</option>)}</select></label>)}
-    <button className="button button-primary" type="button" disabled={run.isPending || Boolean(review && (!review.revision || !review.requirements.trim())) || !idColumn.trim() || !amountColumn.trim() || idColumn===amountColumn} onClick={()=>run.mutate()}>{run.isPending?"验收中…":"开始验收"}</button>
+    <div className="acceptance-start-actions">
+      <button className="button button-primary" type="button" disabled={run.isPending || Boolean(review && (!review.revision || !review.requirements.trim())) || !idColumn.trim() || !amountColumn.trim() || idColumn===amountColumn} onClick={()=>run.mutate()}>{run.isPending?"验收中…":"开始验收"}</button>
+      {memoryPreview}
+    </div>
     {steps.length>0 && <CsvReport name={artifact.name} rows={rows} verdict={verdict} footer={run.error?.message ?? (result ? "总体验收通过 · "+result.directory : "正在验收 "+artifact.name)} />}
     {run.error && <p role="alert">{run.error.message}</p>}
     {result && <><strong>{result.repaired ? "修复后复验通过" : "首轮验收通过"} · 保留 {result.retained} 条，移除 {result.removed.length} 条</strong>
