@@ -129,6 +129,9 @@ export class OpenAICompatibleProvider {
         stream: false
       };
       const payload = await this.post("/chat/completions", body);
+      if (typeof payload.choices?.[0]?.message?.content !== "string") {
+        throw new ProviderError("PROVIDER_BAD_RESPONSE", "模型未返回有效消息，无法确认连通性");
+      }
       return {
         ok: true,
         model: payload.model ?? this.model,

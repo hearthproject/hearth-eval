@@ -135,7 +135,7 @@ describe("eval control plane", () => {
       pendingReviews: 1,
       runningExperiments: 0,
       catalog: { cases: expect.arrayContaining([expect.objectContaining({ caseKey: first.manifest.id })]) },
-      system: { hearthReachable: true, judgeConfigured: true, executors: [expect.objectContaining({ id: "codex", canRun: true })] }
+      system: { hearthReachable: true, judgeConfigured: false, executors: [expect.objectContaining({ id: "codex", canRun: true })] }
     });
 
     const filtered = await harness.app.inject({ method: "GET", url: `/api/cases?family=${first.manifest.family}` });

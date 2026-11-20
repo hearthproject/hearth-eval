@@ -30,6 +30,7 @@ const submitReviewSchema = z.object({
 }).strict();
 
 export interface NativeRoutesOptions {
+  judgeModel?: () => Promise<string | null>;
   store: EvalStore;
   runner: EvalRunner;
   client: NativeAgentClient;
@@ -105,7 +106,8 @@ export function registerNativeRoutes(app: FastifyInstance, options: NativeRoutes
         providers,
         runner,
         loaded,
-        providerId: parsed.data.providerId
+        providerId: parsed.data.providerId,
+        judgeModel: await options.judgeModel?.() ?? null
       });
     } catch (error) {
       return sendNativeError(reply, error);

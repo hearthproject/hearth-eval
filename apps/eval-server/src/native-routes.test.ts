@@ -8,6 +8,7 @@ import { EvalRunner } from "./runner.ts";
 import { EvalStore } from "./store.ts";
 import { NativeAgentClient } from "./native-client.ts";
 import { ProviderStore } from "./provider-store.ts";
+import { LocalJudge } from "./local-judge.ts";
 import { CompositeAgentAdapter } from "./composite-adapter.ts";
 import { loadCaseCatalog } from "@hearth/eval-core/node";
 
@@ -56,7 +57,7 @@ describe("native console", () => {
       getTask: async (id: string) => ({ task: { id, status: "running" } }),
       getArtifacts: async () => ({}),
       cancelTask: async () => ({}),
-      health: async () => ({ status: "offline" })
+      health: async () => { throw new Error("Hearth is not installed"); }
     };
     const nativeClient = new NativeAgentClient({ repoRoot: root, artifactRoot, providers, fetchImpl: fakeFetch([
       {
@@ -78,7 +79,16 @@ describe("native console", () => {
       { choices: [{ message: { content: "完成" } }], usage: { prompt_tokens: 12, completion_tokens: 2 } }
     ]) });
     const client = new CompositeAgentAdapter({ primary: heardClient, native: nativeClient });
+    const localJudge = new LocalJudge(new ProviderStore({ file: join(root, "judge.json"), fetchImpl: fakeFetch([{
+      choices: [{ message: { content: JSON.stringify({
+        criteria: target!.manifest.criteria.filter((criterion) => criterion.source === "judge").map((criterion) => ({
+          id: criterion.id, passed: true, confidence: 0.9, reason: "Mock evidence", evidence: ["minutes.md"]
+        })), overallConfidence: 0.9
+      }) } }]
+    }]) }));
+    await localJudge.saveModelSettings({ baseUrl: "https://judge.invalid/v1", model: "independent-judge", apiKey: "test-key" });
     const runner = new EvalRunner({
+      judge: localJudge,
       store,
       client,
       catalog,
@@ -89,6 +99,7 @@ describe("native console", () => {
     });
 
     const app = await buildEvalApp({
+      localJudge,
       store,
       runner,
       client,
@@ -113,6 +124,10 @@ describe("native console", () => {
     expect(provider.apiKeyHint).toBe("sk-…0001");
     expect(created.body).not.toContain("sk-secret-key-0001");
     expect(readFileSync(join(root, "providers.json"), "utf8")).toContain("sk-secret-key-0001");
+    const system = (await app.inject("/api/system")).json();
+    expect(system.hearthReachable).toBe(false);
+    expect(system.judgeModel).toBe("independent-judge");
+    expect(system.executors).toContainEqual(expect.objectContaining({ id: provider.id, canRun: true }));
 
     const cases = await app.inject({ method: "GET", url: "/api/native/cases" });
     expect(cases.json<{ cases: Array<{ caseKey: string }> }>().cases.map((item) => item.caseKey)).toEqual(["DOC-01"]);
@@ -133,6 +148,7 @@ describe("native console", () => {
     expect(body.trace?.events.some((event) => event.type === "artifact.written")).toBe(true);
     expect(body.usage.inputTokens).toBe(22);
     expect(body.run.error ?? "").toContain("BLOCKER_FAILED");
+    expect(body.graders).toContainEqual(expect.objectContaining({ source: "judge", model: "independent-judge" }));
 
     const detail = await app.inject({ method: "GET", url: `/api/native/runs/${body.run.id}` });
     expect(detail.statusCode).toBe(200);

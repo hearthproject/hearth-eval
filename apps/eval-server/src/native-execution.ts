@@ -16,6 +16,7 @@ import type { ProviderStore } from "./provider-store.ts";
 import { markNativeEnvironment } from "./native-engine.ts";
 
 export interface NativeRunInput {
+  judgeModel?: string | null;
   store: EvalStore;
   client: NativeAgentClient;
   providers: ProviderStore;
@@ -44,14 +45,14 @@ export async function runNativeCase(input: NativeRunInput): Promise<NativeRunOut
   const { store, providers, runner, loaded, providerId } = input;
   if (!providers.get(providerId)) throw new Error(`模型配置不存在：${providerId}`);
 
-  const environment = await runner.collectEnvironment(null);
+  const environment = await runner.collectEnvironment(input.judgeModel ?? null);
   const experiment = runner.createExperiment({
     name: `${loaded.manifest.id} · 原生 ${loaded.manifest.title}`,
     caseIds: [loaded.manifest.id],
     executorIds: [providerId],
     repetitions: 1,
     runMode: "offline",
-    autoJudge: false,
+    autoJudge: true,
     autoRetry: false,
     maxConcurrency: 1
   }, markNativeEnvironment(environment));

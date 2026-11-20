@@ -16,7 +16,7 @@ import {
   WEB_DIST
 } from "./config.ts";
 import { HearthClient } from "./hearth-client.ts";
-import { HearthJudgeAdapter } from "./judge-adapter.ts";
+import { LocalJudge } from "./local-judge.ts";
 import { EvalRunner } from "./runner.ts";
 import { EvalStore } from "./store.ts";
 import { NativeAgentClient } from "./native-client.ts";
@@ -41,6 +41,7 @@ async function main(): Promise<void> {
 
   // Native engine: user-supplied LLM API keys + the in-repo agent loop.
   const providers = new ProviderStore({ file: join(DATA_DIR, "providers.json") });
+  const localJudge = new LocalJudge(new ProviderStore({ file: join(REPO_ROOT, ".hearth", "judge-providers.json") }));
   const nativeClient = new NativeAgentClient({ repoRoot: REPO_ROOT, artifactRoot: ARTIFACT_ROOT, providers });
 
   const hearthClient = new HearthClient({
@@ -54,7 +55,7 @@ async function main(): Promise<void> {
   const runner = new EvalRunner({
     store,
     client,
-    judge: new HearthJudgeAdapter(hearthClient),
+    judge: localJudge,
     catalog,
     repoRoot: REPO_ROOT,
     evalVersion: EVAL_VERSION,
@@ -63,6 +64,7 @@ async function main(): Promise<void> {
   });
 
   const app = await buildEvalApp({
+    localJudge,
     store,
     runner,
     client,

@@ -1274,3 +1274,9 @@ a.overview-name:hover { color: var(--accent-deep); }
 .trace-error-list { display: flex; flex-direction: column; gap: 5px; margin-top: 9px; }
 .trace-error-list code { padding: 6px 8px; color: var(--danger); background: color-mix(in srgb, var(--danger) 6%, var(--surface)); border-radius: 5px; font-size: 9px; }
 @media (max-width: 900px) { .trace-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.settings-stack { display: grid; gap: 14px; }
+.settings-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.settings-actions input { flex: 1; min-width: 180px; }
+.settings-path { overflow-wrap: anywhere; white-space: normal; }
+.directory-picker { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-muted); }
+.directory-list { display: flex; flex-wrap: wrap; gap: 8px; max-height: 240px; overflow: auto; }

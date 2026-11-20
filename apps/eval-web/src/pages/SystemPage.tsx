@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Cpu,
   Database,
-  FolderOpen,
   Gauge,
   RefreshCw,
   ShieldCheck,
@@ -13,6 +12,7 @@ import {
 import { api } from "../lib/api.ts";
 import { executorLabel, formatDateTime } from "../lib/labels.ts";
 import { ErrorState, KeyValue, LoadingState, MetricCard, PageHeader, SectionHeader } from "../components/ui.tsx";
+import { JudgeSettings, StorageSettings } from "../components/SystemSettings.tsx";
 
 export function SystemPage() {
   const query = useQuery({ queryKey: ["system"], queryFn: api.system, refetchInterval: 10_000 });
@@ -25,26 +25,28 @@ export function SystemPage() {
     <div className="page-stack system-page">
       <PageHeader
         title="系统状态"
-        description="评测服务与 Hearth、模型评委、执行器和本地存储之间的连接状态。"
+        description="独立评测服务、LLM 模型评委、执行器和本地存储。Hearth 为可选接入。"
         actions={<button className="button" onClick={() => void query.refetch()}><RefreshCw size={15} /> 重新检查</button>}
       />
 
-      <section className={`system-banner ${system.hearthReachable ? "ok" : "bad"}`}>
-        <span className="system-banner-icon">{system.hearthReachable ? <CheckCircle2 size={23} /> : <XCircle size={23} />}</span>
-        <div><strong>{system.hearthReachable ? "Hearth 已连接" : "Hearth 不可达"}</strong><span>{system.hearthUrl} · 状态 {system.hearthStatus}</span></div>
+      <section className="system-banner ok">
+        <span className="system-banner-icon"><CheckCircle2 size={23} /></span>
+        <div><strong>评测服务在线</strong><span>可独立运行原生 LLM 评测与外部 Agent 评分</span></div>
         <small>检查于 {formatDateTime(system.generatedAt)}</small>
       </section>
 
       <section className="metric-grid">
         <MetricCard label="任务目录" value={system.catalogCases} detail={system.catalogIssues > 0 ? `${system.catalogIssues} 个目录问题` : "目录校验通过"} icon={<Database size={16} />} tone={system.catalogIssues > 0 ? "warning" : "neutral"} />
-        <MetricCard label="可用执行器" value={`${readyExecutors} / ${system.executors.length}`} detail="来自 Hearth 实时探测" icon={<Cpu size={16} />} tone={readyExecutors > 0 ? "success" : "danger"} />
+        <MetricCard label="可用执行器" value={`${readyExecutors} / ${system.executors.length}`} detail="原生 LLM 与可选 Hearth 执行器" icon={<Cpu size={16} />} tone={readyExecutors > 0 ? "success" : "warning"} />
         <MetricCard label="模型评委" value={system.judgeConfigured ? "已配置" : "未配置"} detail={system.judgeModel ?? "自动评分将回退到人工复核"} icon={<ShieldCheck size={16} />} tone={system.judgeConfigured ? "success" : "warning"} />
         <MetricCard label="运行 / 复核" value={`${system.runningExperiments} / ${system.pendingReviews}`} detail="进行中实验 / 待人工复核" icon={<Gauge size={16} />} tone={system.pendingReviews > 0 ? "warning" : "neutral"} />
       </section>
 
+      <JudgeSettings />
+
       <div className="detail-grid">
         <section className="panel">
-          <SectionHeader title="执行器" detail="Hearth 当前运行时" />
+          <SectionHeader title="执行器" detail="原生 LLM 与可选接入" />
           <div className="system-executor-list">
             {system.executors.map((executor) => (
               <article className={`system-executor ${executor.canRun ? "ready" : "unavailable"}`} key={executor.id}>
@@ -54,31 +56,25 @@ export function SystemPage() {
                 {executor.version && <code>{executor.version}</code>}
               </article>
             ))}
-            {system.executors.length === 0 && <p className="muted-copy">Hearth 未返回执行器列表，请先在主控制台检查执行器设置。</p>}
+            {system.executors.length === 0 && <p className="muted-copy">还没有可用执行器，可前往 <a href="/native.html">原生 LLM 控制台</a> 添加模型配置。</p>}
           </div>
         </section>
 
         <section className="panel">
-          <SectionHeader title="连接与模型" detail="评测依赖" />
+          <SectionHeader title="Hearth 接入（可选）" detail="仅用于评测 Hearth Agent 与白盒场景" />
           <div className="kv-stack">
             <KeyValue label="Hearth URL" mono>{system.hearthUrl}</KeyValue>
             <KeyValue label="Hearth 状态">{system.hearthReachable ? <span className="text-success">在线 · {system.hearthStatus}</span> : <span className="text-danger">离线</span>}</KeyValue>
             <KeyValue label="评委模型">{system.judgeModel ?? "未配置"}</KeyValue>
-            <KeyValue label="评委状态">{system.judgeConfigured ? "可自动评分" : "仅确定性评分"}</KeyValue>
+            <KeyValue label="评委状态">{system.judgeConfigured ? "已配置 · 请测试连接" : "仅确定性评分"}</KeyValue>
             <KeyValue label="评测版本">v{system.evalVersion}</KeyValue>
           </div>
           {!system.judgeConfigured && <div className="system-note warning"><AlertTriangle size={15} /><span>模型评委不可用时，judge 标准会触发人工复核，不会静默通过。</span></div>}
-          {!system.hearthReachable && <div className="system-note danger"><XCircle size={15} /><span>先启动主服务 `npm run dev`，再回到评测控制台发起实验。</span></div>}
+          {!system.hearthReachable && <p className="muted-copy">未接入 Hearth 不影响原生 LLM 评测与外部 Agent 评分。</p>}
         </section>
       </div>
 
-      <section className="panel">
-        <SectionHeader title="本地存储" detail="评测数据库与产物根目录" />
-        <div className="storage-grid">
-          <div className="storage-card"><span className="storage-icon"><Database size={18} /></span><div><strong>评测数据库</strong><code>{system.dataDir}</code><small>SQLite 记录实验、运行、grader、复核和事件。</small></div></div>
-          <div className="storage-card"><span className="storage-icon"><FolderOpen size={18} /></span><div><strong>产物目录</strong><code>{system.artifactRoot}</code><small>按实验 / case / 执行器 / 重复次数隔离。</small></div></div>
-        </div>
-      </section>
+      <StorageSettings />
 
       <section className="panel">
         <SectionHeader title="启动方式" detail="开发环境最终检查" />

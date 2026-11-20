@@ -187,3 +187,23 @@ export interface DashboardResponse {
 export interface EvalEventsResponse {
   events: EvalEventRecord[];
 }
+export interface JudgeSettingsInput {
+  providerId?: string;
+  providerName?: string;
+  protocol?: "openai-chat" | "openai-responses" | "anthropic-messages" | "gemini";
+  baseUrl?: string;
+  model?: string;
+  apiKey?: string;
+}
+export interface JudgeSettingsResponse {
+  configured: boolean;
+  settings: Required<Omit<JudgeSettingsInput, "apiKey">> & { hasApiKey: boolean; apiKeyMasked: string | null };
+}
+export interface JudgeTestResult { ok: boolean; reply?: string; error?: string; elapsedMs?: number }
+export interface StorageSettingsResponse {
+  current: { dataDir: string; artifactRoot: string };
+  next: { dataDir: string; artifactRoot: string };
+  overrides: { dataDir: boolean; artifactRoot: boolean };
+  restartRequired: boolean;
+}
+export interface DirectoryListing { path: string; parent: string; directories: Array<{ name: string; path: string }> }

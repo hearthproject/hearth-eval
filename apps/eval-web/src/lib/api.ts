@@ -113,6 +113,12 @@ export const api = {
   ),
   dashboard: () => request<DashboardResponse>("/api/dashboard"),
   system: () => request<EvalSystemResponse>("/api/system"),
+  judgeSettings: () => request<import("@hearth/eval-core").JudgeSettingsResponse>("/api/system/judge"),
+  saveJudgeSettings: (input: import("@hearth/eval-core").JudgeSettingsInput) => request<import("@hearth/eval-core").JudgeSettingsResponse>("/api/system/judge", { method: "PUT", body: JSON.stringify(input) }),
+  testJudge: (input: import("@hearth/eval-core").JudgeSettingsInput) => request<import("@hearth/eval-core").JudgeTestResult>("/api/system/judge/test", { method: "POST", body: JSON.stringify(input) }),
+  storageSettings: () => request<import("@hearth/eval-core").StorageSettingsResponse>("/api/system/storage"),
+  saveStorageSettings: (input: { dataDir: string; artifactRoot: string }) => request<import("@hearth/eval-core").StorageSettingsResponse>("/api/system/storage", { method: "PUT", body: JSON.stringify(input) }),
+  directories: (path?: string) => request<import("@hearth/eval-core").DirectoryListing>(`/api/system/directories${path ? `?path=${encodeURIComponent(path)}` : ""}`),
   cases: (filters: CaseFilters = {}) => {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(filters)) {

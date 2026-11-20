@@ -42,6 +42,9 @@ import type { NativeAgentClient } from "./native-client.ts";
 import type { ProviderStore } from "./provider-store.ts";
 import { registerNativeRoutes } from "./native-routes.ts";
 import { registerProviderRoutes } from "./provider-routes.ts";
+import { registerSystemSettingsRoutes } from "./system-settings-routes.ts";
+import { LocalJudge } from "./local-judge.ts";
+import { ProviderStore as JudgeProviderStore } from "./provider-store.ts";
 
 const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -69,6 +72,7 @@ const eventsQuerySchema = z.object({
 }).strict();
 
 export interface EvalAppOptions {
+  localJudge?: LocalJudge;
   diagnosisModel?: DiagnosisModel;
   store: EvalStore;
   runner: EvalRunner;
@@ -93,6 +97,7 @@ interface JudgeInfo {
 
 export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInstance> {
   const { store, runner, client, catalog, repoRoot, artifactRoot } = options;
+  const localJudge = options.localJudge ?? new LocalJudge(new JudgeProviderStore({ file: join(repoRoot, ".hearth", "judge-providers.json") }));
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 1_000_000 });
   registerImportedEvaluationRoutes(app, store);
   const diagnosis = new DiagnosisAgent({ store, runner, model: options.diagnosisModel ?? new CodexDiagnosisModel(),
@@ -106,6 +111,7 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
       runner,
       client: options.nativeClient,
       providers: options.providers,
+      judgeModel: async () => (await localJudge.modelSettings()).settings.model || null,
       catalog,
       artifactRoot
     });
@@ -160,24 +166,12 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
       return evidence ?? reply.code(404).send({ error: "SCENARIO_EVIDENCE_NOT_FOUND", message: "找不到场景证据" });
     }
   );
-  let judgeCache: { expiresAt: number; info: JudgeInfo } | null = null;
+  await registerSystemSettingsRoutes(app, { repoRoot, current: { dataDir: options.dataDir, artifactRoot },
+    modelClient: localJudge });
 
   const judgeInfo = async (): Promise<JudgeInfo> => {
-    if (judgeCache && judgeCache.expiresAt > Date.now()) return judgeCache.info;
-    let info: JudgeInfo = { configured: false, model: null };
-    try {
-      const health = await client.health();
-      const chatModel = asRecord(health.chatModel);
-      const settings = asRecord(chatModel?.settings);
-      info = {
-        configured: chatModel?.configured === true,
-        model: typeof settings?.model === "string" ? settings.model : null
-      };
-    } catch {
-      info = { configured: false, model: null };
-    }
-    judgeCache = { expiresAt: Date.now() + 5_000, info };
-    return info;
+    const settings = await localJudge.modelSettings();
+    return { configured: settings.configured, model: settings.settings.model || null };
   };
 
   const systemInfo = async (): Promise<EvalSystemResponse> => {
@@ -189,14 +183,10 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
       const health = await client.health();
       reachable = true;
       hearthStatus = typeof health.status === "string" ? health.status : "online";
-      try {
-        executors = client.executors ? executorOptions(await client.executors()) : [];
-      } catch {
-        executors = [];
-      }
     } catch {
       reachable = false;
     }
+    try { executors = client.executors ? executorOptions(await client.executors()) : []; } catch { executors = []; }
     return {
       evalVersion: options.evalVersion,
       hearthUrl: client.baseUrl,

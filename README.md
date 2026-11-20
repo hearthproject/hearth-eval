@@ -124,6 +124,24 @@ Hearth Eval 是一个**独立于 Agent 运行时的评测控制面**：它维护
 
 ## 快速开始
 
+Windows 本地启动、端口检查和更新后的重启步骤见[启动评测台](docs/guide/local-start.md)。
+
+### 独立运行（不需要 Hearth）
+
+安装 Node.js 22.13+ 后执行 `npm ci`、`npm run build`、`npm start`，打开 `http://127.0.0.1:4318`。
+在 `/native.html` 配置被测 LLM，在主控制台“系统 → LLM 状态与模型评委”配置独立评委的 OpenAI 兼容 API 地址、模型名和 API Key。
+“确认 LLM 状态”会发送一次短请求；“已配置”仅表示填写了配置，不代表连接测试成功。评委调用失败或未配置时进入人工复核。
+原生运行和普通实验均使用这份评委配置，不读取 Hearth 的聊天模型；已有安装升级后需在系统页单独配置评委。
+
+“系统 → 本地存储 → 选择配置”可输入或浏览服务所在电脑的已有可写目录。
+保存到 `.hearth/storage-settings.json`，重启评测服务后生效；数据库仍使用 `eval.sqlite` 文件名。
+不会自动迁移旧数据库、执行器配置或产物。环境变量 `HEARTH_EVAL_DATA_DIR` / `HEARTH_EVAL_ARTIFACT_ROOT` 优先于页面配置。
+独立评委配置保存在 `.hearth/judge-providers.json`，密钥仅留在服务端；发布包不得包含 `.hearth/`。
+
+### 可选：接入 Hearth Agent
+
+下列双仓库步骤仅用于评测 Hearth Agent 与运行 Hearth 白盒场景；Hearth 未连接不影响独立 LLM 与外部 Agent 评分。
+
 推荐把两个仓库放在同一级目录（`scenario-runner` 通过相对路径直接 import `hearth-os` 源码）：
 
 ```text
