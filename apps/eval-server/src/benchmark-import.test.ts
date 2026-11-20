@@ -35,7 +35,7 @@ describe("importHarborJob", () => {
     expect(result.summary.timeoutTrials).toBe(1);
     expect(result.summary.meanReward).toBeCloseTo(2 / 3);
     expect(result.summary.resolvedTasks).toBe(2);
-    expect(result.summary.totalTokens).toBe(2_870);
+    expect(result.summary.totalTokens).toBe(3_530);
     expect(result.warnings.some((warning) => warning.includes("token usage"))).toBe(true);
     expect(result.warnings.some((warning) => warning.includes("verifier reward"))).toBe(true);
 
@@ -55,6 +55,9 @@ describe("importHarborJob", () => {
     expect(rewardJsonTrial?.status).toBe("passed");
     expect(rewardJsonTrial?.rewardPath).toBe("verifier/reward.json");
     expect(rewardJsonTrial?.resultPath).toBeNull();
+    expect(rewardJsonTrial?.inputTokens).toBe(600);
+    expect(rewardJsonTrial?.outputTokens).toBe(60);
+    expect(rewardJsonTrial?.cachedTokens).toBe(30);
 
     const missingTrial = store.benchmarks.listTrials(result.runId).find((trial) => trial.trialKey === "missing-reward__ghi789");
     expect(missingTrial?.reward).toBeNull();

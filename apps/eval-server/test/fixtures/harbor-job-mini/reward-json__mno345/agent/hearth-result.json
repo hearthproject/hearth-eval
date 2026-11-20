@@ -1,0 +1,10 @@
+{
+  "status": "completed",
+  "usage": {
+    "inputTokens": 600,
+    "outputTokens": 60,
+    "cachedInputTokens": 30
+  },
+  "turns": 8,
+  "toolCalls": 11
+}

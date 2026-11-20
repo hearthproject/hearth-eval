@@ -212,7 +212,7 @@ function readTokens(result: JsonRecord | null, hearth: JsonRecord | null): {
   return {
     inputTokens: numberOrNull(agentResult?.n_input_tokens, agentResult?.input_tokens, usage?.inputTokens, usage?.input_tokens),
     outputTokens: numberOrNull(agentResult?.n_output_tokens, agentResult?.output_tokens, usage?.outputTokens, usage?.output_tokens),
-    cachedTokens: numberOrNull(agentResult?.n_cached_tokens, agentResult?.cached_tokens, usage?.cachedTokens, usage?.cached_tokens)
+    cachedTokens: numberOrNull(agentResult?.n_cached_tokens, agentResult?.cached_tokens, usage?.cachedTokens, usage?.cached_tokens, usage?.cachedInputTokens, usage?.cached_input_tokens)
   };
 }
 
