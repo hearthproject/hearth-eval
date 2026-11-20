@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   BarChart3,
+  BookOpen,
   ClipboardCheck,
   FlaskConical,
   GitCompareArrows,
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
 ];
 
 const TITLES: Array<[RegExp, string]> = [
+  [/^\/docs$/, "Eval文档"],
   [/^\/$/, "总览"],
   [/^\/cases\/[^/]+$/, "任务详情"],
   [/^\/cases$/, "任务目录"],
@@ -109,6 +111,7 @@ export function AppShell() {
               <span className="tiny-status info"><i /> {system?.runningExperiments} 个实验运行中</span>
             )}
           </div>
+          <NavLink to="/docs" className="eval-docs-link"><BookOpen size={15} aria-hidden="true" />Eval文档</NavLink>
         </header>
         <main className="page-container"><Outlet /></main>
       </div>

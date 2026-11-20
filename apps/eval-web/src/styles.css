@@ -135,6 +135,11 @@ code { font-size: .82em; }
 .breadcrumb b { color: var(--line-strong); font-weight: 400; }
 .breadcrumb strong { color: var(--ink); font-weight: 600; }
 .topbar-status { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.eval-docs-link { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 14px; }
+.page-container:has(> .eval-docs) { width: 100%; }
+.eval-docs { line-height: 1.75; }
+.eval-docs h2 { margin-top: 1.6em; font-size: 1.15rem; }
+.eval-docs a { text-decoration: underline; }
 .tiny-status { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-soft); font-size: 11px; white-space: nowrap; }
 .tiny-status + .tiny-status { padding-left: 10px; border-left: 1px solid var(--line); }
 .tiny-status i { width: 6px; height: 6px; background: #a1a8b0; border-radius: 50%; }
@@ -1169,6 +1174,7 @@ a.overview-name:hover { color: var(--accent-deep); }
 @media (max-width: 560px) {
   .topbar { min-height: 57px; padding: 0 14px; }
   .breadcrumb span, .breadcrumb b, .topbar-status { display: none; }
+  .eval-docs-link { margin-left: auto; }
   .topbar-action { margin-left: auto; }
   .page-container { padding: 22px 14px 48px; }
   .page-header h1 { font-size: 30px; }

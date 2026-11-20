@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell.tsx";
+import { EvalDocsPage } from "./pages/EvalDocsPage.tsx";
 import { ActivityPage } from "./pages/ActivityPage.tsx";
 import { CaseDetailPage } from "./pages/CaseDetailPage.tsx";
 import { CasesPage } from "./pages/CasesPage.tsx";
@@ -24,6 +25,7 @@ export function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<DashboardPage />} />
+        <Route path="docs" element={<EvalDocsPage />} />
         <Route path="cases" element={<CasesPage />} />
         <Route path="imported-evaluations" element={<ImportedEvaluationPage />} />
         <Route path="cases/:caseKey" element={<CaseDetailPage />} />
