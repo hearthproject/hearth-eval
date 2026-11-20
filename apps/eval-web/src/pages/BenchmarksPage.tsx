@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, Download, FolderOpen, Play, RefreshCw, TerminalSquare } from "lucide-react";
 import type { BenchmarkImportInput, BenchmarkRun } from "@hearth/eval-core";
 import { formatBenchmarkTokens } from "@hearth/eval-core";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api.ts";
 import {
   EmptyState,
@@ -185,6 +186,7 @@ export function BenchmarksPage() {
                   <th>Cost</th>
                   <th>导入时间</th>
                   <th>状态</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -200,6 +202,7 @@ export function BenchmarksPage() {
                     <td>{formatMoney(run.summary?.costUsd ?? null)}</td>
                     <td>{formatDate(run.createdAt)}</td>
                     <td><BenchmarkStatus run={run} /></td>
+                    <td><Link className="button button-ghost" to={`/benchmarks/${run.id}`}>详情</Link></td>
                   </tr>
                 ))}
               </tbody>

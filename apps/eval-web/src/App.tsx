@@ -16,6 +16,7 @@ import { ScenariosPage } from "./pages/ScenariosPage.tsx";
 import { DiagnosisPage } from "./pages/DiagnosisPage.tsx";
 import { AcceptancePage } from "./pages/AcceptancePage.tsx";
 import { BenchmarksPage } from "./pages/BenchmarksPage.tsx";
+import { BenchmarkDetailPage } from "./pages/BenchmarkDetailPage.tsx";
 
 export function App() {
   return (
@@ -27,6 +28,7 @@ export function App() {
         <Route path="cases/:caseKey" element={<CaseDetailPage />} />
         <Route path="experiments" element={<ExperimentsPage />} />
         <Route path="benchmarks" element={<BenchmarksPage />} />
+        <Route path="benchmarks/:id" element={<BenchmarkDetailPage />} />
         <Route path="experiments/new" element={<NewExperimentPage />} />
         <Route path="experiments/:id" element={<ExperimentDetailPage />} />
         <Route path="runs/:id" element={<RunDetailPage />} />

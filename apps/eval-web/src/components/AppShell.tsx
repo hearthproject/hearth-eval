@@ -40,6 +40,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/experiments\/[^/]+$/, "实验详情"],
   [/^\/experiments$/, "实验"],
   [/^\/benchmarks$/, "公开 Benchmark"],
+  [/^\/benchmarks\/[^/]+$/, "Benchmark 详情"],
   [/^\/scenarios$/, "场景测试"],
   [/^\/diagnosis$/, "诊断 Agent"],
   [/^\/acceptance$/, "交付验收"],

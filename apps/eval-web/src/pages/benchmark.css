@@ -138,6 +138,164 @@
   font-size: 11px;
 }
 
+.benchmark-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.benchmark-filter-row select {
+  min-height: 34px;
+  padding: 0 9px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+}
+
+.benchmark-task-table .benchmark-task-row {
+  cursor: pointer;
+}
+
+.benchmark-task-table .benchmark-task-row:hover,
+.benchmark-task-table .benchmark-task-row:focus-visible {
+  background: var(--accent-wash);
+}
+
+.benchmark-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  justify-content: flex-end;
+  background: rgb(17 24 39 / 38%);
+}
+
+.benchmark-drawer {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 94vw);
+  height: 100%;
+  background: var(--surface-raised);
+  box-shadow: -18px 0 45px rgb(15 23 42 / 18%);
+}
+
+.benchmark-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.benchmark-drawer-head small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.benchmark-drawer-head strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 17px;
+}
+
+.benchmark-drawer-body {
+  display: grid;
+  gap: 22px;
+  padding: 18px 20px 40px;
+  overflow-y: auto;
+}
+
+.benchmark-trial-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.benchmark-trial-row {
+  display: grid;
+  grid-template-columns: 36px 92px 70px 1fr 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  color: var(--ink);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.benchmark-trial-row:hover,
+.benchmark-trial-row.is-selected {
+  background: var(--accent-wash);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+
+.benchmark-trial-row small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.benchmark-trial-detail {
+  display: grid;
+  gap: 12px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.benchmark-trial-detail h4 {
+  margin: 4px 0 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+
+.benchmark-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.benchmark-kv-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.benchmark-kv-grid small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.benchmark-pre {
+  max-height: 260px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  color: var(--ink-soft);
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.benchmark-raw {
+  max-height: 360px;
+}
+
 @media (max-width: 1100px) {
   .benchmark-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

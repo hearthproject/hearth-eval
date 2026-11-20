@@ -3,6 +3,8 @@ import type {
   BenchmarkImportResult,
   BenchmarkJobCandidate,
   BenchmarkRun,
+  BenchmarkTaskSummary,
+  BenchmarkTrial,
   CaseCatalogResponse,
   CodexScoreHistory,
   CaseDetailResponse,
@@ -91,6 +93,22 @@ export interface BenchmarkListResponse {
 export interface BenchmarkJobsResponse {
   root: string;
   jobs: BenchmarkJobCandidate[];
+}
+
+export interface BenchmarkDetailResponse {
+  run: BenchmarkRun;
+  tasks: BenchmarkTaskSummary[];
+}
+
+export interface BenchmarkTrialsResponse {
+  trials: BenchmarkTrial[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface BenchmarkTrialResponse {
+  trial: BenchmarkTrial;
 }
 
 export const api = {
@@ -186,7 +204,23 @@ export const api = {
   importBenchmark: (input: BenchmarkImportInput) => request<BenchmarkImportResult>("/api/benchmarks/import", {
     method: "POST",
     body: JSON.stringify(input)
-  })
+  }),
+  benchmark: (id: string) => request<BenchmarkDetailResponse>(`/api/benchmarks/${encodeURIComponent(id)}`),
+  benchmarkTrials: (id: string, filters: { taskKey?: string; status?: string; limit?: number; offset?: number } = {}) => {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== "") query.set(key, String(value));
+    }
+    return request<BenchmarkTrialsResponse>(`/api/benchmarks/${encodeURIComponent(id)}/trials${query.size > 0 ? `?${query.toString()}` : ""}`);
+  },
+  benchmarkTrial: (id: string, trialId: string) => request<BenchmarkTrialResponse>(
+    `/api/benchmarks/${encodeURIComponent(id)}/trials/${encodeURIComponent(trialId)}`
+  ),
+  reimportBenchmark: (id: string, jobDir?: string) => request<BenchmarkImportResult>(
+    `/api/benchmarks/${encodeURIComponent(id)}/reimport`,
+    { method: "POST", body: JSON.stringify(jobDir ? { jobDir } : {}) }
+  ),
+  benchmarkExportUrl: (id: string) => `/api/benchmarks/${encodeURIComponent(id)}/export?format=csv`
 };
 
 export function latestEventSeq(events: EvalEventRecord[]): number {
