@@ -81,6 +81,13 @@ export interface SubmitReviewResult {
 }
 
 export const api = {
+  acceptanceDefaults: () => request<import("@hearth/eval-core").AcceptanceDefaults>("/api/acceptance/defaults"),
+  acceptanceMemory: (key: string) => request<import("@hearth/eval-core").AcceptanceMemoryView>(`/api/acceptance/memory/${encodeURIComponent(key)}`),
+  saveAcceptanceMemory: (key: string, content: string, expectedRevision: number) => request<import("@hearth/eval-core").SharedMemory>(`/api/acceptance/memory/${encodeURIComponent(key)}`, { method: "PUT", body: JSON.stringify({ content, expectedRevision }) }),
+  acceptances: () => request<import("@hearth/eval-core").AcceptanceJob[]>("/api/acceptance"),
+  acceptance: (id: string) => request<import("@hearth/eval-core").AcceptanceJob>(`/api/acceptance/${encodeURIComponent(id)}`),
+  startAcceptance: (input: import("@hearth/eval-core").AcceptanceInput) => request<import("@hearth/eval-core").AcceptanceJob>("/api/acceptance", { method: "POST", body: JSON.stringify(input) }),
+  controlAcceptance: (id: string, action: "resume" | "stop") => request<import("@hearth/eval-core").AcceptanceJob>(`/api/acceptance/${encodeURIComponent(id)}/${action}`, { method: "POST", body: "{}" }),
   diagnoses: () => request<Array<Omit<import("@hearth/eval-core").DiagnosisJob, "evidence">>>("/api/diagnoses"),
   diagnosis: (id: string) => request<import("@hearth/eval-core").DiagnosisJob>(`/api/diagnoses/${encodeURIComponent(id)}`),
   startDiagnosis: (experimentId: string, rerunBudget: number) => request<import("@hearth/eval-core").DiagnosisJob>("/api/diagnoses", { method: "POST", body: JSON.stringify({ experimentId, rerunBudget }) }),

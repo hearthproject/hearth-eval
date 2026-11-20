@@ -37,6 +37,12 @@ it("persists the independent judge, preserves blank keys, and uses edited model 
   expect(fetchImpl.mock.calls[0]?.[1]?.headers).toMatchObject({ authorization: `Bearer ${input.apiKey}` });
 });
 
+it("accepts echoed criterion metadata without retaining it as evaluation evidence", async () => {
+  const { judge } = makeJudge(root(), { ...verdict, criteria: verdict.criteria.map(item => ({ ...item, label: "Quality", points: 30 })) });
+  await judge.saveModelSettings(input);
+  expect((await judge.judge(request)).criteria).toEqual(verdict.criteria);
+});
+
 it.each([
   { ...verdict, criteria: [] },
   { ...verdict, criteria: [verdict.criteria[0], verdict.criteria[0]] },

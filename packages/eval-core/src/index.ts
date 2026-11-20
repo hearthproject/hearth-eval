@@ -10,4 +10,5 @@ export type * from "./imported-evaluation.ts";
 export * from "./evaluation.ts";
 export * from "./calibration.ts";
 export * from "./diagnosis.ts";
+export * from "./acceptance.ts";
 export * from "./native-agent.ts";

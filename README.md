@@ -126,6 +126,8 @@ Hearth Eval 是一个**独立于 Agent 运行时的评测控制面**：它维护
 
 Windows 本地启动、端口检查和更新后的重启步骤见[启动评测台](docs/guide/local-start.md)。
 
+第一个实际交付闭环见[桌面 Markdown 交付验收](docs/guide/delivery-acceptance.md)：Hearth OS 创建文件，Eval 独立读取验收，失败后按原要求最多修复并复测一次。
+
 ### 独立运行（不需要 Hearth）
 
 安装 Node.js 22.13+ 后执行 `npm ci`、`npm run build`、`npm start`，打开 `http://127.0.0.1:4318`。

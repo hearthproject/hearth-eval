@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname } from "node:path";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import type { LoadedCase } from "@hearth/eval-core/node";
@@ -14,6 +15,7 @@ import type {
 } from "@hearth/eval-core";
 import type { CodexScoreHistory, CodexScoreRecord, ImportedEvaluation } from "@hearth/eval-core";
 import type { DiagnosisJob } from "@hearth/eval-core";
+import type { AcceptanceJob, SharedMemory } from "@hearth/eval-core";
 
 type DbRow = Record<string, SQLInputValue>;
 
@@ -31,6 +33,16 @@ export interface RunMetrics {
 }
 
 const SCHEMA = `
+CREATE TABLE IF NOT EXISTS shared_acceptance_memory (
+  key TEXT PRIMARY KEY,
+  revision INTEGER NOT NULL,
+  payload_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS acceptance_jobs (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  payload_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS diagnosis_jobs (
   id TEXT PRIMARY KEY,
   created_at TEXT NOT NULL,
@@ -141,6 +153,30 @@ CREATE INDEX IF NOT EXISTS eval_events_run_idx ON eval_events(run_id, seq);
 `;
 
 export class EvalStore {
+  saveAcceptance(job: AcceptanceJob): void {
+    this.db.prepare("INSERT INTO acceptance_jobs (id, created_at, payload_json) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload_json=excluded.payload_json")
+      .run(job.id, job.createdAt, JSON.stringify(job));
+  }
+  getSharedMemory(key: string): SharedMemory | null {
+    const row = this.db.prepare("SELECT payload_json FROM shared_acceptance_memory WHERE key = ?").get(key);
+    return row ? JSON.parse(String(row.payload_json)) as SharedMemory : null;
+  }
+  saveSharedMemory(key: string, content: string, expectedRevision: number): SharedMemory {
+    const memory: SharedMemory = { key, content, revision: expectedRevision + 1, source: "user", updatedAt: new Date().toISOString(), sha256: createHash("sha256").update(content).digest("hex") };
+    const result = expectedRevision === 0
+      ? this.db.prepare("INSERT INTO shared_acceptance_memory (key, revision, payload_json) VALUES (?, ?, ?) ON CONFLICT(key) DO NOTHING").run(key, memory.revision, JSON.stringify(memory))
+      : this.db.prepare("UPDATE shared_acceptance_memory SET revision = ?, payload_json = ? WHERE key = ? AND revision = ?").run(memory.revision, JSON.stringify(memory), key, expectedRevision);
+    if (!result.changes) throw new Error("共享记忆已变化，请重新读取后保存");
+    return memory;
+  }
+  getAcceptance(id: string): AcceptanceJob | null {
+    const row = this.db.prepare("SELECT payload_json FROM acceptance_jobs WHERE id = ?").get(id);
+    return row ? JSON.parse(String(row.payload_json)) as AcceptanceJob : null;
+  }
+  listAcceptances(): AcceptanceJob[] {
+    return this.db.prepare("SELECT payload_json FROM acceptance_jobs ORDER BY created_at DESC, rowid DESC").all()
+      .map(row => JSON.parse(String(row.payload_json)) as AcceptanceJob);
+  }
   saveDiagnosis(job: DiagnosisJob): void {
     this.db.prepare("INSERT INTO diagnosis_jobs (id, created_at, payload_json) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload_json=excluded.payload_json")
       .run(job.id, job.createdAt, JSON.stringify(job));
