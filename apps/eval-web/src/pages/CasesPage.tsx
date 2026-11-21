@@ -18,9 +18,8 @@ export function CasesPage() {
   const search = params.get("search") ?? "";
 
   const casesQuery = useQuery({
-    queryKey: ["cases", family, difficulty, runMode, search],
+    queryKey: ["cases", difficulty, runMode, search],
     queryFn: () => api.cases({
-      ...(family ? { family } : {}),
       ...(difficulty ? { difficulty } : {}),
       ...(runMode ? { runMode } : {}),
       ...(search ? { search } : {})
@@ -33,7 +32,8 @@ export function CasesPage() {
     if (value) next.set(key, value); else next.delete(key);
     setParams(next, { replace: true });
   };
-  const cases = casesQuery.data?.cases ?? [];
+  // Keep tab counts across families; apply the selected family only to the table.
+  const cases = (casesQuery.data?.cases ?? []).filter((item) => !family || item.family === family);
   const counts = casesQuery.data?.counts;
   const hasFilters = Boolean(family || difficulty || runMode || search);
 
