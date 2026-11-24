@@ -61,7 +61,7 @@ export function AcceptancePage() {
       <button type="button" aria-pressed={tab==="metrics"} onClick={()=>setTab("metrics")}>Verdict Accuracy <b>{metric?.total && metric.reviewed===metric.total ? (100*metric.correct/metric.total).toFixed(1)+"%" : "—"}</b>
         <span aria-live="polite" className={"metric-indicator "+phase} aria-label={phase==="loading"?"正在刷新":phase==="done"?"已刷新":undefined}>{phase==="done"?"✓":phase==="error"?"!":""}</span></button>
     </nav>
-    {tab==="metrics" && <section className="acceptance-glass settings-stack"><h2>判断准确率</h2><p>Verdict Accuracy = 判断正确的案例数 ÷ 总案例数</p>
+    {tab==="metrics" && <section className="acceptance-card settings-stack"><h2>判断准确率</h2><p>Verdict Accuracy = 判断正确的案例数 ÷ 总案例数</p>
       {metric && <p>已确认正确 {metric.correct} · 已有最终判定 {metric.total} · 待标注参考结论 {metric.total-metric.reviewed}</p>}
       <h3>验收记录</h3>
       <small>勾选机器判断正确的任务。提交时，本页未勾选的任务计为判断错误，共 {cases.length} 个案例。</small>
@@ -273,7 +273,7 @@ function OrderCsv({taskId,artifact,repair,review,memoryPreview}:{memoryPreview:R
     const a = document.createElement("a"); a.href=url; a.download=artifact.name.split("/").pop()!.replace(/\.csv$/i,"-cleaned.csv"); a.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
-  return <section className="acceptance-glass settings-stack"><h2>{labels.data?.title ?? artifact.name}</h2>
+  return <section className="acceptance-card settings-stack"><h2>{labels.data?.title ?? artifact.name}</h2>
     {labels.isLoading && <p role="status">正在根据 CSV 表头生成验收字段…</p>}
     {labels.error && <p role="alert">{labels.error.message} <button type="button" onClick={()=>void labels.refetch()}>重试</button></p>}
     {labels.data?.warning && <small>{labels.data.warning}</small>}
@@ -292,7 +292,7 @@ function OrderCsv({taskId,artifact,repair,review,memoryPreview}:{memoryPreview:R
   </section>;
 }
 
-function CsvReport({name,rows,verdict,footer}:{name:string;rows:import("@hearth/eval-core").CsvReportRow[];verdict:string;footer:string}) { return <section className="acceptance-glass csv-live-report" aria-label="CSV 实时验收报告">
+function CsvReport({name,rows,verdict,footer}:{name:string;rows:import("@hearth/eval-core").CsvReportRow[];verdict:string;footer:string}) { return <section className="acceptance-card csv-live-report" aria-label="CSV 实时验收报告">
       <header><div><h2>Hearth Eval — Acceptance Report</h2><small>{name}</small></div><strong data-state={verdict}>{verdict==="PENDING"?"验收中":verdict}</strong></header>
       <div className="report-counts">{(["PASS","FAIL","INCONCLUSIVE"] as const).map((state,index)=><div data-state={state} key={state}><small>{["通过","失败","无法判断"][index]}</small><b>{rows.filter(r=>r.state===state).length}</b></div>)}</div>
       <ul aria-live="polite">{rows.map(r=><li key={r.id} data-state={r.state}><span className="report-icon" aria-hidden="true">{({PASS:"✓",FAIL:"×",INCONCLUSIVE:"?",PENDING:""})[r.state]}</span><div><b>{r.title}</b><p>{r.detail}</p></div><small>{r.state==="PENDING"?"验收中":r.state}</small></li>)}</ul>

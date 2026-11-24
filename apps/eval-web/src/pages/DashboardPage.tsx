@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import "./dashboard-glass.css";
+import "./dashboard-flat.css";
 import {
   ArrowRight,
   CheckCircle2,

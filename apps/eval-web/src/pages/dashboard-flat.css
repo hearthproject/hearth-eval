@@ -1,0 +1,57 @@
+/* 总览页：只负责版面密度与层级，表面样式统一走 flat-theme.css。 */
+.dashboard-page {
+  gap: 16px;
+}
+
+.dashboard-page .panel { padding: 20px; }
+.dashboard-page .page-header { padding: 2px; }
+.dashboard-page .page-header h1 { font-size: 20px; }
+.dashboard-page .section-header { margin-bottom: 16px; }
+.dashboard-page .metric-grid,
+.dashboard-page .dashboard-grid { gap: 12px; }
+.dashboard-page .metric-card { padding: 15px 16px 14px; }
+.dashboard-page .metric-card > strong { margin: 9px 0 5px; font-size: 26px; }
+.dashboard-page .metric-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 4px;
+  color: var(--ink-soft);
+  background: var(--surface-deep);
+}
+.dashboard-page .tone-success .metric-icon { color: var(--success); background: var(--success-wash); }
+.dashboard-page .tone-warning .metric-icon { color: var(--warning); background: var(--warning-wash); }
+.dashboard-page .tone-danger .metric-icon { color: var(--danger); background: var(--danger-wash); }
+.dashboard-page .overview-card { background: var(--surface); }
+.dashboard-page .overview-name { margin-top: 8px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.dashboard-page .overview-main p { line-height: 1.7; }
+.dashboard-page .overview-stats strong { font-size: 20px; font-weight: 600; }
+
+.dashboard-page .coverage-item,
+.dashboard-page .first-run-steps li,
+.dashboard-page .empty-state {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: none;
+}
+.dashboard-page .coverage-grid { gap: 8px; }
+.dashboard-page .coverage-item { min-height: 48px; padding: 0 14px; }
+.dashboard-page .coverage-item:hover { background: var(--surface-deep); border-color: var(--line-strong); }
+.dashboard-page .first-run-steps li { padding: 14px; }
+.dashboard-page .first-run-steps li > span { border-color: var(--line); }
+.dashboard-page .empty-state { min-height: 170px; }
+.dashboard-page .data-table th { background: transparent; }
+.dashboard-page .data-table td { background: transparent; }
+.dashboard-page .side-action { padding: 12px 4px 0; }
+
+@media (max-width: 560px) {
+  .dashboard-page { gap: 14px; }
+  .dashboard-page .panel, .dashboard-page .metric-card { padding: 16px; }
+  .dashboard-page .page-header h1 { font-size: 18px; }
+  .dashboard-page .metric-grid, .dashboard-page .dashboard-grid { gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-page .coverage-item, .dashboard-page .button { transition: none; }
+  .dashboard-page .coverage-item:hover, .dashboard-page .button:hover { transform: none; }
+}

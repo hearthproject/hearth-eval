@@ -18,7 +18,7 @@ export function AcceptanceReport({job}:{job:AcceptanceJob}) {
   }
   const verdict = job.status==="passed"?"PASS":job.status==="failed"?"FAIL":pending;
   const statuses = { PASS:"通过", FAIL:"失败", INCONCLUSIVE:"无法判断", PENDING:"进行中" };
-  return <section className="acceptance-glass" aria-label="实时验收报告">
+  return <section className="acceptance-card" aria-label="实时验收报告">
     <header><div><h2>Hearth Eval · 验收报告</h2><small>{job.input.title} · 第 {attempt?.number ?? 1} 轮</small></div><strong data-state={verdict}>{statuses[verdict]}</strong></header>
     <div className="report-counts">{(["PASS","FAIL","INCONCLUSIVE"] as const).map(state=><div key={state} data-state={state}><small>{statuses[state]}</small><b>{rows.filter(r=>r.state===state).length}</b></div>)}</div>
     <ul>{rows.map(row=><li key={row.id} data-state={row.state}><span aria-hidden="true" className="report-icon">{({PASS:"✓",FAIL:"×",INCONCLUSIVE:"?",PENDING:""})[row.state]}</span>

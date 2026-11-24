@@ -1,0 +1,123 @@
+/*
+ * 控制台扁平主题层：不透明表面 + 1px 细线 + 小圆角，无模糊、无渐变洗色。
+ * 视觉语言对齐 Hearth OS 前端（hearth-os/apps/web/src/styles/foundation.css）：
+ * 纸面 #fbfbfa、轨道 #f7f7f5、面板 #ffffff、墨色 #1d1d1b、强调色 ember #f26b38。
+ * 本文件在 styles.css 之后加载，只负责风格收口，不改变布局结构。
+ */
+
+body { background: var(--paper); }
+
+/* ---------- 外壳：侧栏与顶栏 ---------- */
+.app-frame .sidebar {
+  background: var(--sidebar);
+  border-right: 1px solid var(--line);
+}
+.app-frame .topbar {
+  background: var(--surface);
+  min-height: 48px;
+  border-bottom: 1px solid var(--line);
+}
+.app-frame .brand { padding: 2px 8px 18px; }
+.app-frame .brand-copy strong { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.app-frame .brand-copy small { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.app-frame .sidebar-footer { border-top: 1px solid var(--line); }
+.app-frame .page-container > .page-stack { gap: 16px; }
+.app-frame .breadcrumb strong { font-weight: 600; }
+
+/* ---------- 排版：收敛字重与负字距 ---------- */
+.app-frame .page-header h1 { margin: 2px 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.app-frame .page-header p { font-size: 13px; }
+.app-frame .eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0; }
+.app-frame .section-header h2 { font-size: 14px; font-weight: 600; letter-spacing: 0; }
+.app-frame .section-header span { font-size: 11px; }
+.app-frame .subheading { font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.app-frame .case-card h3 { margin: 14px 0 5px; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.app-frame .case-hero h2 { font-size: 17px; letter-spacing: -.01em; }
+
+/* ---------- 表面：面板、卡片、表格全部实底 ---------- */
+:is(.panel, .metric-card, .case-card, .case-hero, .filter-panel, .summary-card,
+    .experiment-status-banner, .review-card, .compare-picker, .compare-hero,
+    .compare-metric, .activity-feed, .state-box, .modal-card, .sticky-card,
+    .diagnostic-card, .gate-column, .coverage-item, .first-run-steps li) {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: none;
+}
+.case-hero { background: var(--surface-deep); }
+.app-frame .table-wrap { border: 1px solid var(--line); border-radius: 6px; }
+.data-table th { color: var(--ink-soft); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.data-table tbody tr:hover { background: rgb(23 23 22 / 3%); }
+:is(.activity-item, .loop-step, .key-value) { background: transparent; }
+.item-row { background: var(--surface-deep); }
+.app-frame :is(.grader-card pre, .activity-main pre, .scenario-evidence, .command-grid > div,
+    .trace-stat-grid > div) {
+  background: var(--surface-deep);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: none;
+}
+.metric-icon { padding: 6px; border-radius: 4px; background: var(--surface-deep); }
+.metric-card.tone-accent { border-top-color: rgb(242 107 56 / 45%); }
+.metric-card.tone-success { border-top-color: rgb(52 114 74 / 38%); }
+.metric-card.tone-warning { border-top-color: rgb(143 100 19 / 38%); }
+.metric-card.tone-danger { border-top-color: rgb(163 58 26 / 38%); }
+.score-dial { --score-track: #e8e7e4; }
+
+/* ---------- 控件：细线、4px 圆角、实底强调色 ---------- */
+.app-frame :is(.button, .icon-button) { border-radius: var(--radius-sm); }
+.app-frame .button { min-height: 30px; font-weight: 500; }
+.app-frame .icon-button { background: transparent; border-color: transparent; }
+.app-frame .icon-button:hover { border-color: var(--line-strong); }
+.field-label :is(input, select, textarea), .compare-select select, .inline-review-form input,
+.scenario-toolbar select, .scenario-toolbar input[type="search"], .search-field, .select-field {
+  min-height: 32px;
+  background: var(--surface);
+  border-color: var(--line-strong);
+  border-radius: 4px;
+}
+.field-label :is(input, select, textarea):focus, .search-field:focus-within, .select-field:focus-within {
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+select option { background: var(--surface); color: var(--ink); }
+:is(.family-tabs, .status-filter-tabs, .review-filter-bar) button { border-radius: 4px; }
+:is(.family-tabs, .status-filter-tabs, .review-filter-bar) button.active {
+  color: var(--ink);
+  background: var(--surface-deep);
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+:is(.option-card, .executor-choice, .case-choice).selected { background: var(--accent-wash); border-color: var(--accent); }
+:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+
+/* ---------- 徽标：跟随 Hearth 的描边式标签，不用填充色块 ---------- */
+.status-pill {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill, 999px);
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.status-pill.tone-success { color: var(--success); background: transparent; border-color: rgb(52 114 74 / 35%); }
+.status-pill.tone-danger { color: var(--danger); background: transparent; border-color: rgb(163 58 26 / 35%); }
+.status-pill.tone-warning { color: var(--warning); background: transparent; border-color: rgb(143 100 19 / 38%); }
+.status-pill.tone-info { color: var(--info); background: transparent; border-color: rgb(63 100 135 / 35%); }
+.status-pill.tone-muted { color: var(--ink-faint); border-color: var(--line); }
+
+/* ---------- 悬停不做位移与投影 ---------- */
+:is(.button, .case-card, .coverage-item, .metric-card):hover:not(:disabled) { transform: none; box-shadow: none; }
+.case-card:hover { border-color: var(--line-strong); }
+.case-card:hover .case-card-foot svg { transform: none; }
+
+/* ---------- 浮层：实底遮罩 ---------- */
+.modal-backdrop { background: rgb(23 23 22 / 32%); }
+.modal-card { background: var(--surface); box-shadow: var(--shadow-lg); }
+.sidebar-scrim { background: rgb(23 23 22 / 28%); }
+@media (max-width: 560px) {
+  .app-frame .page-container > .page-stack { gap: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-frame :is(.button, .nav-item, .case-card, .coverage-item) { transition: none; }
+}
