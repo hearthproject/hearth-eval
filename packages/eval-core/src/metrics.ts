@@ -88,7 +88,16 @@ export function computeMetrics(input: MetricInput): Record<EvalMetricKey, Metric
     budgets?.maxDurationMs ?? input.timeoutMs ?? input.manifest.timeoutMs,
     "ms"
   );
-  result.cost = budgetMetric("cost", input.observation?.tokens ?? null, budgets?.maxTokens, "tokens");
+  const costUsd = input.observation?.costUsd ?? null;
+  result.cost = costUsd === null
+    ? budgetMetric(
+      "cost",
+      input.observation?.tokens ?? null,
+      budgets?.maxTokens,
+      "tokens",
+      "USD 价格缺失，按 token 预算退化评估"
+    )
+    : usdBudgetMetric(costUsd, budgets?.maxCostUsd, input.observation?.pricingSnapshotId ?? null);
   return result;
 }
 
@@ -152,12 +161,12 @@ function metricForLayer(layer: GateLayer): EvalMetricKey | null {
   return null;
 }
 
-function budgetMetric(key: "latency" | "cost", value: number | null, limit: number | undefined, unit: string): MetricSummary {
+function budgetMetric(key: "latency" | "cost", value: number | null, limit: number | undefined, unit: string, note?: string): MetricSummary {
   if (value === null) {
-    return { key, label: METRIC_LABELS[key], score: null, sampleSize: 0, detail: "没有观测值" };
+    return { key, label: METRIC_LABELS[key], score: null, sampleSize: 0, detail: note ?? "没有观测值" };
   }
   if (limit === undefined || limit <= 0) {
-    return { key, label: METRIC_LABELS[key], score: null, sampleSize: 0, detail: `观测值 ${value} ${unit}，未设置预算` };
+    return { key, label: METRIC_LABELS[key], score: null, sampleSize: 0, detail: `${note ? `${note}；` : ""}观测值 ${value} ${unit}，未设置预算` };
   }
   const score = value <= limit ? 100 : round(limit / value * 100);
   return {
@@ -165,6 +174,27 @@ function budgetMetric(key: "latency" | "cost", value: number | null, limit: numb
     label: METRIC_LABELS[key],
     score,
     sampleSize: 1,
-    detail: `${value} ${unit} / 上限 ${limit} ${unit}`
+    detail: `${value} ${unit} / 上限 ${limit} ${unit}${note ? `；${note}` : ""}`
+  };
+}
+
+function usdBudgetMetric(value: number, limit: number | undefined, snapshotId: string | null): MetricSummary {
+  const label = METRIC_LABELS.cost;
+  const snapshot = snapshotId ? `价格快照 ${snapshotId}` : "价格快照未知";
+  if (limit === undefined || limit <= 0) {
+    return {
+      key: "cost",
+      label,
+      score: null,
+      sampleSize: 1,
+      detail: `$${round(value)} USD，未设置 maxCostUsd；${snapshot}`
+    };
+  }
+  return {
+    key: "cost",
+    label,
+    score: value <= limit ? 100 : round(limit / value * 100),
+    sampleSize: 1,
+    detail: `$${round(value)} / 上限 $${round(limit)} USD；${snapshot}`
   };
 }

@@ -11,6 +11,8 @@ import type {
   ExperimentRunRecord,
   ExperimentRunStatus,
   ExperimentSummary,
+  ExperimentCostSummary,
+  VariantExperimentSummary,
   GraderResultRecord,
   HumanReviewRecord,
   JudgeCriterionResult
@@ -24,6 +26,7 @@ import {
   observeTrace,
   runGrader,
   runTraceGrader,
+  runVerificationSpec,
   scoreRun,
   type GraderOutcome,
   type GateOutcomeInput,
@@ -38,13 +41,16 @@ import {
   type ReplayCaseResult,
   aggregateMetrics,
   emptyMetrics,
-  metricSummaries
+  metricSummaries,
+  wilsonInterval,
+  buildExperimentManifest
 } from "@hearth/eval-core";
 import { resolveCaseInput, type LoadedCase } from "@hearth/eval-core/node";
 import { isTerminalTaskStatus, type AgentAdapter, type AgentTaskView } from "./agent-adapter.ts";
 import type { EvalStore, RecoverySummary, RunMetrics } from "./store.ts";
 import type { JudgeAdapter } from "./judge-adapter.ts";
 import { resolveRunOutputDir } from "./artifact-path.ts";
+import { compileCaseVerification } from "./verification-adapter.ts";
 
 export class EvalRunnerError extends Error {
   readonly code: string;
@@ -168,7 +174,9 @@ export class EvalRunner {
       autoJudge: request.autoJudge,
       autoRetry: request.autoRetry,
       maxConcurrency: request.maxConcurrency,
-      baselineExperimentId: request.baselineExperimentId ?? null
+      baselineExperimentId: request.baselineExperimentId ?? null,
+      ...(request.harnessVariantId ? { harnessVariantId: request.harnessVariantId } : {}),
+      ...(request.maxCostUsd !== undefined ? { maxCostUsd: request.maxCostUsd } : {})
     };
     const experiment: ExperimentRecord = {
       id,
@@ -211,6 +219,19 @@ export class EvalRunner {
     }
     this.store.createExperiment(experiment);
     this.store.createRuns(runs);
+    const manifest = buildExperimentManifest({
+      experimentId: id,
+      name: experiment.name,
+      createdAt: experiment.createdAt,
+      cases: selected.map((loaded) => loaded.manifest),
+      environment,
+      judge: environment.judgeModel ? { model: environment.judgeModel, promptHash: null, calibrationVersion: null } : null
+    });
+    this.store.saveExperimentManifest(id, manifest.compatibilityFingerprint, manifest as unknown as Record<string, unknown>);
+    this.store.appendEvent("experiment.manifest", {
+      experimentId: id,
+      payload: { fingerprint: manifest.compatibilityFingerprint, completeness: manifest.completeness }
+    });
     this.store.appendEvent("experiment.created", {
       experimentId: id,
       payload: { cases: selected.length, executors: executorIds.length, repetitions: request.repetitions, runs: runs.length }
@@ -267,7 +288,7 @@ export class EvalRunner {
     const durations = runs.flatMap((run) => run.startedAt && run.finishedAt
       ? [Math.max(0, Date.parse(run.finishedAt) - Date.parse(run.startedAt))]
       : []);
-    const runMetrics = runs.map((run) => this.store.getRunMetrics(run.id)).filter((metric): metric is RunMetrics => Boolean(metric));
+    const runMetrics = runs.map((run) => this.store.getRunMetrics(run.id));
     return {
       experimentId,
       totalRuns: runs.length,
@@ -278,10 +299,10 @@ export class EvalRunner {
       passRate: runs.length === 0 ? null : round(passed / runs.length * 100),
       avgScore: scores.length === 0 ? null : round(scores.reduce((sum, score) => sum + score, 0) / scores.length),
       avgDurationMs: durations.length === 0 ? null : Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length),
-      inputTokens: runMetrics.reduce((sum, metric) => sum + metric.inputTokens, 0),
-      outputTokens: runMetrics.reduce((sum, metric) => sum + metric.outputTokens, 0),
-      retries: runMetrics.reduce((sum, metric) => sum + metric.retryCount, 0),
-      approvals: runMetrics.reduce((sum, metric) => sum + metric.approvalCount, 0),
+      inputTokens: runMetrics.reduce((sum, metric) => sum + (metric?.inputTokens ?? 0), 0),
+      outputTokens: runMetrics.reduce((sum, metric) => sum + (metric?.outputTokens ?? 0), 0),
+      retries: runMetrics.reduce((sum, metric) => sum + (metric?.retryCount ?? 0), 0),
+      approvals: runMetrics.reduce((sum, metric) => sum + (metric?.approvalCount ?? 0), 0),
       families: families.length > 0 ? families : emptyFamilySummaries(),
       metrics: aggregateMetrics(runs.map((run) => {
         const loaded = this.catalog.get(run.caseKey);
@@ -289,7 +310,9 @@ export class EvalRunner {
       })),
       judgeCalibration: this.judgeCalibration(runs),
       failureDiagnostics: diagnosticGroups(runs),
-      generatedAt: this.now().toISOString()
+      generatedAt: this.now().toISOString(),
+      cost: costSummaryFor(runs, runMetrics),
+      variant: variantSummaryFor(experiment, runs, runMetrics)
     };
   }
 
@@ -703,10 +726,35 @@ export class EvalRunner {
         if (this.store.getExperiment(experimentId)?.status === "cancelled") return;
         await this.executeRun(run);
         this.refreshExperiment(experimentId);
+        if (this.enforceExperimentBudget(experimentId)) return;
       }
     });
     await Promise.all(workers);
     this.refreshExperiment(experimentId);
+  }
+
+  /** Stop launching new runs once the experiment-level USD budget is exceeded. */
+  private enforceExperimentBudget(experimentId: string): boolean {
+    const experiment = this.store.getExperiment(experimentId);
+    const maxCostUsd = experiment?.config.maxCostUsd;
+    if (!experiment || maxCostUsd === undefined) return false;
+    const runs = this.store.listRuns(experimentId);
+    const total = runs.reduce((sum, run) => sum + (this.store.getRunMetrics(run.id)?.costUsd ?? 0), 0);
+    if (total <= maxCostUsd) return false;
+    const queued = this.store.listQueuedRuns(experimentId);
+    for (const run of queued) {
+      this.store.updateRun(run.id, {
+        status: "blocked",
+        finishedAt: this.now().toISOString(),
+        error: `实验 USD 预算已用尽：$${total.toFixed(2)} / $${maxCostUsd.toFixed(2)}`,
+        primaryCause: "unknown"
+      });
+    }
+    this.store.appendEvent("experiment.budget_blocked", {
+      experimentId,
+      payload: { totalUsd: total, maxCostUsd, blockedRuns: queued.length }
+    });
+    return true;
   }
 
   private async executeRun(run: ExperimentRunRecord): Promise<void> {
@@ -764,7 +812,15 @@ export class EvalRunner {
     });
     const artifacts = await this.client.getArtifacts({ taskId, outputDir: run.outputDir });
     const graded = await this.gradeRun(run, manifest, artifacts, wait, trace);
-    this.store.setRunMetrics(run.id, metricsFromView(wait.view));
+    let cost: { usd: number | null; pricingSnapshotId: string | null; breakdown?: Record<string, unknown> | null } | null = null;
+    if (this.client.getCost) {
+      try {
+        cost = await this.client.getCost(taskId);
+      } catch {
+        cost = null;
+      }
+    }
+    this.store.setRunMetrics(run.id, metricsFromView(wait.view, cost));
     const finishedAt = this.now().toISOString();
     const runFailed = wait.status !== "completed";
     const status = runStatusFor(wait, graded, runFailed);
@@ -962,6 +1018,7 @@ export class EvalRunner {
       }
     }
     this.store.replaceGraderResults(run.id, graderRecords);
+    const sharedGate = await this.sharedVerificationGate(run, manifest, artifacts);
     const outcome = scoreRun({
       manifest,
       deterministic,
@@ -971,7 +1028,7 @@ export class EvalRunner {
       reviewReasonSeed: run.id,
       runFailed: wait.status !== "completed",
       sampleRate: manifest.humanReview.sampleRate,
-      gates: gateOutcomes(manifest, deterministic, judge),
+      gates: [...gateOutcomes(manifest, deterministic, judge), ...(sharedGate ? [sharedGate] : [])],
       budgetViolations: budgetViolations(manifest, observed)
     });
     if (outcome.gateWarnings.length > 0) {
@@ -982,6 +1039,67 @@ export class EvalRunner {
       });
     }
     return { graderRecords, deterministic, judge, judgeExpected, outcome };
+  }
+
+  /**
+   * Execute the deterministic subset of the shared VerificationSpec with the
+   * same primitives the OS uses for production completion. Trace/judge/human
+   * units stay in their native layers: they need exchanges, calibrated judges
+   * and reviewers that the eval aggregation owns.
+   */
+  private async sharedVerificationGate(
+    run: ExperimentRunRecord,
+    manifest: CaseManifest,
+    artifacts: ArtifactMap
+  ): Promise<GateOutcomeInput | null> {
+    const VERIFIABLE = new Set(["file_exists", "text_contains", "json", "csv", "schema", "artifact"]);
+    const spec = compileCaseVerification(manifest);
+    const units = spec.units.filter((unit) => VERIFIABLE.has(unit.type));
+    if (units.length === 0) return null;
+    const workspaceRoot = resolveRunOutputDir(this.repoRoot, this.artifactRoot, run.outputDir);
+    if (!existsSync(workspaceRoot) || Object.keys(artifacts).length === 0) return null;
+    const artifactRecords = Object.entries(artifacts).map(([relativePath, value]) => ({
+      relativePath,
+      absolutePath: resolve(workspaceRoot, relativePath),
+      sha256: "",
+      bytes: value.bytes,
+      mimeType: "application/octet-stream"
+    }));
+    try {
+      const result = await runVerificationSpec({ ...spec, units }, {
+        workspaceRoot,
+        outDir: workspaceRoot,
+        artifacts: artifactRecords,
+        now: this.now
+      });
+      this.store.appendEvent("run.shared-verification", {
+        experimentId: run.experimentId,
+        runId: run.id,
+        payload: {
+          specId: spec.id,
+          units: result.units.map((unit) => ({ id: unit.id, type: unit.type, status: unit.status })),
+          verdict: result.verdict
+        }
+      });
+      return {
+        id: "shared-verification",
+        layer: "result",
+        severity: "blocker",
+        passed: result.verdict === "pass" ? true : result.verdict === "fail" ? false : null,
+        reason: result.verdict === "pass"
+          ? `共享 Verifier 通过（${units.length} 个确定性单元）`
+          : result.verdict === "fail"
+            ? `共享 Verifier 失败：${result.units.filter((unit) => unit.status === "fail").map((unit) => unit.id).join(", ")}`
+            : "共享 Verifier 证据不足，需人工复核"
+      };
+    } catch (error) {
+      this.store.appendEvent("run.shared-verification-error", {
+        experimentId: run.experimentId,
+        runId: run.id,
+        payload: { error: error instanceof Error ? error.message : String(error) }
+      });
+      return null;
+    }
   }
 
   private async requestJudge(
@@ -1124,13 +1242,19 @@ function judgeFromRecords(records: GraderResultRecord[]): JudgeOutcome | null {
   };
 }
 
-function metricsFromView(view: AgentTaskView | null): RunMetrics {
+function metricsFromView(
+  view: AgentTaskView | null,
+  cost: { usd: number | null; pricingSnapshotId: string | null; breakdown?: Record<string, unknown> | null } | null = null
+): RunMetrics {
   const runs = view?.runs ?? [];
   return {
     inputTokens: runs.reduce((sum, run) => sum + (run.usage?.inputTokens ?? 0), 0),
     outputTokens: runs.reduce((sum, run) => sum + (run.usage?.outputTokens ?? 0), 0),
     retryCount: runs.reduce((sum, run) => sum + Math.max(0, run.attempt - 1), 0),
-    approvalCount: view?.approvals?.length ?? 0
+    approvalCount: view?.approvals?.length ?? 0,
+    costUsd: cost?.usd ?? null,
+    pricingSnapshotId: cost?.pricingSnapshotId ?? null,
+    costBreakdown: cost?.breakdown ?? null
   };
 }
 
@@ -1179,7 +1303,88 @@ function budgetViolations(manifest: CaseManifest, observed: TraceObservation | n
   if (budgets.maxTokens !== undefined && observed.tokens !== null && observed.tokens > budgets.maxTokens) {
     violations.push("budget.maxTokens");
   }
+  if (budgets.maxCostUsd !== undefined) {
+    if (observed.costUsd === null || observed.costUsd === undefined) {
+      // Missing price is not zero: surface it as a budget violation with an
+      // explicit reason so a blocker is never silently skipped.
+      violations.push("budget.maxCostUsd.unpriced");
+    } else if (observed.costUsd > budgets.maxCostUsd) {
+      violations.push("budget.maxCostUsd");
+    }
+  }
   return violations;
+}
+
+function costSummaryFor(runs: ExperimentRunRecord[], metrics: Array<RunMetrics | null>): ExperimentCostSummary | null {
+  if (runs.length === 0) return null;
+  const pairs = runs.map((run, index) => ({ run, metric: metrics[index] ?? null }));
+  const priced = pairs.filter((item) => item.metric?.costUsd !== null && item.metric?.costUsd !== undefined);
+  if (priced.length === 0) {
+    return {
+      totalUsd: 0,
+      pricedRuns: 0,
+      unpricedRuns: runs.length,
+      avgUsdPerRun: null,
+      costPerVerifiedCompletion: null,
+      failedUsd: 0,
+      retryIncrementUsd: 0,
+      pricingSnapshotIds: [],
+      byExecutor: []
+    };
+  }
+  const totalUsd = priced.reduce((sum, item) => sum + (item.metric?.costUsd ?? 0), 0);
+  const passed = runs.filter((run) => run.status === "passed").length;
+  const failedUsd = priced
+    .filter((item) => item.run.status === "failed" || item.run.status === "error" || item.run.status === "blocked")
+    .reduce((sum, item) => sum + (item.metric?.costUsd ?? 0), 0);
+  const retryIncrementUsd = priced.reduce((sum, item) => {
+    const breakdown = item.metric?.costBreakdown ?? null;
+    const retry = breakdown && typeof breakdown.retryUsd === "number" ? breakdown.retryUsd : 0;
+    return sum + retry;
+  }, 0);
+  const byExecutor = new Map<string, { usd: number; runs: number }>();
+  for (const item of pairs) {
+    const existing = byExecutor.get(item.run.executorId) ?? { usd: 0, runs: 0 };
+    existing.runs += 1;
+    existing.usd += item.metric?.costUsd ?? 0;
+    byExecutor.set(item.run.executorId, existing);
+  }
+  return {
+    totalUsd: round(totalUsd),
+    pricedRuns: priced.length,
+    unpricedRuns: runs.length - priced.length,
+    avgUsdPerRun: round(totalUsd / priced.length),
+    costPerVerifiedCompletion: passed > 0 ? round(totalUsd / passed) : null,
+    failedUsd: round(failedUsd),
+    retryIncrementUsd: round(retryIncrementUsd),
+    pricingSnapshotIds: [...new Set(priced.map((item) => item.metric?.pricingSnapshotId ?? "").filter(Boolean))],
+    byExecutor: [...byExecutor.entries()].map(([executorId, value]) => ({ executorId, usd: round(value.usd), runs: value.runs }))
+  };
+}
+
+function variantSummaryFor(
+  experiment: ExperimentRecord,
+  runs: ExperimentRunRecord[],
+  metrics: Array<RunMetrics | null>
+): VariantExperimentSummary | null {
+  const variantId = experiment.config.harnessVariantId ?? "baseline";
+  if (runs.length === 0) return null;
+  const passed = runs.filter((run) => run.status === "passed").length;
+  const scores = runs.flatMap((run) => run.score === null ? [] : [run.score]);
+  const durations = runs.flatMap((run) => run.startedAt && run.finishedAt
+    ? [Math.max(0, Date.parse(run.finishedAt) - Date.parse(run.startedAt))]
+    : []);
+  const totalUsd = metrics.reduce((sum, metric) => sum + (metric?.costUsd ?? 0), 0);
+  return {
+    harnessVariantId: variantId,
+    totalRuns: runs.length,
+    passed,
+    passRate: round(passed / runs.length * 100),
+    avgScore: scores.length === 0 ? null : round(scores.reduce((sum, value) => sum + value, 0) / scores.length),
+    totalUsd: round(totalUsd),
+    avgDurationMs: durations.length === 0 ? null : Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length),
+    wilson95: wilsonInterval(passed, runs.length)
+  };
 }
 
 function diagnosticGroups(runs: ExperimentRunRecord[]): ExperimentSummary["failureDiagnostics"] {
@@ -1218,6 +1423,7 @@ function observationForRun(
     ? Math.max(0, Date.parse(run.finishedAt ?? now.toISOString()) - Date.parse(run.startedAt))
     : null;
   const tokens = metrics ? metrics.inputTokens + metrics.outputTokens : null;
+  const costUsd = metrics?.costUsd ?? null;
   if (!trace && durationMs === null && tokens === null) return null;
   return {
     steps: trace?.steps ?? 0,
@@ -1226,7 +1432,9 @@ function observationForRun(
     effects: trace?.effects ?? 0,
     errors: trace?.errors.length ?? 0,
     durationMs,
-    tokens
+    tokens,
+    costUsd,
+    pricingSnapshotId: metrics?.pricingSnapshotId ?? null
   };
 }
 

@@ -49,6 +49,8 @@ import { ProviderStore as JudgeProviderStore } from "./provider-store.ts";
 import { AcceptanceAgent, desktopDirectory } from "./acceptance-agent.ts";
 import { HearthAcceptanceExecutor } from "./acceptance-executor.ts";
 import { registerAcceptanceRoutes } from "./acceptance-routes.ts";
+import type { EvidenceClient } from "./evidence-client.ts";
+import { registerEvidenceRoutes } from "./evidence-routes.ts";
 
 const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -59,7 +61,9 @@ const createExperimentSchema = z.object({
   autoJudge: z.boolean().default(true),
   autoRetry: z.boolean().default(true),
   maxConcurrency: z.number().int().min(1).max(8).default(1),
-  baselineExperimentId: z.string().trim().min(1).max(100).nullable().optional()
+  baselineExperimentId: z.string().trim().min(1).max(100).nullable().optional(),
+  harnessVariantId: z.string().trim().min(1).max(80).optional(),
+  maxCostUsd: z.number().min(0).max(1_000_000).optional()
 }).strict();
 
 const submitReviewSchema = z.object({
@@ -92,6 +96,7 @@ export interface EvalAppOptions {
   evalVersion: string;
   webDist?: string;
   harborJobsRoot?: string;
+  evidence?: EvidenceClient;
   logger?: boolean;
 }
 
@@ -112,6 +117,15 @@ export async function buildEvalApp(options: EvalAppOptions): Promise<FastifyInst
     store,
     jobsRoot: options.harborJobsRoot ?? join(repoRoot, "harbor-jobs")
   });
+  if (options.evidence) {
+    registerEvidenceRoutes(app, {
+      store,
+      client: options.evidence,
+      catalog,
+      repoRoot,
+      artifactRoot
+    });
+  }
   const diagnosis = new DiagnosisAgent({ store, runner, model: options.diagnosisModel ?? new CodexDiagnosisModel(),
     health: () => client.health(), repoRoot, artifactRoot });
   registerDiagnosisRoutes(app, diagnosis, store);

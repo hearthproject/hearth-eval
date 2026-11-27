@@ -24,6 +24,8 @@ export interface CreateExperimentRequest {
   autoRetry: boolean;
   maxConcurrency: number;
   baselineExperimentId?: string | null;
+  harnessVariantId?: string;
+  maxCostUsd?: number;
 }
 
 export interface CaseCatalogResponse {

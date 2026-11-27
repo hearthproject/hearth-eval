@@ -23,6 +23,7 @@ import { EvalStore } from "./store.ts";
 import { NativeAgentClient } from "./native-client.ts";
 import { ProviderStore } from "./provider-store.ts";
 import { CompositeAgentAdapter } from "./composite-adapter.ts";
+import { EvidenceClient } from "./evidence-client.ts";
 
 async function main(): Promise<void> {
   const loaded = loadCaseCatalog(REPO_ROOT, CASES_DIR);
@@ -44,6 +45,7 @@ async function main(): Promise<void> {
   const providers = new ProviderStore({ file: join(DATA_DIR, "providers.json") });
   const localJudge = new LocalJudge(new ProviderStore({ file: join(REPO_ROOT, ".hearth", "judge-providers.json") }));
   const nativeClient = new NativeAgentClient({ repoRoot: REPO_ROOT, artifactRoot: ARTIFACT_ROOT, providers });
+  const evidence = new EvidenceClient({ baseUrl: HEARTH_URL });
 
   const hearthClient = new HearthClient({
     baseUrl: HEARTH_URL,
@@ -79,6 +81,7 @@ async function main(): Promise<void> {
     evalVersion: EVAL_VERSION,
     webDist: WEB_DIST,
     harborJobsRoot: HARBOR_JOBS_ROOT,
+    evidence,
     logger: true
   });
 

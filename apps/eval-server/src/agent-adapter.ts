@@ -53,6 +53,8 @@ export interface AgentAdapter {
   getTask(taskId: string): Promise<AgentTaskView>;
   getArtifacts(request: AgentArtifactRequest): Promise<ArtifactMap>;
   getTrace?(taskId: string): Promise<EvalTrace>;
+  /** Optional real USD cost for a task, read from the OS cost API. */
+  getCost?(taskId: string): Promise<{ usd: number | null; pricingSnapshotId: string | null; breakdown?: Record<string, unknown> | null }>;
   cancelTask(taskId: string): Promise<Record<string, unknown>>;
   health(): Promise<Record<string, unknown>>;
   /** Optional executor catalogue; adapters that expose one feed the experiment picker. */

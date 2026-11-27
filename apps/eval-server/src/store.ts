@@ -31,6 +31,10 @@ export interface RunMetrics {
   outputTokens: number;
   retryCount: number;
   approvalCount: number;
+  /** Real USD from the OS pricing snapshot; null when unpriced. */
+  costUsd?: number | null;
+  pricingSnapshotId?: string | null;
+  costBreakdown?: Record<string, unknown> | null;
 }
 
 const SCHEMA = `
@@ -71,6 +75,21 @@ CREATE TABLE IF NOT EXISTS case_versions (
   content_hash TEXT NOT NULL,
   manifest_json TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS regression_cases (
+  id TEXT PRIMARY KEY,
+  source_run_id TEXT NOT NULL,
+  source_task_id TEXT NOT NULL,
+  state TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS experiment_manifests (
+  experiment_id TEXT PRIMARY KEY,
+  fingerprint TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS experiments (
   id TEXT PRIMARY KEY,
@@ -316,6 +335,54 @@ export class EvalStore {
     return row ? rowToCase(row) : null;
   }
 
+  saveRegressionCase(input: {
+    id: string;
+    sourceRunId: string;
+    sourceTaskId: string;
+    state: string;
+    payload: Record<string, unknown>;
+  }): void {
+    const at = new Date().toISOString();
+    this.db.prepare(
+      `INSERT INTO regression_cases (id, source_run_id, source_task_id, state, payload_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET state=excluded.state, payload_json=excluded.payload_json, updated_at=excluded.updated_at`
+    ).run(input.id, input.sourceRunId, input.sourceTaskId, input.state, JSON.stringify(input.payload), at, at);
+  }
+
+  getRegressionCase(id: string): { id: string; state: string; payload: Record<string, unknown>; createdAt: string; updatedAt: string } | null {
+    const row = this.db.prepare("SELECT * FROM regression_cases WHERE id = ?").get(id) as DbRow | undefined;
+    return row ? {
+      id: String(row.id),
+      state: String(row.state),
+      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at)
+    } : null;
+  }
+
+  listRegressionCases(): Array<{ id: string; state: string; payload: Record<string, unknown>; createdAt: string; updatedAt: string }> {
+    return (this.db.prepare("SELECT * FROM regression_cases ORDER BY updated_at DESC").all() as DbRow[]).map((row) => ({
+      id: String(row.id),
+      state: String(row.state),
+      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at)
+    }));
+  }
+
+  saveExperimentManifest(experimentId: string, fingerprint: string, payload: Record<string, unknown>): void {
+    this.db.prepare(
+      `INSERT INTO experiment_manifests (experiment_id, fingerprint, payload_json, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(experiment_id) DO UPDATE SET fingerprint=excluded.fingerprint, payload_json=excluded.payload_json`
+    ).run(experimentId, fingerprint, JSON.stringify(payload), new Date().toISOString());
+  }
+
+  getExperimentManifest(experimentId: string): Record<string, unknown> | null {
+    const row = this.db.prepare("SELECT payload_json FROM experiment_manifests WHERE experiment_id = ?").get(experimentId) as DbRow | undefined;
+    return row ? JSON.parse(String(row.payload_json)) as Record<string, unknown> : null;
+  }
+
   createExperiment(experiment: ExperimentRecord): ExperimentRecord {
     this.db.prepare(
       `INSERT INTO experiments (id, name, status, config_json, environment_json, summary_json, created_at, started_at, finished_at)
@@ -406,8 +473,15 @@ export class EvalStore {
   }
 
   setRunMetrics(id: string, metrics: RunMetrics): void {
+    const usage: Record<string, unknown> = {
+      inputTokens: metrics.inputTokens,
+      outputTokens: metrics.outputTokens
+    };
+    if (metrics.costUsd !== undefined && metrics.costUsd !== null) usage.costUsd = metrics.costUsd;
+    if (metrics.pricingSnapshotId !== undefined && metrics.pricingSnapshotId !== null) usage.pricingSnapshotId = metrics.pricingSnapshotId;
+    if (metrics.costBreakdown !== undefined && metrics.costBreakdown !== null) usage.costBreakdown = metrics.costBreakdown;
     this.db.prepare("UPDATE experiment_runs SET usage_json = ?, retry_count = ?, approval_count = ? WHERE id = ?")
-      .run(JSON.stringify({ inputTokens: metrics.inputTokens, outputTokens: metrics.outputTokens }), metrics.retryCount, metrics.approvalCount, id);
+      .run(JSON.stringify(usage), metrics.retryCount, metrics.approvalCount, id);
   }
 
   saveTrace(runId: string, trace: EvalTrace): void {
@@ -427,13 +501,23 @@ export class EvalStore {
   getRunMetrics(id: string): RunMetrics | null {
     const row = this.db.prepare("SELECT usage_json, retry_count, approval_count FROM experiment_runs WHERE id = ?").get(id) as DbRow | undefined;
     if (!row) return null;
-    const usage = row.usage_json == null ? {} : JSON.parse(String(row.usage_json)) as { inputTokens?: number; outputTokens?: number };
-    return {
+    const usage = row.usage_json == null ? {} : JSON.parse(String(row.usage_json)) as {
+      inputTokens?: number;
+      outputTokens?: number;
+      costUsd?: number | null;
+      pricingSnapshotId?: string | null;
+      costBreakdown?: Record<string, unknown> | null;
+    };
+    const result: RunMetrics = {
       inputTokens: Number(usage.inputTokens ?? 0),
       outputTokens: Number(usage.outputTokens ?? 0),
       retryCount: Number(row.retry_count ?? 0),
       approvalCount: Number(row.approval_count ?? 0)
     };
+    if ("costUsd" in usage) result.costUsd = typeof usage.costUsd === "number" ? usage.costUsd : null;
+    if ("pricingSnapshotId" in usage) result.pricingSnapshotId = typeof usage.pricingSnapshotId === "string" ? usage.pricingSnapshotId : null;
+    if ("costBreakdown" in usage) result.costBreakdown = usage.costBreakdown ?? null;
+    return result;
   }
 
   getRun(id: string): ExperimentRunRecord | null {

@@ -39,11 +39,14 @@ export interface TraceObservation {
   errors: number;
   durationMs: number | null;
   tokens: number | null;
+  /** Real USD cost from the OS pricing snapshot; null when no price was available. */
+  costUsd?: number | null;
+  pricingSnapshotId?: string | null;
 }
 
 export function observeTrace(
   trace: EvalTrace,
-  extra: { durationMs?: number | null; tokens?: number | null } = {}
+  extra: { durationMs?: number | null; tokens?: number | null; costUsd?: number | null; pricingSnapshotId?: string | null } = {}
 ): TraceObservation {
   return {
     steps: trace.steps,
@@ -52,7 +55,9 @@ export function observeTrace(
     effects: trace.effects,
     errors: trace.errors.length,
     durationMs: extra.durationMs ?? null,
-    tokens: extra.tokens ?? null
+    tokens: extra.tokens ?? null,
+    costUsd: extra.costUsd ?? null,
+    pricingSnapshotId: extra.pricingSnapshotId ?? null
   };
 }
 

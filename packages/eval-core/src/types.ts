@@ -234,6 +234,10 @@ export interface ExperimentConfig {
   autoRetry: boolean;
   maxConcurrency: number;
   baselineExperimentId?: string | null;
+  /** Harness variant under test; the baseline variant is `baseline`. */
+  harnessVariantId?: string;
+  /** Optional experiment-level USD budget. */
+  maxCostUsd?: number;
 }
 
 export interface ExperimentEnvironment {
@@ -349,6 +353,32 @@ export interface ExperimentSummary {
   judgeCalibration: JudgeCalibrationSummary;
   failureDiagnostics: Array<{ kind: string; count: number; runIds: string[] }>;
   generatedAt: string;
+  /** Real-USD accounting; null when the experiment has no priced runs. */
+  cost?: ExperimentCostSummary | null;
+  variant?: VariantExperimentSummary | null;
+}
+
+export interface ExperimentCostSummary {
+  totalUsd: number;
+  pricedRuns: number;
+  unpricedRuns: number;
+  avgUsdPerRun: number | null;
+  costPerVerifiedCompletion: number | null;
+  failedUsd: number;
+  retryIncrementUsd: number;
+  pricingSnapshotIds: string[];
+  byExecutor: Array<{ executorId: string; usd: number; runs: number }>;
+}
+
+export interface VariantExperimentSummary {
+  harnessVariantId: string;
+  totalRuns: number;
+  passed: number;
+  passRate: number | null;
+  avgScore: number | null;
+  totalUsd: number;
+  avgDurationMs: number | null;
+  wilson95: { lower: number; upper: number } | null;
 }
 
 export interface MetricSummary {
