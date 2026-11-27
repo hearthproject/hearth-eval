@@ -30,7 +30,7 @@
   <img alt="5 gates" src="https://img.shields.io/badge/non--scoring--gates-5-6a4fa3">
   <img alt="8 metrics" src="https://img.shields.io/badge/metrics-8-2f607d">
   <img alt="30 scenarios" src="https://img.shields.io/badge/scenarios-30-b8471d">
-  <img alt="242 tests passing" src="https://img.shields.io/badge/tests-242%20passing-2f7d4f">
+  <img alt="247 tests passing" src="https://img.shields.io/badge/tests-247%20passing-2f7d4f">
   <img alt="Node.js 22.13+" src="https://img.shields.io/badge/node-22.13%2B-3c8773">
   <img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-1b1815">
 </p>
