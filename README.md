@@ -30,7 +30,7 @@
   <img alt="5 gates" src="https://img.shields.io/badge/non--scoring--gates-5-6a4fa3">
   <img alt="8 metrics" src="https://img.shields.io/badge/metrics-8-2f607d">
   <img alt="30 scenarios" src="https://img.shields.io/badge/scenarios-30-b8471d">
-  <img alt="120 tests passing" src="https://img.shields.io/badge/tests-120%20passing-2f7d4f">
+  <img alt="242 tests passing" src="https://img.shields.io/badge/tests-242%20passing-2f7d4f">
   <img alt="Node.js 22.13+" src="https://img.shields.io/badge/node-22.13%2B-3c8773">
   <img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-1b1815">
 </p>
@@ -83,6 +83,8 @@ Hearth Eval 是一个**独立于 Agent 运行时的评测控制面**：它维护
 - **评分口径修正为严格的 60 / 30 / 10**：schema 层硬性校验 result 层分值必须恰好为 deterministic 60、judge 30、human 10；非 result 层分值必须为 0。blocker 失败或执行预算越界直接判 `failed`（0 分）；证据不足、评委不可用、低置信度或固定抽样进入 `needs_review`，**不再误判为 blocker**。
 - **五类非评分独立门禁**：`trajectory` / `action` / `knowledge` / `system` / `safety` 与计分完全解耦，支持 blocker 硬失败、scored 警告、`null` 转人工；人工覆盖决定连同备注、评分与 `confidence=1` 落库留证。
 - **可审计的评测闭环**：八项指标聚合、Judge 校准（覆盖率/一致率/误判通过/误判失败/低置信度）、固定证据 replay、回归门禁、case / 版本 / Judge 模型对比、中断恢复与 checkpoint 续跑。
+- **Runtime 证据与因果实验**：新增 `hearth-evidence/1` 读者、兼容性指纹、Artifact Graph、Runtime Cassette 重放、Checkpoint Fork、首次分叉分类、Policy 语料与共享 VerificationSpec；Eval 只经 HTTP 读取 OS 证据，不直接打开 OS SQLite。
+- **真实 USD 预算与 Harness Variant**：`maxCostUsd` 已真正参与预算判定（缺价时记 `budget.maxCostUsd.unpriced` 并阻断），实验汇总输出总成本、单次验证完成成本、失败成本与重试增量；实验配置可带 `harnessVariantId`，报告给出 Wilson 区间与成对 Variant 比较。
 - **评测台升级**：新增门禁矩阵与轨迹归因面板，核心实现位于 `apps/eval-web/src/pages/RunDetailPage.tsx`；按六层展示 criterion 结果，并展示 `primaryCause`、步骤/工具调用/审批/效果/产物/错误统计与截断提示。
 - **`hearth-os` 配套升级**：trace 分页、operator 操作、schedule / memory / skill fixtures，并覆盖并发幂等、重启重放与 trace 持久化（对应提交：受控任务创建、operator 接口、定时任务/记忆/Skill 评测操作、并发与重放测试）。
 
