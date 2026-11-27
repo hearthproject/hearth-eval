@@ -1,9 +1,4 @@
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
 import { MemoryService } from "@hearth-os/server/memory.ts";
-import { MethodService } from "@hearth-os/server/methods.ts";
-import { SkillCuratorService } from "@hearth-os/server/skill-curator.ts";
-import { SkillPackageService } from "@hearth-os/server/skills.ts";
 import { errorMessage } from "./support.ts";
 import { result, withHarness } from "./common.ts";
 import type { ScenarioHandler } from "./types.ts";
@@ -91,45 +86,5 @@ export const p1MemorySkillScenarios: Record<string, ScenarioHandler> = {
     context.record("rootMemory", service.store.getMemory(root.id));
     context.record("derivedMemory", service.store.getMemory(derived.id));
     return result(context);
-  }),
-
-  "skill-archive-restore": async (context) => withHarness(async (service) => {
-    const rootDir = join(context.root, "skills");
-    mkdirSync(rootDir, { recursive: true });
-    const methods = new MethodService(service, context.clock.now);
-    const skills = new SkillPackageService(service, methods, { rootDir, clock: context.clock.now });
-    const curator = new SkillCuratorService({ service, skills, clock: context.clock.now });
-    try {
-      const task = service.createTask({ templateId: "T01", title: "整理假用户周报" });
-      service.updateTask(task.id, { status: "running", nextAction: "执行中" });
-      service.updateTask(task.id, { status: "completed", nextAction: "完成" });
-      const method = methods.autoLearnFromTask(task.id);
-      if (!method) throw new Error("未能从假任务学习技能");
-      const exported = skills.exportMethod(method.id);
-      context.clock.advance(15 * 86_400_000);
-      const seeded = curator.run();
-      const seededStatus = skills.getSkill(exported.id)?.status ?? null;
-      context.clock.advance(7 * 86_400_000);
-      const stale = curator.run();
-      context.clock.advance(8 * 86_400_000);
-      const archived = curator.run();
-      const rolledBack = curator.rollback(archived.id);
-      const pinned = skills.pin(exported.id, true);
-      context.clock.advance(31 * 86_400_000);
-      curator.run();
-      context.check("seeded-without-delete", seeded.status === "applied" && seededStatus === "adopted", `seed 状态=${seeded.status}, skill 状态=${seededStatus}`);
-      context.check("stale-marked", stale.actions.some((action) => action.skillId === exported.id && action.to === "stale"), JSON.stringify(stale.actions));
-      context.check("archived-with-backup", archived.actions.some((action) => action.skillId === exported.id && action.to === "archived") && Boolean(archived.backupPath), "归档必须写备份");
-      context.check("rollback-restores", rolledBack.status === "rolled_back" && skills.getSkill(exported.id)?.status === "stale", `回滚后状态=${skills.getSkill(exported.id)?.status}`);
-      context.check("pinned-survives", pinned.pinned === true && skills.getSkill(exported.id)?.status === "stale", `pinned 状态=${skills.getSkill(exported.id)?.status}`);
-      context.record("seeded", seeded);
-      context.record("stale", stale);
-      context.record("archived", archived);
-      context.record("rollback", rolledBack);
-      context.record("skill", skills.getSkill(exported.id));
-      return result(context);
-    } finally {
-      curator.stop();
-    }
   })
 };

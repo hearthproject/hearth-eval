@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>像实验室一样运行个人 Agent 评测。</strong><br>
-  50 个离线任务 + 5 个 live-only 冒烟 · 10 个任务族 · 6 层门禁 · 8 项指标 · 30 个白盒场景
+  50 个离线任务 + 5 个 live-only 冒烟 · 10 个任务族 · 6 层门禁 · 8 项指标 · 25 个白盒场景
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
   <img alt="10 families" src="https://img.shields.io/badge/families-10-2f7fa8">
   <img alt="5 gates" src="https://img.shields.io/badge/non--scoring--gates-5-6a4fa3">
   <img alt="8 metrics" src="https://img.shields.io/badge/metrics-8-2f607d">
-  <img alt="30 scenarios" src="https://img.shields.io/badge/scenarios-30-b8471d">
+  <img alt="25 scenarios" src="https://img.shields.io/badge/scenarios-25-b8471d">
   <img alt="247 tests passing" src="https://img.shields.io/badge/tests-247%20passing-2f7d4f">
   <img alt="Node.js 22.13+" src="https://img.shields.io/badge/node-22.13%2B-3c8773">
   <img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-1b1815">
@@ -122,7 +122,7 @@ Hearth Eval 是一个**独立于 Agent 运行时的评测控制面**：它维护
 | 回放与回归 | 固定证据 replay；按 `case + executor + repetition` 对齐基线；回归与证据缺口阻断 |
 | 对比 | 运行模式/重复/执行器/case 对齐检查；case 版本、Judge 模型、环境差异与族级 delta |
 | 人工复核 | 低置信度、评委冲突、blocker 异常、失败抽样、评委不可用、固定抽样；`pass/fail/unknown` 留证 |
-| 白盒场景 | 30 个本地场景（P0 16 / P1 13 / P2 1），直接加载 `hearth-os` 源码做进程内回归 |
+| 白盒场景 | 25 个本地场景（P0 15 / P1 10），直接加载 `hearth-os` 源码做进程内回归 |
 
 ## 快速开始
 
@@ -243,7 +243,7 @@ flowchart TD
   <a href="docs/public/diagrams/eval-architecture-light.svg" title="查看原图">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/public/diagrams/eval-architecture-dark.svg">
-      <img src="docs/public/diagrams/eval-architecture-light.svg" width="1400" alt="Hearth Eval 架构图：控制台 :5175 经 /api 调用评测服务 :4318；EvalRunner 使用 eval-core 完成 60/30/10 评分与五类门禁，并通过 HearthClient 调用 hearth-os :4317 的受控任务、trace 分页、Judge 与 operator 接口；EvalStore 写入 SQLite 的 7 张表；数据资产包括 catalog v2、运行产物与 30 个白盒场景。">
+      <img src="docs/public/diagrams/eval-architecture-light.svg" width="1400" alt="Hearth Eval 架构图：控制台 :5175 经 /api 调用评测服务 :4318；EvalRunner 使用 eval-core 完成 60/30/10 评分与五类门禁，并通过 HearthClient 调用 hearth-os :4317 的受控任务、trace 分页、Judge 与 operator 接口；EvalStore 写入 SQLite 的 7 张表；数据资产包括 catalog v2、运行产物与 25 个白盒场景。">
     </picture>
   </a>
 </p>
@@ -343,7 +343,7 @@ npm run dev
 
 `scenario-runner/` 不是黑盒 HTTP 压测：它通过 TS path 映射直接加载同级 `hearth-os` 源码，在内存 `HearthStore` + `HearthService` 上使用固定时钟、假用户/偏好/密钥执行场景，并用主服务的 `redactSecrets` 脱敏证据。
 
-- 30 个场景：P0 16 个、P1 13 个、P2 1 个，覆盖 20 种机制；P0 机制必须有故障注入场景。
+- 25 个场景：P0 15 个、P1 10 个，覆盖 14 种机制；P0 机制必须有故障注入场景。5 个随 Hearth OS 功能下线而退役的场景记录在 `scenario-runner/retired/README.md`。
 - 主题包括审批拒绝、动作绑定篡改、delegation/handoff/sandbox/channel 边界、重复发送与 unknown effect、崩溃 checkpoint、敏感信息隔离、记忆污染/遗忘、Skill 归档恢复、提醒回环与 DST 补跑、离线一致性、提示注入与注意力预算等。
 - 输出写入 `eval/scenario-runs/<批次>/` 的 `report.json`、`summary.md` 和 `evidence.json`（已忽略版本控制）；也可在控制台“场景测试”页查看历史批次与证据。
 
@@ -467,7 +467,7 @@ hearth-eval/
 │   │   └── v1/cases/                旧 60 题只读归档（历史回归基线）
 │   ├── inputs/                      第一阶段 15 个任务的固定输入
 │   ├── runs/                        第一阶段验收产物
-│   ├── scenarios/scenarios.json     30 个白盒场景定义
+│   ├── scenarios/scenarios.json     25 个白盒场景定义
 │   └── scenario-runs/               场景自检输出（运行时生成，已忽略）
 ├── scenario-runner/                 白盒场景执行器
 │   ├── run-scenarios.ts             CLI 入口：过滤、重复、报告与证据落盘
@@ -516,7 +516,7 @@ npm run dev:web             # 仅控制台，5175
 npm test                    # 单元与 API 测试
 npm run typecheck           # 评测代码类型检查
 npm run typecheck:scenarios # 白盒场景类型检查
-npm run eval:scenarios      # 30 个本地场景
+npm run eval:scenarios      # 25 个本地场景
 npm run build               # 构建评测控制台
 npm start                   # 生产启动，服务端托管 dist
 npm run check               # 类型检查 + 测试 + 构建

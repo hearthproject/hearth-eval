@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ArtifactRecord, RunCheckpointRecord } from "@hearth/core";
+import type { ArtifactRecord, GoalContract, RunCheckpointRecord } from "@hearth/core";
 import { HearthStore } from "@hearth/eventlog";
 import { ApprovalManager } from "@hearth-os/server/approvals.ts";
-import { judgeCompletion } from "@hearth-os/server/completion-judge.ts";
+import { verifyGoalCompletion } from "@hearth-os/server/goal-verifier.ts";
 import { ReconcileService } from "@hearth-os/server/reconcile.ts";
 import { HearthService } from "@hearth-os/server/service.ts";
 import { createTaskWithRun, effectRecord } from "./support.ts";
@@ -84,37 +84,69 @@ export const p0EffectScenarios: Record<string, ScenarioHandler> = {
     return result(context);
   }),
 
-  "goal-completion-verification": async (context) => withHarness(async (service) => {
-    const goal = service.createGoal({
+  "goal-completion-verification": async (context) => withHarness(async () => {
+    const now = context.clock.now().toISOString();
+    const content = JSON.stringify({ title: "周报", summary: "完成" });
+    const expectedSha = createHash("sha256").update(content).digest("hex");
+    const goal: GoalContract = {
+      goalId: "goal-research-summary",
       title: "假用户研究摘要",
       objective: "产出可核验的研究摘要",
+      originalObjective: "产出可核验的研究摘要",
+      constraints: [],
+      forbiddenActions: [],
+      authoritySources: [],
+      successCriteria: [
+        { id: "file", description: "摘要存在且哈希未变", validator: "file", check: JSON.stringify({ path: "research-summary.json", sha256: expectedSha }), required: true },
+        {
+          id: "schema",
+          description: "字段完整",
+          validator: "schema",
+          check: JSON.stringify({
+            file: "research-summary.json",
+            schema: {
+              type: "object",
+              required: ["title", "summary"],
+              properties: { title: { type: "string" }, summary: { type: "string" } }
+            }
+          }),
+          required: true
+        }
+      ],
+      evidenceRequirements: ["research-summary.json"],
+      budget: {},
+      stopConditions: [],
       reviewPolicy: "auto",
       currentState: "active",
-      successCriteria: [
-        { id: "file", description: "摘要存在", validator: "file", check: "research-summary.json", required: true },
-        { id: "schema", description: "字段完整", validator: "schema", check: "research-summary.json#title,summary", required: true }
-      ],
-      evidenceRequirements: ["research-summary.json"]
-    });
-    const task = service.createTask({ title: "研究摘要", goalId: goal.goalId, executorId: "native" });
-    const content = JSON.stringify({ title: "周报", summary: "完成" });
+      createdAt: now,
+      updatedAt: now
+    };
     const artifactPath = join(context.root, "research-summary.json");
     writeFileSync(artifactPath, content, "utf8");
     const artifact: ArtifactRecord = {
       id: "artifact-research-summary",
-      taskId: task.id,
+      taskId: "task-1",
       runId: "run-1",
       relativePath: "research-summary.json",
       absolutePath: artifactPath,
       mimeType: "application/json",
-      sha256: createHash("sha256").update(content).digest("hex"),
+      sha256: expectedSha,
       bytes: Buffer.byteLength(content),
-      createdAt: context.clock.now().toISOString()
+      createdAt: now
     };
     writeFileSync(artifactPath, JSON.stringify({ title: "周报", summary: "被篡改" }), "utf8");
-    const report = await judgeCompletion({ goal, task, artifacts: [artifact], effects: [], now: context.clock.now() });
+    const report = await verifyGoalCompletion({
+      goal,
+      taskId: "task-1",
+      roundRunId: "run-1",
+      workspaceRoot: context.root,
+      outDir: context.root,
+      artifacts: [artifact],
+      actions: [],
+      review: null
+    });
     context.check("rejects-tampered-artifact", report.verdict === "fail", `判定=${report.verdict}`);
-    context.check("hash-diagnosis", report.criteria[0]?.detail.includes("修改") === true, report.criteria[0]?.detail ?? "no detail");
+    context.check("hash-diagnosis", report.criteria.some((criterion) => criterion.detail.includes("哈希不匹配")), report.criteria.map((criterion) => criterion.detail).join(" | "));
     context.check("no-fake-pass", report.criteria.some((criterion) => criterion.status === "failed"), "至少一条验收标准必须失败");
     context.record("completionReport", report);
     context.record("artifactEvidence", report.evidenceRefs);
@@ -151,7 +183,6 @@ export const p0EffectScenarios: Record<string, ScenarioHandler> = {
         usage: null,
         createdAt: context.clock.now().toISOString(),
         proof: {
-          goalId: null,
           attemptId: runId,
           identity: { executorId: "native", runtimeVersion: "scenario-1" },
           phasePrefix: ["tool:write_file"],

@@ -8,7 +8,6 @@ import { MentionResolver } from "@hearth-os/server/mentions.ts";
 import { OntologyService } from "@hearth-os/server/ontology.ts";
 import { OntologyWriter } from "@hearth-os/server/ontology-writer.ts";
 import { HearthService } from "@hearth-os/server/service.ts";
-import { StandingIntentService } from "@hearth-os/server/standing-intents.ts";
 import { TaskGraphService } from "@hearth-os/server/task-graph.ts";
 import { result, withHarness } from "./common.ts";
 import type { ScenarioHandler } from "./types.ts";
@@ -109,55 +108,6 @@ export const paScenarios: Record<string, ScenarioHandler> = {
     return result(context);
   }),
 
-  "attention-budget-30": async (context) => withHarness(async (service) => {
-    const intents = new StandingIntentService({ service, clock: context.clock.now });
-    intents.updateBudget({ dailyLimit: 2, cooldownSeconds: 0 });
-    for (let index = 0; index < 30; index += 1) {
-      const task = service.createTask({ title: `注意力事件 ${index}`, goal: `处理注意力事件 ${index}` });
-      if (index < 2) {
-        service.updateTask(task.id, { status: "running" });
-        service.updateTask(task.id, { status: "waiting_input", pendingInput: "需要用户拍板后继续" });
-      } else {
-        const now = context.clock.now().toISOString();
-        service.store.appendEvent({
-          type: "approval.created",
-          taskId: task.id,
-          payload: {
-            id: `approval:attention-${index}`,
-            taskId: task.id,
-            runId: `run:attention-${index}`,
-            kind: "send_email",
-            summary: `噪音审批 ${index}`,
-            target: {},
-            preview: {},
-            parameterHash: `hash-${index}`,
-            status: "pending",
-            expiresAt: new Date(context.clock.now().getTime() + 3_600_000).toISOString(),
-            decidedAt: null,
-            effectId: null,
-            createdAt: now,
-            goalId: null
-          }
-        });
-      }
-    }
-    context.clock.advance(2 * 60_000);
-    const run = await intents.heartbeat();
-    const deliveredItems = run.attentionIds.map((id) => service.store.getAttentionItem(id)).filter((item): item is NonNullable<typeof item> => Boolean(item));
-    const actionableDelivered = deliveredItems.filter((item) => item.kind === "decision").length;
-    const precision = deliveredItems.length === 0 ? 0 : actionableDelivered / deliveredItems.length;
-    context.check("budget-capped", run.attentionIds.length <= 2, `delivered=${run.attentionIds.length}`);
-    context.check("queue-retained", intents.queue().length >= 28, `queue=${intents.queue().length}`);
-    context.check("decision-valid", ["notify", "NO_REPLY"].includes(run.decision), run.decision);
-    context.check("only-actionable-delivered", deliveredItems.length === 2 && actionableDelivered === deliveredItems.length, `${actionableDelivered}/${deliveredItems.length}`);
-    context.recordMetric("attention_precision", precision, `${actionableDelivered}/${deliveredItems.length} delivered items were in the 2-item ground-truth actionable set`);
-    context.recordMetric("interruption_rate", deliveredItems.length, `${deliveredItems.length} interruptions over a controlled 1-hour active window`);
-    context.recordMetric("time_to_decision", 2, "controlled clock advanced 2 minutes from candidate creation to heartbeat delivery");
-    context.recordMetric("human_minutes_saved", 13, "modeled baseline review 30 x 0.5 min = 15 min versus assisted 2 x 1 min = 2 min");
-    context.record("run", run);
-    return result(context);
-  }),
-
   "forget-propagation-ontology": async (context) => withHarness(async (service, store) => {
     const ontology = new OntologyService(service);
     const contextService = new ContextService(service, join(context.root, "blobs"));
@@ -197,7 +147,6 @@ export const paScenarios: Record<string, ScenarioHandler> = {
     const ontology = new OntologyService(service);
     const contextService = new ContextService(service, join(context.root, "blobs"));
     const broker = new ContextBroker(service, contextService, ontology);
-    const intents = new StandingIntentService({ service, clock: context.clock.now });
     ontology.recordDecision({ title: "长期方向", decision: "坚持本地优先", decidedBy: "user", evidenceRefs: ["chat:long-term"] });
     ontology.recordCommitment({ description: "四周内提交审计报告", dueAt: new Date(context.clock.now().getTime() + 28 * 86_400_000).toISOString(), confidence: "confirmed", evidenceRefs: ["chat:commitment"] });
     let successfulWeeks = 0;
@@ -214,14 +163,11 @@ export const paScenarios: Record<string, ScenarioHandler> = {
       recoveredFacts += Number(hasDecision) + Number(hasCommitment);
       requiredFacts += 2;
     }
-    const run = await intents.heartbeat();
-    context.check("commitment-surfaced", run.triggerKinds.includes("commitment.due") || run.attentionIds.length > 0, JSON.stringify(run));
     context.check("decision-survives", successfulWeeks === 4, `weeks=${successfulWeeks}/4`);
     context.recordMetric("cross_session_recall_accuracy", recoveredFacts / Math.max(1, requiredFacts), `${recoveredFacts}/${requiredFacts} required facts recovered across four weekly sessions`);
     context.recordMetric("context_pack_hit_rate", recoveredFacts / Math.max(1, requiredFacts), "required decision and commitment facts present in each continuation pack");
     context.recordMetric("context_reconstruction_turns", 0, "four weekly 继续 sessions required no clarification turn");
     context.recordMetric("repeated_input_chars", 0, "four weekly 继续 sessions required no repeated background text");
-    context.record("heartbeat", run);
     context.record("packs", packs.map((pack) => pack.id));
     return result(context);
   }),

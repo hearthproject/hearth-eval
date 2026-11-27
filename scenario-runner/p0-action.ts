@@ -27,7 +27,7 @@ export const p0ActionScenarios: Record<string, ScenarioHandler> = {
     const executable = join(context.root, "tool.exe");
     writeFileSync(executable, "v1", "utf8");
     const action = resolveAction({
-      proposal: { kind: "shell", summary: "运行假工具", command: { executable, cwd: context.root, argv: ["--check"] } },
+      proposal: { kind: "host_file", summary: "读取工作区外的私密文件", hostFile: { path: executable, mode: "read" } },
       permissionMode: "guarded",
       context: "interactive",
       sessionRoot: context.root
@@ -45,10 +45,10 @@ export const p0ActionScenarios: Record<string, ScenarioHandler> = {
     const pending = await manager.requestTool({
       taskId: task.id,
       runId: run.id,
-      toolName: "shell",
-      summary: "运行假工具",
-      target: { tool: "shell", executable },
-      preview: { arguments: ["--check"] },
+      toolName: "read_file",
+      summary: "读取工作区外的私密文件",
+      target: { tool: "read_file", path: executable },
+      preview: { path: executable },
       action
     });
     const approval = pending.approval;
@@ -84,7 +84,7 @@ export const p0ActionScenarios: Record<string, ScenarioHandler> = {
     const executable = join(context.root, "scheduled-tool.exe");
     writeFileSync(executable, "v1", "utf8");
     const action = resolveAction({
-      proposal: { kind: "shell", summary: "定时任务执行高危命令", command: { executable, cwd: context.root } },
+      proposal: { kind: "network", summary: "定时任务向外部接口提交数据", network: { host: "api.example.test", method: "POST" } },
       permissionMode: "guarded",
       context: "scheduled",
       sessionRoot: context.root
@@ -105,10 +105,10 @@ export const p0ActionScenarios: Record<string, ScenarioHandler> = {
       await manager.request({
         taskId: task.id,
         runId: run.id,
-        kind: "tool.shell",
-        summary: "无人值守执行",
-        target: { tool: "shell" },
-        preview: { cwd: context.root },
+        kind: "tool.network",
+        summary: "无人值守外部写入",
+        target: { tool: "network", host: "api.example.test" },
+        preview: { method: "POST", host: "api.example.test" },
         action
       });
     } catch (error) {

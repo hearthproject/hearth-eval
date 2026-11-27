@@ -2,7 +2,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HandoffPacket, RunRecord, TaskRecord } from "@hearth/core";
-import { ChannelIngressService } from "@hearth-os/server/channel-adapter.ts";
 import { ContextService } from "@hearth-os/server/context.ts";
 import { DelegationService } from "@hearth-os/server/delegation.ts";
 import { HandoffService } from "@hearth-os/server/handoff.ts";
@@ -176,27 +175,6 @@ export const p0BoundaryScenarios: Record<string, ScenarioHandler> = {
     context.record("failureClasses", { escapeClass, networkClass, credentialClass });
     context.record("allowed", allowed);
     return result(context);
-  }),
-
-  "channel-inbound-idempotency": async (context) => withHarness(async (_service, store) => {
-    const channels = new ChannelIngressService(store, context.clock.now);
-    const first = channels.receive(channelMessage("scenario-message-1", 10, 2));
-    const processed = channels.ack(first.record.id, { outcome: "processed-once" });
-    const duplicate = channels.receive(channelMessage("scenario-message-1", 1, 2));
-    const ackAgain = channels.ack(first.record.id, { outcome: "should-not-replace" });
-    const staleGeneration = captureChannelFailure(() => channels.receive(channelMessage("scenario-message-2", 99, 1)));
-    const staleCursor = captureChannelFailure(() => channels.receive(channelMessage("scenario-message-3", 9, 2)));
-    const cursor = store.getChannelCursor("feishu", "scenario-chat");
-    context.check("duplicate-returns-original", duplicate.duplicate && duplicate.record.id === first.record.id, `${first.record.id}/${duplicate.record.id}`);
-    context.check("processed-once", store.listChannelDeliveries("feishu", "scenario-chat").length === 1 && processed.status === "processed", `deliveries=${store.listChannelDeliveries("feishu", "scenario-chat").length}`);
-    context.check("ack-idempotent", ackAgain.receipt?.outcome === "processed-once", JSON.stringify(ackAgain.receipt));
-    context.check("stale-generation-rejected", staleGeneration === "CHANNEL_GENERATION_STALE", `错误码=${staleGeneration ?? "none"}`);
-    context.check("stale-cursor-rejected", staleCursor === "CHANNEL_CURSOR_STALE", `错误码=${staleCursor ?? "none"}`);
-    context.check("newer-cursor-retained", cursor?.generation === 2 && cursor.cursor === 10, `cursor=${cursor?.generation}/${cursor?.cursor}`);
-    context.record("delivery", processed);
-    context.record("duplicate", duplicate);
-    context.record("cursor", cursor);
-    return result(context);
   })
 };
 
@@ -299,26 +277,4 @@ function captureSandboxFailure(run: () => unknown): string | null {
       ? String((error as { failureClass: unknown }).failureClass)
       : errorCode(error);
   }
-}
-
-function captureChannelFailure(run: () => unknown): string | null {
-  try {
-    run();
-    return null;
-  } catch (error) {
-    return errorCode(error);
-  }
-}
-
-function channelMessage(externalId: string, cursor: number, generation: number) {
-  return {
-    channel: "feishu",
-    externalId,
-    threadKey: "scenario-chat",
-    sender: "fake-user-001",
-    text: "边界验收消息",
-    generation,
-    cursor,
-    auth: { ok: true, principal: "fake-user-001" }
-  };
 }

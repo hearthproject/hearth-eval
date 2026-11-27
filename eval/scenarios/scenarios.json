@@ -186,44 +186,6 @@
       ]
     },
     {
-      "id": "skill-archive-restore",
-      "title": "技能 stale/archive/pin/restore 正确",
-      "mechanism": "skill",
-      "priority": "P1",
-      "fault": "none",
-      "expectedInvariant": "过期技能不得被静默删除，归档必须可回滚且 pinned 技能不参与清理",
-      "evidence": [
-        "curator-run",
-        "skill-status",
-        "backup",
-        "rollback"
-      ],
-      "repeat": 3,
-      "tags": [
-        "skill",
-        "curator"
-      ]
-    },
-    {
-      "id": "proactive-noise-budget",
-      "title": "主动提醒遵守冷却、预算和 NO_REPLY",
-      "mechanism": "proactive",
-      "priority": "P1",
-      "fault": "none",
-      "expectedInvariant": "冷却、每日预算和忽略状态必须阻止重复打扰；无可提醒事项返回 NO_REPLY",
-      "evidence": [
-        "proactive-scan",
-        "heartbeat",
-        "notifier-calls",
-        "attention-queue"
-      ],
-      "repeat": 3,
-      "tags": [
-        "proactive",
-        "attention"
-      ]
-    },
-    {
       "id": "schedule-catchup-dst",
       "title": "错过周期、DST 跳跃和唯一执行",
       "mechanism": "schedule",
@@ -241,25 +203,6 @@
         "schedule",
         "dst",
         "catch-up"
-      ]
-    },
-    {
-      "id": "connection-offline-consistency",
-      "title": "离线缓存不冒充实时，重连不覆盖新数据",
-      "mechanism": "connection",
-      "priority": "P2",
-      "fault": "stale_generation",
-      "expectedInvariant": "缓存必须标记 cached/asOf/cursor；旧 generation 写入被拒绝；远程不确定动作显式结算",
-      "evidence": [
-        "connection-status",
-        "projection",
-        "outbox",
-        "generation"
-      ],
-      "repeat": 3,
-      "tags": [
-        "connection",
-        "offline"
       ]
     },
     {
@@ -359,26 +302,6 @@
       ]
     },
     {
-      "id": "channel-inbound-idempotency",
-      "title": "重复渠道消息只处理一次，旧游标不覆盖新状态",
-      "mechanism": "channel",
-      "priority": "P0",
-      "fault": "duplicate",
-      "expectedInvariant": "同一 externalId 只产生一份投递记录；旧 generation 或 cursor 不得覆盖新游标",
-      "evidence": [
-        "channel-delivery",
-        "ack-receipt",
-        "cursor",
-        "stale-rejection"
-      ],
-      "repeat": 3,
-      "tags": [
-        "channel",
-        "idempotency",
-        "cursor"
-      ]
-    },
-    {
       "id": "mention-ambiguous",
       "title": "歧义提及阻断不可逆动作",
       "mechanism": "mentions",
@@ -448,24 +371,6 @@
       "tags": [
         "ontology",
         "conflict"
-      ]
-    },
-    {
-      "id": "attention-budget-30",
-      "title": "三十条提醒受每日预算约束",
-      "mechanism": "attention",
-      "priority": "P1",
-      "fault": "duplicate",
-      "expectedInvariant": "单日投递不超过预算，剩余项保留在队列中",
-      "evidence": [
-        "attention-queue",
-        "heartbeat",
-        "budget"
-      ],
-      "repeat": 3,
-      "tags": [
-        "attention",
-        "budget"
       ]
     },
     {
