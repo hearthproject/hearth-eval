@@ -10,7 +10,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { CompareResponse } from "@hearth/eval-core";
+import type { CompareResponse } from "@hearth/eval-core/browser";
 import { api } from "../lib/api.ts";
 import {
   FAMILY_LABELS,

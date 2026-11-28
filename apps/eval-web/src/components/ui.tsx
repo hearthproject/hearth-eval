@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ExperimentRunStatus, ExperimentStatus } from "@hearth/eval-core";
+import type { ExperimentRunStatus, ExperimentStatus } from "@hearth/eval-core/browser";
 import { AlertTriangle, Inbox, LoaderCircle } from "lucide-react";
 import { statusMeta } from "../lib/labels.ts";
 

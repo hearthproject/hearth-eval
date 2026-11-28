@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { DirectoryListing, JudgeSettingsInput, JudgeSettingsResponse, JudgeTestResult, StorageSettingsResponse } from "@hearth/eval-core";
+import type { DirectoryListing, JudgeSettingsInput, JudgeSettingsResponse, JudgeTestResult, StorageSettingsResponse } from "@hearth/eval-core/browser";
 import { api } from "../lib/api.ts";
 import { ErrorState, LoadingState, SectionHeader } from "./ui.tsx";
 

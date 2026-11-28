@@ -862,7 +862,8 @@ export class EvalRunner {
       runMode,
       networkHosts: runMode === "live" ? manifest.networkHosts ?? [] : [],
       outputDir: run.outputDir,
-      timeoutMs: manifest.timeoutMs
+      timeoutMs: manifest.timeoutMs,
+      ...(experiment?.config.harnessVariantId ? { harnessVariantId: experiment.config.harnessVariantId } : {})
     };
   }
 

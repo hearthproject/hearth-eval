@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, GitCompareArrows } from "lucide-react";
-import type { BenchmarkCompareTask } from "@hearth/eval-core";
-import { formatBenchmarkTokens } from "@hearth/eval-core";
+import type { BenchmarkCompareTask } from "@hearth/eval-core/browser";
+import { formatBenchmarkTokens } from "@hearth/eval-core/browser";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api.ts";
 import {

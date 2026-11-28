@@ -6,6 +6,7 @@ import { CaseDetailPage } from "./pages/CaseDetailPage.tsx";
 import { CasesPage } from "./pages/CasesPage.tsx";
 import { ImportedEvaluationPage } from "./pages/ImportedEvaluationPage.tsx";
 import { ComparePage } from "./pages/ComparePage.tsx";
+import { EvidencePage } from "./pages/EvidencePage.tsx";
 import { DashboardPage } from "./pages/DashboardPage.tsx";
 import { ExperimentDetailPage } from "./pages/ExperimentDetailPage.tsx";
 import { ExperimentsPage } from "./pages/ExperimentsPage.tsx";
@@ -38,6 +39,7 @@ export function App() {
         <Route path="runs/:id" element={<RunDetailPage />} />
         <Route path="reviews" element={<ReviewsPage />} />
         <Route path="compare" element={<ComparePage />} />
+        <Route path="evidence" element={<EvidencePage />} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="system" element={<SystemPage />} />
         <Route path="scenarios" element={<ScenariosPage />} />

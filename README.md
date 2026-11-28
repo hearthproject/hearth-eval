@@ -83,8 +83,9 @@ Hearth Eval 是一个**独立于 Agent 运行时的评测控制面**：它维护
 - **评分口径修正为严格的 60 / 30 / 10**：schema 层硬性校验 result 层分值必须恰好为 deterministic 60、judge 30、human 10；非 result 层分值必须为 0。blocker 失败或执行预算越界直接判 `failed`（0 分）；证据不足、评委不可用、低置信度或固定抽样进入 `needs_review`，**不再误判为 blocker**。
 - **五类非评分独立门禁**：`trajectory` / `action` / `knowledge` / `system` / `safety` 与计分完全解耦，支持 blocker 硬失败、scored 警告、`null` 转人工；人工覆盖决定连同备注、评分与 `confidence=1` 落库留证。
 - **可审计的评测闭环**：八项指标聚合、Judge 校准（覆盖率/一致率/误判通过/误判失败/低置信度）、固定证据 replay、回归门禁、case / 版本 / Judge 模型对比、中断恢复与 checkpoint 续跑。
-- **Runtime 证据与因果实验**：新增 `hearth-evidence/1` 读者、兼容性指纹、Artifact Graph、Runtime Cassette 重放、Checkpoint Fork、首次分叉分类、Policy 语料与共享 VerificationSpec；Eval 只经 HTTP 读取 OS 证据，不直接打开 OS SQLite。
-- **真实 USD 预算与 Harness Variant**：`maxCostUsd` 已真正参与预算判定（缺价时记 `budget.maxCostUsd.unpriced` 并阻断），实验汇总输出总成本、单次验证完成成本、失败成本与重试增量；实验配置可带 `harnessVariantId`，报告给出 Wilson 区间与成对 Variant 比较。
+- **Runtime 证据与因果实验**：新增 `hearth-evidence/1` 读者、兼容性指纹、Artifact Graph、Runtime Cassette 重放、Checkpoint Fork、首次分叉分类、Policy 语料与共享 VerificationSpec；Eval 只经 HTTP 读取 OS 证据，不直接打开 OS SQLite。证据控制台（`/evidence`）提供来源链、Manifest 差异、Replay/Fork、Policy、成本降级、失败转 Case 与 Harness 变体七个视图；浏览器端改用 `@hearth/eval-core/browser` 安全入口，不再把 `node:crypto` / `node:fs` 拉进生产包。
+- **真实 USD 预算与 Harness Variant**：`maxCostUsd` 已真正参与预算判定（缺价时记 `budget.maxCostUsd.unpriced` 并阻断），实验汇总输出总成本、单次验证完成成本、失败成本与重试增量；新建实验可选择 `harnessVariantId` 并传给 OS 任务（落在任务记录与 Runtime，而非只写报告标签），报告给出 Wilson 区间与成对 Variant 比较。
+- **失败现场一键转 Case**：`POST /api/evidence/failure-cases/from-run` 从 OS 的 run manifest、task view 与产物自动装载失败现场（目标、输入、产物、观测、归因），非失败运行需显式 `force`；结果编译为回归 Case 并入库，控制台同一页面可预览与复查。
 - **评测台升级**：新增门禁矩阵与轨迹归因面板，核心实现位于 `apps/eval-web/src/pages/RunDetailPage.tsx`；按六层展示 criterion 结果，并展示 `primaryCause`、步骤/工具调用/审批/效果/产物/错误统计与截断提示。
 - **`hearth-os` 配套升级**：trace 分页、operator 操作、schedule / memory / skill fixtures，并覆盖并发幂等、重启重放与 trace 持久化（对应提交：受控任务创建、operator 接口、定时任务/记忆/Skill 评测操作、并发与重放测试）。
 
@@ -411,8 +412,9 @@ CLI 默认提交到本机 `http://127.0.0.1:4318`，可通过 `HEARTH_EVAL_URL` 
 | 复核与对比 | `GET /api/reviews`、`GET /api/compare` |
 | 事件 | `GET /api/events`（`after` / `limit` / `experimentId` / `runId`） |
 | 场景 | `GET/POST /api/scenarios/self-check`、`GET /api/scenarios/catalog`、`GET /api/scenarios`、`GET /api/scenarios/:id`、`GET /api/scenarios/:id/:scenarioId/:repetition/evidence` |
+| 证据 | `GET /api/evidence/health`、`GET /api/evidence/variants`、`GET /api/evidence/variants/metrics`、`GET /api/evidence/runs/:runId/manifest|exchanges|bundle`、`GET /api/evidence/tasks/:taskId/graph|provenance`、`GET /api/evidence/artifacts/:artifactId/provenance`、`POST /api/evidence/policy/preflight`、`GET /api/evidence/policy/:taskId`、`GET /api/evidence/compare`、`GET /api/evidence/cost/tasks/:taskId`、`POST /api/evidence/replay`、`POST /api/evidence/fork`、`GET /api/evidence/failure-cases`、`POST /api/evidence/failure-cases/from-run`、`POST /api/evidence/failure-cases/:id/advance`、`GET /api/evidence/regression-gate` |
 
-被测主服务侧由 eval-server 调用的接口：`POST /api/eval/tasks`、`GET /api/tasks/:taskId`、`GET /api/eval/tasks/:taskId/trace`、`POST /api/eval/judge`、`POST /api/tasks/:taskId/cancel`、`POST /api/eval/tasks/:id/operator`。
+被测主服务侧由 eval-server 调用的接口：`POST /api/eval/tasks`、`GET /api/tasks/:taskId`、`GET /api/eval/tasks/:taskId/trace`、`GET /api/eval/tasks/:taskId/artifacts`、`POST /api/eval/judge`、`POST /api/tasks/:taskId/cancel`、`POST /api/eval/tasks/:id/operator`。
 
 ## 目录结构
 
@@ -535,7 +537,7 @@ npm run eval:scenarios -- --only approval-rejected-stops,unknown-effect-reconcil
 在当前分支执行（`Node >= 22.13`）：
 
 ```bash
-npm test                    # 17 个测试文件 / 120 个测试全部通过
+npm test                    # 37 个测试文件 / 247 个测试全部通过
 npm run typecheck
 npm run typecheck:scenarios
 npm run build

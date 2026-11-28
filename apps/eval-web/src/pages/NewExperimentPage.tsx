@@ -13,7 +13,7 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import type { CaseVersionSummary, CreateExperimentRequest } from "@hearth/eval-core";
+import type { CaseVersionSummary, CreateExperimentRequest } from "@hearth/eval-core/browser";
 import { api } from "../lib/api.ts";
 import {
   DIFFICULTY_LABELS,
@@ -31,8 +31,11 @@ export function NewExperimentPage() {
   const casesQuery = useQuery({ queryKey: ["cases", "all"], queryFn: () => api.cases() });
   const systemQuery = useQuery({ queryKey: ["system"], queryFn: api.system });
   const experimentsQuery = useQuery({ queryKey: ["experiments"], queryFn: api.experiments });
+  const variantsQuery = useQuery({ queryKey: ["harness-variants"], queryFn: api.variants });
   const [name, setName] = useState("");
   const [runMode, setRunMode] = useState<RunMode>("offline");
+  const [harnessVariantId, setHarnessVariantId] = useState("baseline");
+  const [maxCostUsd, setMaxCostUsd] = useState("");
   const [selectedCases, setSelectedCases] = useState<Set<string>>(() => {
     const initial = params.get("case");
     return new Set(initial ? [initial] : []);
@@ -126,7 +129,9 @@ export function NewExperimentPage() {
       autoJudge,
       autoRetry,
       maxConcurrency,
-      baselineExperimentId: baselineExperimentId || null
+      baselineExperimentId: baselineExperimentId || null,
+      harnessVariantId,
+      ...(maxCostUsd.trim() && Number.isFinite(Number(maxCostUsd)) && Number(maxCostUsd) > 0 ? { maxCostUsd: Number(maxCostUsd) } : {})
     };
     createMutation.mutate(request);
   };
@@ -216,6 +221,19 @@ export function NewExperimentPage() {
               <ToggleRow checked={autoRetry} onChange={setAutoRetry} title="评分异常自动重试" detail="模型评委临时失败时最多重试一次。" icon={<Settings2 size={17} />} />
             </div>
           </section>
+
+          <section className="panel">
+            <div className="step-heading"><div><h2>Harness 变体与 USD 预算</h2><p>变体会以任务级参数传给 Hearth，并覆盖 Agent Runtime 的对应控制项；预算超限时由 Regression Gate 阻断。</p></div></div>
+            <div className="form-grid">
+              <label className="field-label">Harness Variant<select value={harnessVariantId} onChange={(event) => setHarnessVariantId(event.target.value)}>
+                {(variantsQuery.data?.variants ?? [{ id: "baseline", label: "基线" }]).map((variant) => (
+                  <option key={variant.id} value={variant.id}>{variant.label}（{variant.id}）</option>
+                ))}
+              </select></label>
+              <label className="field-label">整场实验 USD 上限<input type="number" min={0} step="0.01" value={maxCostUsd} onChange={(event) => setMaxCostUsd(event.target.value)} placeholder="留空表示不设实验级预算" /></label>
+            </div>
+            {variantsQuery.error && <p className="muted-copy">无法读取 Hearth 变体列表：{variantsQuery.error.message}。仍可使用 baseline。</p>}
+          </section>
         </div>
 
         <aside className="builder-summary">
@@ -232,6 +250,8 @@ export function NewExperimentPage() {
               <span><Cpu size={15} /> 执行器 <b>{[...executorIds].map(executorLabel).join(", ") || "未选择"}</b></span>
               <span><Settings2 size={15} /> 并发 <b>{maxConcurrency}</b></span>
               <span><ShieldCheck size={15} /> 评委 <b>{autoJudge ? "自动" : "关闭"}</b></span>
+              <span><Settings2 size={15} /> 变体 <b>{harnessVariantId}</b></span>
+              <span><Settings2 size={15} /> 预算 <b>{maxCostUsd.trim() ? `$${maxCostUsd}` : "不限"}</b></span>
             </div>
             <div className="run-warning"><AlertTriangle size={15} /><span>提交后将立即调用 Hearth 开始真实评测。请确认执行器、case 与产物目录。</span></div>
             {createMutation.error && <div className="inline-error">{createMutation.error.message}</div>}

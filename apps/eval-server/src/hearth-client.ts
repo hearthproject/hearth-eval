@@ -87,8 +87,29 @@ export class HearthClient implements AgentAdapter {
 
   //按照规则取出作业
   async getArtifacts({
+    taskId,
     outputDir,
   }: AgentArtifactRequest): Promise<ArtifactMap> {
+    // Prefer the OS artifact endpoint: it resolves paths against the OS repo root,
+    // which is not necessarily the Eval repo root when the two run side by side.
+    try {
+      const payload = await this.request<{
+        artifacts?: Array<{ relativePath?: string; content?: string | null; bytes?: number; mimeType?: string | null }>;
+      }>(`/api/eval/tasks/${encodeURIComponent(taskId)}/artifacts`);
+      const artifacts: ArtifactMap = {};
+      for (const artifact of payload.artifacts ?? []) {
+        if (typeof artifact.relativePath !== "string" || artifact.relativePath.length === 0) continue;
+        if (typeof artifact.content !== "string") continue;
+        artifacts[artifact.relativePath] = {
+          text: artifact.content,
+          bytes: typeof artifact.bytes === "number" ? artifact.bytes : Buffer.byteLength(artifact.content, "utf8"),
+          ...(typeof artifact.mimeType === "string" && artifact.mimeType.length > 0 ? { mimeType: artifact.mimeType } : {})
+        };
+      }
+      if (Object.keys(artifacts).length > 0 || payload.artifacts !== undefined) return artifacts;
+    } catch {
+      // Fall through to the legacy local read for older OS builds.
+    }
     if (!this.artifactStorage)
       throw new Error("Hearth 产物读取需要配置 artifactStorage");
     const root = resolveRunOutputDir(

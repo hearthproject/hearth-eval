@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ImportedEvaluation, ImportedEvaluationInput } from "@hearth/eval-core";
-import { evaluationChecksSchema } from "@hearth/eval-core";
+import type { ImportedEvaluation, ImportedEvaluationInput } from "@hearth/eval-core/browser";
+import { evaluationChecksSchema } from "@hearth/eval-core/browser";
 import { CalibrationPanel } from "../components/CalibrationPanel.tsx";
 import { api } from "../lib/api.ts";
 import { ScrambleTitle } from "../components/EvaluationMotion.tsx";

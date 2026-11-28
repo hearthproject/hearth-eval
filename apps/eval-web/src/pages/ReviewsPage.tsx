@@ -9,7 +9,7 @@ import {
   X
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { ReviewQueueItem } from "@hearth/eval-core";
+import type { ReviewQueueItem } from "@hearth/eval-core/browser";
 import { api } from "../lib/api.ts";
 import {
   DIFFICULTY_LABELS,

@@ -6,7 +6,7 @@ import type {
   ExperimentStatus,
   GateLayer,
   ReviewTriggerKind
-} from "@hearth/eval-core";
+} from "@hearth/eval-core/browser";
 
 export const FAMILY_LABELS: Record<EvalFamily, string> = {
   email: "邮件",

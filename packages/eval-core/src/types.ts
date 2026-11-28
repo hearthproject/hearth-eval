@@ -431,6 +431,8 @@ export interface EvalTaskRequest {
   networkHosts?: string[];
   outputDir: string;
   timeoutMs?: number;
+  /** Task-level harness variant; OS applies its overrides to the runtime. */
+  harnessVariantId?: string;
 }
 
 export interface JudgeCriterionRequest {

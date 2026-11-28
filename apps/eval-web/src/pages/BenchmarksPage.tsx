@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, Download, FolderOpen, Play, RefreshCw, TerminalSquare } from "lucide-react";
-import type { BenchmarkImportInput, BenchmarkRun } from "@hearth/eval-core";
-import { formatBenchmarkTokens } from "@hearth/eval-core";
+import type { BenchmarkImportInput, BenchmarkRun } from "@hearth/eval-core/browser";
+import { formatBenchmarkTokens } from "@hearth/eval-core/browser";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api.ts";
 import {

@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "./App.tsx";
 import "./styles.css";
 import "./flat-theme.css";
+import "./pages/evidence.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

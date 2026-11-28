@@ -31,7 +31,7 @@ import type {
   ScenarioBatchSummary,
   ScenarioSelfCheck,
   SubmitReviewRequest
-} from "@hearth/eval-core";
+} from "@hearth/eval-core/browser";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -123,22 +123,22 @@ export const api = {
   cleanOrderCsv: (id:string, input:{name:string;artifactId:string;idColumn:string;amountColumn:string;repair:boolean;review?:{memoryKey:string;revision:number;requirements:string}}) => request<{repaired:boolean;review:string|null;retained:number;removed:Array<{record:number;id:string;reason:string}>;csv:string;sha256:string;directory:string}>(`/api/acceptance/hearth/tasks/${encodeURIComponent(id)}/orders`, { method:"POST",body:JSON.stringify(input) }),
   submitAccuracy: (entries:{id:string;correct:boolean}[]) => request<{correct:number;total:number}>("/api/acceptance/metrics/accuracy",{method:"POST",body:JSON.stringify(entries)}),
   verdictAccuracy: () => request<{correct:number;reviewed:number;total:number}>("/api/acceptance/metrics/accuracy"),
-  setReference: (id:string,verdict:"passed"|"failed") => request<import("@hearth/eval-core").AcceptanceJob>(`/api/acceptance/${encodeURIComponent(id)}/reference`,{method:"PUT",body:JSON.stringify({verdict})}),
+  setReference: (id:string,verdict:"passed"|"failed") => request<import("@hearth/eval-core/browser").AcceptanceJob>(`/api/acceptance/${encodeURIComponent(id)}/reference`,{method:"PUT",body:JSON.stringify({verdict})}),
   hearthTasks: () => request<Array<{id:string; title:string; status:string}>>("/api/acceptance/hearth/tasks"),
   hearthOutputs: (id:string) => request<{goal:string; artifacts:Array<{id:string;name:string}>}>(`/api/acceptance/hearth/tasks/${encodeURIComponent(id)}`),
-  checkHearthOutput: (id:string,input:{name:string;artifactId:string;required:string;memoryKey:string}) => request<{passed:boolean;missing:string[];sha256:string;semantic:import("@hearth/eval-core").AcceptanceSemanticReview|null;snapshot:import("@hearth/eval-core").ContextSnapshot|null}>(`/api/acceptance/hearth/tasks/${encodeURIComponent(id)}/check`, {method:"POST",body:JSON.stringify(input)}),
-  acceptanceDefaults: () => request<import("@hearth/eval-core").AcceptanceDefaults>("/api/acceptance/defaults"),
-  acceptanceMemory: (key: string) => request<import("@hearth/eval-core").AcceptanceMemoryView>(`/api/acceptance/memory/${encodeURIComponent(key)}`),
-  saveAcceptanceMemory: (key: string, content: string, expectedRevision: number) => request<import("@hearth/eval-core").SharedMemory>(`/api/acceptance/memory/${encodeURIComponent(key)}`, { method: "PUT", body: JSON.stringify({ content, expectedRevision }) }),
-  acceptances: () => request<import("@hearth/eval-core").AcceptanceJob[]>("/api/acceptance"),
-  acceptance: (id: string) => request<import("@hearth/eval-core").AcceptanceJob>(`/api/acceptance/${encodeURIComponent(id)}`),
-  startAcceptance: (input: import("@hearth/eval-core").AcceptanceInput) => request<import("@hearth/eval-core").AcceptanceJob>("/api/acceptance", { method: "POST", body: JSON.stringify(input) }),
-  controlAcceptance: (id: string, action: "resume" | "stop") => request<import("@hearth/eval-core").AcceptanceJob>(`/api/acceptance/${encodeURIComponent(id)}/${action}`, { method: "POST", body: "{}" }),
-  diagnoses: () => request<Array<Omit<import("@hearth/eval-core").DiagnosisJob, "evidence">>>("/api/diagnoses"),
-  diagnosis: (id: string) => request<import("@hearth/eval-core").DiagnosisJob>(`/api/diagnoses/${encodeURIComponent(id)}`),
-  startDiagnosis: (experimentId: string, rerunBudget: number) => request<import("@hearth/eval-core").DiagnosisJob>("/api/diagnoses", { method: "POST", body: JSON.stringify({ experimentId, rerunBudget }) }),
-  controlDiagnosis: (id: string, action: "approve" | "resume" | "stop", approved?: boolean) => request<import("@hearth/eval-core").DiagnosisJob>(`/api/diagnoses/${encodeURIComponent(id)}/${action}`, { method: "POST", body: JSON.stringify(action === "approve" ? { approved } : {}) }),
-  calibration: () => request<import("@hearth/eval-core").CalibrationReport>("/api/evaluation/calibration"),
+  checkHearthOutput: (id:string,input:{name:string;artifactId:string;required:string;memoryKey:string}) => request<{passed:boolean;missing:string[];sha256:string;semantic:import("@hearth/eval-core/browser").AcceptanceSemanticReview|null;snapshot:import("@hearth/eval-core/browser").ContextSnapshot|null}>(`/api/acceptance/hearth/tasks/${encodeURIComponent(id)}/check`, {method:"POST",body:JSON.stringify(input)}),
+  acceptanceDefaults: () => request<import("@hearth/eval-core/browser").AcceptanceDefaults>("/api/acceptance/defaults"),
+  acceptanceMemory: (key: string) => request<import("@hearth/eval-core/browser").AcceptanceMemoryView>(`/api/acceptance/memory/${encodeURIComponent(key)}`),
+  saveAcceptanceMemory: (key: string, content: string, expectedRevision: number) => request<import("@hearth/eval-core/browser").SharedMemory>(`/api/acceptance/memory/${encodeURIComponent(key)}`, { method: "PUT", body: JSON.stringify({ content, expectedRevision }) }),
+  acceptances: () => request<import("@hearth/eval-core/browser").AcceptanceJob[]>("/api/acceptance"),
+  acceptance: (id: string) => request<import("@hearth/eval-core/browser").AcceptanceJob>(`/api/acceptance/${encodeURIComponent(id)}`),
+  startAcceptance: (input: import("@hearth/eval-core/browser").AcceptanceInput) => request<import("@hearth/eval-core/browser").AcceptanceJob>("/api/acceptance", { method: "POST", body: JSON.stringify(input) }),
+  controlAcceptance: (id: string, action: "resume" | "stop") => request<import("@hearth/eval-core/browser").AcceptanceJob>(`/api/acceptance/${encodeURIComponent(id)}/${action}`, { method: "POST", body: "{}" }),
+  diagnoses: () => request<Array<Omit<import("@hearth/eval-core/browser").DiagnosisJob, "evidence">>>("/api/diagnoses"),
+  diagnosis: (id: string) => request<import("@hearth/eval-core/browser").DiagnosisJob>(`/api/diagnoses/${encodeURIComponent(id)}`),
+  startDiagnosis: (experimentId: string, rerunBudget: number) => request<import("@hearth/eval-core/browser").DiagnosisJob>("/api/diagnoses", { method: "POST", body: JSON.stringify({ experimentId, rerunBudget }) }),
+  controlDiagnosis: (id: string, action: "approve" | "resume" | "stop", approved?: boolean) => request<import("@hearth/eval-core/browser").DiagnosisJob>(`/api/diagnoses/${encodeURIComponent(id)}/${action}`, { method: "POST", body: JSON.stringify(action === "approve" ? { approved } : {}) }),
+  calibration: () => request<import("@hearth/eval-core/browser").CalibrationReport>("/api/evaluation/calibration"),
   codexSetup: () => request<{ hook: string; rules: string }>("/api/codex/setup"),
   generateCodexRules: (description: string) => request<{ requiredText: string[]; unsupported: string[] }>(
     "/api/codex/generate-rules", { method: "POST", body: JSON.stringify({ description }) }
@@ -166,12 +166,12 @@ export const api = {
   ),
   dashboard: () => request<DashboardResponse>("/api/dashboard"),
   system: () => request<EvalSystemResponse>("/api/system"),
-  judgeSettings: () => request<import("@hearth/eval-core").JudgeSettingsResponse>("/api/system/judge"),
-  saveJudgeSettings: (input: import("@hearth/eval-core").JudgeSettingsInput) => request<import("@hearth/eval-core").JudgeSettingsResponse>("/api/system/judge", { method: "PUT", body: JSON.stringify(input) }),
-  testJudge: (input: import("@hearth/eval-core").JudgeSettingsInput) => request<import("@hearth/eval-core").JudgeTestResult>("/api/system/judge/test", { method: "POST", body: JSON.stringify(input) }),
-  storageSettings: () => request<import("@hearth/eval-core").StorageSettingsResponse>("/api/system/storage"),
-  saveStorageSettings: (input: { dataDir: string; artifactRoot: string }) => request<import("@hearth/eval-core").StorageSettingsResponse>("/api/system/storage", { method: "PUT", body: JSON.stringify(input) }),
-  directories: (path?: string) => request<import("@hearth/eval-core").DirectoryListing>(`/api/system/directories${path ? `?path=${encodeURIComponent(path)}` : ""}`),
+  judgeSettings: () => request<import("@hearth/eval-core/browser").JudgeSettingsResponse>("/api/system/judge"),
+  saveJudgeSettings: (input: import("@hearth/eval-core/browser").JudgeSettingsInput) => request<import("@hearth/eval-core/browser").JudgeSettingsResponse>("/api/system/judge", { method: "PUT", body: JSON.stringify(input) }),
+  testJudge: (input: import("@hearth/eval-core/browser").JudgeSettingsInput) => request<import("@hearth/eval-core/browser").JudgeTestResult>("/api/system/judge/test", { method: "POST", body: JSON.stringify(input) }),
+  storageSettings: () => request<import("@hearth/eval-core/browser").StorageSettingsResponse>("/api/system/storage"),
+  saveStorageSettings: (input: { dataDir: string; artifactRoot: string }) => request<import("@hearth/eval-core/browser").StorageSettingsResponse>("/api/system/storage", { method: "PUT", body: JSON.stringify(input) }),
+  directories: (path?: string) => request<import("@hearth/eval-core/browser").DirectoryListing>(`/api/system/directories${path ? `?path=${encodeURIComponent(path)}` : ""}`),
   cases: (filters: CaseFilters = {}) => {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(filters)) {
@@ -182,6 +182,22 @@ export const api = {
   caseDetail: (caseKey: string) => request<CaseDetailResponse>(`/api/cases/${encodeURIComponent(caseKey)}`),
   experiments: () => request<ExperimentsResponse>("/api/experiments"),
   experiment: (id: string) => request<ExperimentDetailResponse>(`/api/experiments/${encodeURIComponent(id)}`),
+  variants: () => request<{ variants: Array<{ id: string; label: string; description?: string; overrides?: Record<string, unknown> }> }>("/api/evidence/variants"),
+  variantMetrics: () => request<Record<string, unknown>>("/api/evidence/variants/metrics"),
+  evidenceHealth: () => request<{ ok: boolean; os?: Record<string, unknown> }>("/api/evidence/health"),
+  evidenceManifest: (runId: string) => request<Record<string, unknown>>(`/api/evidence/runs/${encodeURIComponent(runId)}/manifest`),
+  evidenceBundle: (runId: string, taskId?: string) => request<Record<string, unknown>>(`/api/evidence/runs/${encodeURIComponent(runId)}/bundle${taskId ? `?taskId=${encodeURIComponent(taskId)}` : ""}`),
+  evidenceCost: (taskId: string) => request<Record<string, unknown>>(`/api/evidence/cost/tasks/${encodeURIComponent(taskId)}`),
+  evidenceProvenance: (taskId: string) => request<{ taskId: string; graph: Record<string, unknown>; chains: Array<Record<string, unknown>> }>(`/api/evidence/tasks/${encodeURIComponent(taskId)}/provenance`),
+  evidencePolicy: (taskId: string) => request<Record<string, unknown>>(`/api/evidence/policy/${encodeURIComponent(taskId)}`),
+  evidencePolicyPreflight: (body: { taskId: string; actions: Array<Record<string, unknown>>; policy?: Record<string, unknown> }) => request<Record<string, unknown>>("/api/evidence/policy/preflight", { method: "POST", body: JSON.stringify(body) }),
+  evidenceReplay: (body: { runId: string; mode?: string; timeoutMs?: number }) => request<Record<string, unknown>>("/api/evidence/replay", { method: "POST", body: JSON.stringify(body) }),
+  evidenceFork: (body: { runId: string; checkpointSeq?: number; label?: string; timeoutMs?: number }) => request<Record<string, unknown>>("/api/evidence/fork", { method: "POST", body: JSON.stringify(body) }),
+  failureCases: () => request<{ cases: Array<Record<string, unknown>> }>("/api/evidence/failure-cases"),
+  compileFailureFromRun: (body: { runId: string; taskId?: string; caseId?: string | null; family?: string; difficulty?: string; primaryCause?: string; force?: boolean }) => request<Record<string, unknown>>("/api/evidence/failure-cases/from-run", { method: "POST", body: JSON.stringify(body) }),
+  evidenceExperimentManifest: (id: string) => request<Record<string, unknown>>(`/api/evidence/experiments/${encodeURIComponent(id)}/manifest`),
+  evidenceExperimentCompare: (left: string, right: string) => request<Record<string, unknown>>(`/api/evidence/experiments/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}`),
+  evidenceRegressionGate: (body: Record<string, unknown>) => request<Record<string, unknown>>("/api/evidence/regression-gate", { method: "POST", body: JSON.stringify(body) }),
   createExperiment: (body: CreateExperimentRequest) => request<ExperimentRecord>("/api/experiments", {
     method: "POST",
     body: JSON.stringify(body)

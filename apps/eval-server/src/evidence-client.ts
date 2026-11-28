@@ -118,6 +118,14 @@ export class EvidenceClient {
     return this.request(`/api/evidence/tasks/${encodeURIComponent(taskId)}/evidence`);
   }
 
+  taskView(taskId: string): Promise<{
+    task?: Record<string, unknown>;
+    runs?: Array<Record<string, unknown>>;
+    artifacts?: Array<Record<string, unknown>>;
+  }> {
+    return this.request(`/api/tasks/${encodeURIComponent(taskId)}`);
+  }
+
   artifactGraph(taskId: string): Promise<{ nodes: unknown[]; edges: unknown[]; artifacts: unknown[] }> {
     return this.request(`/api/evidence/tasks/${encodeURIComponent(taskId)}/graph`);
   }

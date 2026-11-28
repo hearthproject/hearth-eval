@@ -20,7 +20,7 @@ import {
   XCircle
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import type { CaseManifest, EvalTrace, GraderResultRecord, RunArtifactView } from "@hearth/eval-core";
+import type { CaseManifest, EvalTrace, GraderResultRecord, RunArtifactView } from "@hearth/eval-core/browser";
 import { api } from "../lib/api.ts";
 import { useLiveClock } from "../lib/useLiveClock.ts";
 import {

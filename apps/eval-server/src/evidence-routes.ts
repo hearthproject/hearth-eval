@@ -47,6 +47,16 @@ const forkSchema = z.object({
   timeoutMs: z.number().int().min(1000).max(3_600_000).optional()
 }).strict();
 
+const compileFailureFromRunSchema = z.object({
+  runId: z.string().trim().min(1).max(200),
+  taskId: z.string().trim().min(1).max(200).optional(),
+  caseId: z.string().trim().max(100).nullable().optional(),
+  family: z.enum(["email", "calendar", "documents", "research", "code", "web", "desktop", "cross-app", "operations", "memory"]).optional(),
+  difficulty: z.enum(["normal", "edge", "failure", "adversarial"]).optional(),
+  primaryCause: z.string().trim().max(2_000).optional(),
+  force: z.boolean().optional()
+}).strict();
+
 const compileFailureSchema = z.object({
   runId: z.string().trim().min(1).max(200),
   taskId: z.string().trim().min(1).max(200),
@@ -158,6 +168,22 @@ export function registerEvidenceRoutes(app: FastifyInstance, options: Omit<Evide
     }
   });
 
+  app.get("/api/evidence/variants", async (_request, reply) => {
+    try {
+      return reply.send(await client.variants());
+    } catch (error) {
+      return reply.code(502).send({ error: "OS_VARIANTS_UNAVAILABLE", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/evidence/variants/metrics", async (_request, reply) => {
+    try {
+      return reply.send(await client.variantMetrics());
+    } catch (error) {
+      return reply.code(502).send({ error: "OS_VARIANTS_UNAVAILABLE", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   app.get("/api/evidence/runs/:runId/manifest", async (request, reply) => {
     const { runId } = request.params as { runId: string };
     try {
@@ -195,6 +221,63 @@ export function registerEvidenceRoutes(app: FastifyInstance, options: Omit<Evide
       return reply.send(await client.artifactGraph(taskId));
     } catch (error) {
       return reply.code(404).send({ error: "GRAPH_UNAVAILABLE", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/evidence/tasks/:taskId/provenance", async (request, reply) => {
+    const { taskId } = request.params as { taskId: string };
+    try {
+      const graph = await client.artifactGraph(taskId);
+      const artifacts = Array.isArray(graph.artifacts) ? graph.artifacts as Array<Record<string, unknown>> : [];
+      const chains = [];
+      for (const artifact of artifacts.slice(0, 50)) {
+        const id = typeof artifact.id === "string" ? artifact.id : null;
+        if (!id) continue;
+        try {
+          chains.push(await client.provenance(id));
+        } catch {
+          chains.push({ artifactId: id, completeness: { status: "incomplete_provenance", missing: ["provenance_unreadable"] } });
+        }
+      }
+      return reply.send({ taskId, graph, chains });
+    } catch (error) {
+      return reply.code(502).send({ error: "PROVENANCE_UNAVAILABLE", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/evidence/policy/:taskId", async (request, reply) => {
+    const { taskId } = request.params as { taskId: string };
+    try {
+      return reply.send(await client.policyActual(taskId));
+    } catch (error) {
+      return reply.code(502).send({ error: "POLICY_UNAVAILABLE", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.post("/api/evidence/policy/preflight", async (request, reply) => {
+    const parsed = z.object({
+      taskId: z.string().trim().min(1).max(200),
+      actions: z.array(z.record(z.string(), z.unknown())).min(1).max(50),
+      policy: z.record(z.string(), z.unknown()).optional()
+    }).strict().safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "INVALID_PREFLIGHT", issues: parsed.error.issues });
+    try {
+      return reply.send(await client.preflight({
+        taskId: parsed.data.taskId,
+        actions: parsed.data.actions,
+        ...(parsed.data.policy ? { policy: parsed.data.policy } : {})
+      }));
+    } catch (error) {
+      return reply.code(502).send({ error: "POLICY_UNAVAILABLE", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/evidence/artifacts/:artifactId/provenance", async (request, reply) => {
+    const { artifactId } = request.params as { artifactId: string };
+    try {
+      return reply.send(await client.provenance(artifactId));
+    } catch (error) {
+      return reply.code(502).send({ error: "PROVENANCE_UNAVAILABLE", message: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -330,6 +413,79 @@ export function registerEvidenceRoutes(app: FastifyInstance, options: Omit<Evide
     });
     store.appendEvent("failure_case.compiled", { payload: { caseId: bundle.manifest.id, sourceRunId: parsed.data.runId } });
     return reply.send(bundle);
+  });
+
+  app.post("/api/evidence/failure-cases/from-run", async (request, reply) => {
+    const parsed = compileFailureFromRunSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "INVALID_COMPILE_REQUEST", issues: parsed.error.issues });
+    try {
+      const manifest = await client.manifest(parsed.data.runId);
+      const taskId = parsed.data.taskId ?? manifest.taskId;
+      const view = await client.taskView(taskId);
+      const task = view.task ?? {};
+      const run = (view.runs ?? []).find((candidate) => candidate.id === parsed.data.runId) ?? null;
+      const status = String(run?.status ?? "");
+      if (!parsed.data.force && !["failed", "cancelled", "budget_exceeded"].includes(status)) {
+        return reply.code(409).send({
+          error: "RUN_NOT_FAILED",
+          message: `运行状态为 ${status || "unknown"}，只有失败运行才能编译为回归 Case；如需强制编译请传 force=true`,
+          status
+        });
+      }
+      const usage = (run?.usage ?? {}) as Record<string, number | null>;
+      const failure = (run?.failure ?? {}) as Record<string, unknown>;
+      const artifacts = (view.artifacts ?? []).map((artifact) => ({
+        relativePath: String(artifact.relativePath ?? ""),
+        sha256: typeof artifact.sha256 === "string" ? artifact.sha256 : null,
+        bytes: typeof artifact.bytes === "number" ? artifact.bytes : null
+      })).filter((artifact) => artifact.relativePath.length > 0);
+      const inputs = Array.isArray(task.inputs)
+        ? (task.inputs as Array<Record<string, unknown>>)
+            .filter((input) => typeof input.kind === "string" && ["file", "url"].includes(input.kind as string))
+            .map((input) => ({
+              kind: input.kind as "file" | "url",
+              label: String(input.label ?? input.kind),
+              ...(typeof input.value === "string" ? { value: input.value } : {})
+            }))
+        : [];
+      const bundle = compileFailureToCase({
+        runId: parsed.data.runId,
+        taskId,
+        caseId: parsed.data.caseId ?? null,
+        title: String(task.title ?? `生产失败 ${parsed.data.runId}`),
+        goal: String(task.goal ?? "复现生产失败并在修复后通过"),
+        family: parsed.data.family ?? "operations",
+        difficulty: parsed.data.difficulty ?? "failure",
+        inputs,
+        artifacts,
+        expectedOutputs: Array.isArray(task.expectedOutputs)
+          ? (task.expectedOutputs as unknown[]).filter((value): value is string => typeof value === "string")
+          : [],
+        primaryCause: parsed.data.primaryCause ?? (typeof failure.kind === "string" ? failure.kind : null),
+        observed: {
+          steps: typeof usage.turns === "number" ? usage.turns : undefined,
+          toolCalls: typeof usage.toolCalls === "number" ? usage.toolCalls : undefined,
+          tokens: typeof usage.inputTokens === "number" || typeof usage.outputTokens === "number"
+            ? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0)
+            : undefined,
+          durationMs: typeof run?.durationMs === "number" ? run.durationMs : undefined
+        }
+      });
+      store.saveRegressionCase({
+        id: bundle.manifest.id,
+        sourceRunId: bundle.provenance.sourceRunId,
+        sourceTaskId: bundle.provenance.sourceTaskId,
+        state: bundle.contract.state,
+        payload: bundle as unknown as Record<string, unknown>
+      });
+      store.appendEvent("failure_case.compiled_from_run", {
+        payload: { caseId: bundle.manifest.id, sourceRunId: parsed.data.runId, taskId }
+      });
+      return reply.send({ ...bundle, loadedFrom: { runId: parsed.data.runId, taskId, status } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return reply.code(502).send({ error: "FAILURE_CASE_COMPILE_FAILED", message });
+    }
   });
 
   app.get("/api/evidence/failure-cases", async (_request, reply) => {

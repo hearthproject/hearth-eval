@@ -1,4 +1,4 @@
-import type { ExperimentsResponse, NativeProviderView, RunDetailResponse } from "@hearth/eval-core";
+import type { ExperimentsResponse, NativeProviderView, RunDetailResponse } from "@hearth/eval-core/browser";
 
 /** Same-origin JSON client for the native console (`apps/eval-web/native.html`). */
 

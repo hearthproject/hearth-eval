@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ScenarioBatchDetail } from "@hearth/eval-core";
+import type { ScenarioBatchDetail } from "@hearth/eval-core/browser";
 import { EmptyState, ErrorState, LoadingState, MetricCard, PageHeader } from "../components/ui.tsx";
 import { api } from "../lib/api.ts";
 import { formatDate, formatPercent } from "../lib/labels.ts";

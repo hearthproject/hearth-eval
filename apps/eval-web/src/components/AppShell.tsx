@@ -5,6 +5,7 @@ import {
   BarChart3,
   BookOpen,
   ClipboardCheck,
+  FileSearch,
   FlaskConical,
   GitCompareArrows,
   Handshake,
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { to: "/acceptance", label: "交付验收", icon: Handshake },
   { to: "/reviews", label: "复核队列", icon: ClipboardCheck, badge: "reviews" as const },
   { to: "/compare", label: "对比", icon: GitCompareArrows },
+  { to: "/evidence", label: "证据控制台", icon: FileSearch },
   { to: "/activity", label: "活动流", icon: Activity },
   { to: "/system", label: "系统", icon: Settings2 }
 ];
@@ -51,6 +53,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/runs\/[^/]+$/, "运行详情"],
   [/^\/reviews$/, "复核队列"],
   [/^\/compare$/, "实验对比"],
+  [/^\/evidence$/, "证据控制台"],
   [/^\/activity$/, "活动流"],
   [/^\/system$/, "系统状态"]
 ];

@@ -1,4 +1,4 @@
-import type { AcceptanceJob } from "@hearth/eval-core";
+import type { AcceptanceJob } from "@hearth/eval-core/browser";
 import "./acceptance-report.css";
 
 const labels: Record<string,string> = {exists:"文件可读取",utf8:"UTF-8 编码",not_empty:"正文非空",heading:"一级标题",accuracy:"事实准确性",completeness:"内容要求",clarity:"表达与受众适配"};

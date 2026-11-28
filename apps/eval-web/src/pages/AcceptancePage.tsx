@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AcceptanceDefaults, AcceptanceJob, SharedMemory } from "@hearth/eval-core";
+import type { AcceptanceDefaults, AcceptanceJob, SharedMemory } from "@hearth/eval-core/browser";
 import { AcceptanceReport } from "./AcceptanceReport.tsx";
 import { api } from "../lib/api.ts";
 import { ErrorState, LoadingState, PageHeader, SectionHeader } from "../components/ui.tsx";
@@ -202,7 +202,7 @@ function AcceptanceForm({ defaults, onCreated }: { defaults: AcceptanceDefaults;
 
 function MemoryPreview({ memoryKey, memory, outcomes, linked, onSelect }: {
   memoryKey: string; memory: SharedMemory;
-  outcomes: import("@hearth/eval-core").AcceptanceMemoryView["outcomes"];
+  outcomes: import("@hearth/eval-core/browser").AcceptanceMemoryView["outcomes"];
   linked?: SharedMemory | null; onSelect: (key: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -292,7 +292,7 @@ function OrderCsv({taskId,artifact,repair,review,memoryPreview}:{memoryPreview:R
   </section>;
 }
 
-function CsvReport({name,rows,verdict,footer}:{name:string;rows:import("@hearth/eval-core").CsvReportRow[];verdict:string;footer:string}) { return <section className="acceptance-card csv-live-report" aria-label="CSV 实时验收报告">
+function CsvReport({name,rows,verdict,footer}:{name:string;rows:import("@hearth/eval-core/browser").CsvReportRow[];verdict:string;footer:string}) { return <section className="acceptance-card csv-live-report" aria-label="CSV 实时验收报告">
       <header><div><h2>Hearth Eval — Acceptance Report</h2><small>{name}</small></div><strong data-state={verdict}>{verdict==="PENDING"?"验收中":verdict}</strong></header>
       <div className="report-counts">{(["PASS","FAIL","INCONCLUSIVE"] as const).map((state,index)=><div data-state={state} key={state}><small>{["通过","失败","无法判断"][index]}</small><b>{rows.filter(r=>r.state===state).length}</b></div>)}</div>
       <ul aria-live="polite">{rows.map(r=><li key={r.id} data-state={r.state}><span className="report-icon" aria-hidden="true">{({PASS:"✓",FAIL:"×",INCONCLUSIVE:"?",PENDING:""})[r.state]}</span><div><b>{r.title}</b><p>{r.detail}</p></div><small>{r.state==="PENDING"?"验收中":r.state}</small></li>)}</ul>
